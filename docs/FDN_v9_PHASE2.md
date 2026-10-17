@@ -1,7 +1,7 @@
 # Phase 2: Shared libraries and engine optimisation
 
-**Paste with:** MASTER_PROMPT, REFERENCE (§D contracts), ANALYSIS §3 (D-clusters) + §5 (P-issues), and the scripts named in the step.
-**Branch:** `v9/phase2-libs`. One lib per answer, then one consumer per answer.
+**AI sessions:** use the task cards `docs/tasks/P2-*` (one card per chat; see `docs/tasks/README.md`). This file is the plan for you; the cards are what the AI gets.
+**Branch:** `phase2-libs`. One lib per answer, then one consumer per answer.
 
 ### 2a. Write the libraries (paste no FDN scripts except the ones named)
 1. `lib.LI.FDN.Cfg.Get` + `lib.LI.FDN.Log` (paste `Supply.Start.txt` as the D1/D2 pattern).

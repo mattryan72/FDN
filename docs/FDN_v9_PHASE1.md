@@ -1,7 +1,7 @@
 # Phase 1: Bug fixes in place (no refactor yet)
 
-**Paste with:** MASTER_PROMPT, REFERENCE, ANALYSIS §4 (bug table), `NOTES_semantics.md` from Phase 0, and **only** the one script for the current step.
-**Branch:** `v9/phase1-bugfix`. One commit per script: `fix(B1): Supply.Start real run-lock`.
+**AI sessions:** use the task cards `docs/tasks/P1-*` (one card per chat; see `docs/tasks/README.md`). This file is the plan for you; the cards are what the AI gets.
+**Branch:** `phase1-bugfix`. One commit per script: `fix(B1): Supply.Start real run-lock`.
 **Rules:** minimal diffs. Keep script names and arguments. No new library scripts yet; small inline helpers are OK and get replaced in Phase 2. Mark every change `* v9.01 B#`.
 
 Work in this order (each line is one AI answer):

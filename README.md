@@ -8,17 +8,27 @@ X3: Albion Prelude 3.3 / Farnham's Legacy rework of FDN v8.04 by Logain Abler.
 | `src/scripts/` | Compiled MSCI script XML – what ships in the game. Baseline = v8.04. Only change via X-Studio / XScript / in-game editor. |
 | `src/t/` | Text page 9910 (`9910-L044.xml`, plus language copies later). |
 | `source_readable/` | Readable source of every script – what the local AI reads and edits. Keep in sync with `src/`. |
-| `docs/` | Analysis, master prompt, phase prompts (0–5), reference, recommendations. Start with `docs/FDN_v9_MASTER_PROMPT.md`. |
+| `docs/` | Analysis, master prompt (full reference for you), phase plans (0–5), reference, recommendations. |
+| `docs/tasks/` | Small task cards, one per local-AI chat. Start with `docs/tasks/README.md`. |
+| `prompts/` | Built prompts from `tools/build_prompt.py` (not committed; rebuild any time). |
 | `notes/` | Save the local AI's answers here, one file per step (e.g. `notes/phase1-B03.md`). |
 | `tests/` | Test scripts, test save notes, log captures (`log09910.txt`). |
 | `package/` | Plugin Manager `.spk` and release zip builds. |
 | `reference/` | Readable v7.2 and the ship equipment patch, for comparison only. |
-| `tools/` | Python helpers used to decode and analyse the scripts. |
+| `tools/` | `build_prompt.py` (builds a paste-ready prompt from a task card) and the Python helpers used to decode and analyse the scripts. |
 
 ## Workflow
-1. One branch per phase: `phase0-setup`, `phase1-bugfix`, `phase2-libs`, `phase3-menus`, `phase4-compat`, `phase5-release`.
-2. Local AI proposes changes against `source_readable/`. Apply them in the script editor, export to `src/scripts/`, re-export readable, commit both.
-3. Record every change in `CHANGELOG.md`.
+1. One branch per phase: `phase0-setup`, `phase1-bugfix`, `phase2-libs`, `phase3-menus`, `phase4-compat`, `phase5-release`. Each phase plan is `docs/FDN_v9_PHASEn.md`.
+2. **One task card per AI chat.** Your local model gets less reliable on long prompts, so each chat gets one small, focused prompt (about 2–9k tokens) with the instruction at the end:
+   ```
+   python tools/build_prompt.py docs/tasks/P0-A_data_dictionary.md
+   ```
+   Open the file it writes in `prompts\`, copy it all, and paste it into a new chat. The builder adds the short rules (`docs/CORE_PROMPT.md`), the MSCI primer when code is written, the excerpts and scripts the card needs, and the instruction last. The card list is in `docs/tasks/README.md`. Needs Python 3 (python.org, or `winget install Python.Python.3.12`).
+3. Save each answer in `notes/<card id>.md` and check it with `docs/CHECKING_ANSWERS.md` (spot-check line numbers, check every command exists, re-ask buried details in a short fresh chat).
+4. Apply the change in the script editor, export to `src/scripts/`, update the matching file in `source_readable/`, and commit both with the note.
+5. Record every change in `CHANGELOG.md`.
+
+Don't paste `FDN_v9_MASTER_PROMPT.md`, the whole reference or the whole analysis into the AI any more; they are the full reference for you.
 
 ## Key decisions
 - The docked trade drone is kept (it uses the game's native trade mechanics) and hardened via `lib.LI.FDN.Trade` – see `docs/FDN_v9_REFERENCE.md` §G.

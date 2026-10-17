@@ -1,7 +1,7 @@
 # Phase 5: Testing, versioning and packaging
 
-**Paste with:** MASTER_PROMPT, REFERENCE, `CHANGELOG.md`, and the list of v9 script names with their `<version>` values.
-**Branch:** `v9/phase5-release` → merge to `main`, tag `v9.01`.
+**AI sessions:** use the task cards `docs/tasks/P5-*` (one card per chat; see `docs/tasks/README.md`). This file is the plan for you; the cards are what the AI gets.
+**Branch:** `phase5-release` → merge to `main`, tag `v9.01`.
 
 AI tasks (one answer each):
 1. **Test plan** as a checklist: install, fresh game, upgrade from 8.04, DC change, DC destroyed, factory sold/captured, 50+ factories performance (SETA 2 h), buy/sell with low money, trade drone (foe/destroyed/full partner, XRM type fallback, no tagged drone left after save/reload), virtual ↔ physical, move ware to ship, master reset, uninstall (AL stop → config entry removed, hotkey unregistered, no running tasks). Each item: steps, expected log lines (page 9910 log), pass/fail column.

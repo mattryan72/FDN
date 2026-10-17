@@ -1,7 +1,7 @@
 # Phase 3: Unified menu framework
 
-**Paste with:** MASTER_PROMPT, REFERENCE (§D, §E), ANALYSIS §2 (menu inventory), and the scripts named in the step. AP/FL native groupings only; the TC twins are deleted.
-**Branch:** `v9/phase3-menus`.
+**AI sessions:** use the task cards `docs/tasks/P3-*` (one card per chat; see `docs/tasks/README.md`). This file is the plan for you; the cards are what the AI gets.
+**Branch:** `phase3-menus`.
 
 Design (agree this with Matt in answer 1 before writing code):
 * `plugin.LI.FDN.Main.Menu` = controller only: a view stack (array of `[view, obj, ware]`), header, footer, open menu, hand the return value to `plugin.LI.FDN.Menu.Command`, which returns the new view stack. `back`/−1 pops the stack, so no hard-coded parents.

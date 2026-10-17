@@ -1,7 +1,7 @@
 # Phase 4: Compatibility (AP 3.3 + Farnham's Legacy) and the v8.04 → v9.01 upgrade
 
-**Paste with:** MASTER_PROMPT, REFERENCE, ANALYSIS §6–§7 (compat matrix + FL gotchas), `NOTES_semantics.md` (engine version numbers from Phase 0), and the scripts named.
-**Branch:** `v9/phase4-compat`.
+**AI sessions:** use the task cards `docs/tasks/P4-*` (one card per chat; see `docs/tasks/README.md`). This file is the plan for you; the cards are what the AI gets.
+**Branch:** `phase4-compat`.
 
 Steps (one answer each):
 1. `lib.LI.FDN.Game`: return 1/2/3 from `script engine version` using Matt's logged numbers (FL patch scripts are engine 60–74; AP ≥ 50; TC ~44). Use `>=` thresholds only. Store the result in `[23]`.
