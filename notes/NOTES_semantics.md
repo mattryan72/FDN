@@ -177,6 +177,34 @@ Known bugs that do **not** stop supply entirely: B1 (no real lock, so runs can o
 - **Bugs:** B1/B13 confirmed indirectly: the factory order is identical on every pass, so the reverse branch (Factory.Check L037-039) never runs. `[12]` is set at L036 and always cleared again at L153, so Supply.Start's run-lock never sees it. No overlap was seen (each pass ends within about 1 s, well inside the 25 s tick). B2/B4/B12/B15: not exercised (no buy, sell or dock lines). No errors, no FL oddities. Production cycle times (60/72/145/215/239 s) and remaining times behave as on AP.
 - **Conclusion:** on FL 1.3 + UP 1.3.20, v8.04 factory supply works (products to DC, resources from DC). If something still looks undelivered, it is the dock side (B2: DC "Remote access past stock level:" / dock "Maintain stock at level:"), or a ware the DC does not stock.
 
+### Supply debug log 2, FL (log09910.txt, game time 01:05:01-01:42:08, 2026-10-17 ~18:12 BST)
+Matt set a DC ware's "Remote access past stock level:" and an Equipment Dock ware's "Maintain stock at level:" and let it run. 3380 lines, 324 KB (the PC file `Documents\Egosoft\X3FL\log09910.txt` was copied read-only; its start matches the attachment). log09999 (tests) has nothing new: same T1-T9b lines as before.
+- **Size is normal, no runaway:** 90 passes, every 24-26 s (81 × 25 s), and each pass takes 0-1 s with the same 6 factories. That is about 37 lines per pass, more while factories are stalled. Logging is about 9 KB a minute while Supply Debug is ON, so turn it off after testing (Setup resets the log on load).
+- **No overlap (B1):** each pass ends long before the next one starts. B1/B13 behave as in log 1: the factory order is identical every pass.
+- **Dock passes ran** every 7th tick: `Dock Array found` 13 times, from 01:06:42 to 01:41:43, 174-177 s apart (Supply.Start L072-086). Supply.Dock still writes no debug lines.
+- **Dock supply WORKS on FL (indirect evidence plus Matt's observation):**
+  - The DC sends Energy Cells to docks only in Supply.Dock L096-131, and only when the DC's Remote level is above 0 and the dock's stock is below its Maintain level.
+  - Right after the 01:38:48 dock pass, the DC was suddenly short of Energy Cells for the first time in the session: `Buy 75 of ware Energy Cells for Your Wheat Farm L alpha` at 01:39:13, then 36/30/150 EC and 6/12 Argnu Beef at 01:39:38-01:40:53. Before that, Energy Cells were never short.
+  - The shortage ended once the SPPs passed 3 × 5530 Energy Cells at 01:40:28-54.
+  - Matt saw the Equipment Dock's Energy Cells go up.
+  - So that dock pass moved the DC's Energy Cells above the Remote level into the dock, as designed.
+- **Where the Energy Cells came from:** by design only from the DC. Factories pass products only to the DC (Supply.Factory L034-077). A dock's "Pass Surplus" goes only dock → DC (Supply.Dock L085-090). FDN never takes from a non-DC dock to supply another.
+  - So "from the HQ and the solar farms" matches the design only if the HQ was the DC: the SPPs feed the DC, and the DC feeds the dock.
+  - The supply log never names the DC. Check it in the FDN Main Menu header line ("Current Distribution Centre:") or in the "Change Distribution Centre" list in FDN Config Menu, which lists only Dock-class stations.
+  - VERIFY that the HQ appears in that list (that it is Dock class on FL).
+- **DC changed at about 01:30 (likely):** the pass at 01:30:02 is the only one with `Buy null` (Energy Cells for Rimes; Crystals for all 3 SPPs). `$from.dc` was null (Supply.Factory L107/L119).
+  - This fits a DC with no FDN ware record yet. Update.Ware L051-052 creates the record but never reloads `$ware.array`, so `$virtual.stock` (L057) and the return value (L103/L108) are built from null.
+  - On the next pass the record exists, and numbers return.
+  - It is consistent with Matt picking a new DC (the HQ?) just before 01:30:02.
+  - **New suspect (B16, VERIFY):** Update.Ware does not reload the record after creating it (L051-057). On the first remove from a DC ware with no record, L112 may still remove physical stock from the DC while returning null, so the factory gets nothing and the wares are lost once.
+- **Crystal shortage, 01:10-01:32:** the 3 SPPs were `Prdouction stalled` (check == full: 145/215/239). `Buy 117/120 of ware Crystals` every pass, because the DC had no Crystals.
+  - Buy.Ware never logged anything, although it has debug lines (Buy.Ware L062-092). So it was never started: "Allow FDN to buy ware:" is OFF for Crystals at the DC (Supply.Factory L128-133). That is by design.
+  - The `Buy N` lines (L121-125) only log the shortfall, not a purchase.
+  - It cleared at 01:32:57-01:33:48, once the DC had Crystals (new DC or stock moved in).
+- **Other:** `requires -N of Crystals` (20×) is harmless: cargo above 3 cycles, skipped by L105. No errors and no FL-specific oddities.
+- **B-items:** B1/B13 behaviour confirmed again (harmless here). B2: not hit; Maintain and Remote were set in the menu and worked. B4/B12/B15: not exercised (no sell or buy runs). B16 is new (see above).
+- **Conclusion:** v8.04 on FL 1.3 + UP 1.3.20 works end to end. The factory products → DC → factory resources path is visible in the log. The DC → dock path (Remote/Maintain) is inferred from the DC Energy Cells drain right after the 01:38:48 dock pass and from Matt's observation. The remaining "no supply" cases were configuration: the Crystals were not stocked at the DC and buying was off.
+
 ## Design consideration: per-station tasks vs central timer (recorded 2026-10-17, plan unchanged)
 
 Matt: earlier FDN versions ran a task (script) per station that called wares when needed. That hurt performance (possibly the way it was coded), so v8 moved to the current central AL timer (25 s tick; factory pass every tick, dock pass every 7th tick, about 175 s). For v9 this stays a design note, not a plan change:
