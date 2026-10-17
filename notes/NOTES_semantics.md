@@ -3,7 +3,7 @@
 Game: X3 Farnham's Legacy 1.3 with the Unofficial Patch 1.3.20 (Matt's PC, Steam, `D:\Steam\steamapps\common\X3 Terran Conflict\addon2`).
 Scripts: compiled test XMLs from `tests/xml/` (sources in `tests/xml/xs/`), saved at engine 50. Run by Matt on 2026-10-17. Output from `log09999.txt`.
 
-Status: T1-T8 done. T9 done on both a normal station and a Station Manager station (2026-10-17). Pending: T9b (task-constant check and time-local freshness) and whether the SM locals clear when SM is turned off. The first T5/T6/T9 run got a null argument; rerun 2026-10-17 ~16:37 BST with the argument picked from the prompt worked (the game folder still had the old 1-based `<arguments>` XMLs, so the index base did not matter).
+Status: T1-T8 done. T9 done on both a normal station and a Station Manager station (2026-10-17). T9b 'off' sample done (consistent with the freshness rule); the T9b 'on' sample is pending. The first T5/T6/T9 run got a null argument; rerun 2026-10-17 ~16:37 BST with the argument picked from the prompt worked (the game folder still had the old 1-based `<arguments>` XMLs, so the index base did not matter).
 
 ## Raw log
 
@@ -112,6 +112,9 @@ Source: the plain `.pck` scripts in `addon2\scripts` on Matt's PC (gzip XML with
 - **No script clears `egosoft.stationmgr.time` or `.blacklist`** (only `.wage` and `.unpaid` are set to null). So after SM is turned off, both locals most likely **stay on the station, with a time that stops updating**. "Local exists" alone would then give a false TRUE. Matt is retesting this.
 - `[Task.StationMgr]` is FL constant 448 (text page 392002, FL only). The game resolves it to a task slot at runtime, so T9 passing the plain number 448 tested the wrong slot. T9's "task 448 = FALSE" says nothing about SM. Auto prices uses `[Task.StationPrice]` (449) and `egosoft.price.time` the same way (that is why the SM station also has `egosoft.price.time`).
 - **Reliable detection (proposal, VERIFY with T9b):** TRUE when `$t = $station -> get local variable: name='egosoft.stationmgr.time'` is a number and `playing time - $t <= 10`. This is SM's own liveness rule, and it uses only standard commands, so the script also loads on AP. Optional FL-only confirmation: `$station -> is script plugin.stationmgr.run on stack of task=[Task.StationMgr]` (the check FL itself uses; constant 448 does not exist on AP).
+- **T9b 'off' sample (2026-10-17, Matt confirmed SM was OFF):** `stationmgr.run on stack of Task.StationMgr = FALSE`, `task Task.StationMgr running = FALSE`, `playing time = 3448, egosoft.stationmgr.time = 3389`. The local **stays** after SM is switched off and is 59 s stale. This matches the source reading (never cleared, no longer refreshed), so the freshness rule gives FALSE and "local exists" alone would wrongly give TRUE. **Pending:** the 'on' sample (expect on-stack TRUE and a time within about 1 s of playing time). If SM is on but the time is stale or both checks are FALSE, the rule is wrong; fall back to the alternative below.
+- **Source re-check (2026-10-17):** `.time` is written only by `!station.cmd.manage.pl`, on `[THIS]` = the **station**. `!init.station.globalscriptmap` maps `COMMAND_STATION_MANAGER` (FL command 100031, text page 392008) for class Station / race Player to that script, so it runs as the station's command script while the command is active. It refreshes `.time` every 1 s, and stops (leaving `.time` stale) when the command is replaced or `plugin.stationmgr.run` ends without the `sm.restart` flag. `plugin.stationmgr.run` itself only reads `.time`.
+- **Alternative check, if the 'on' sample disagrees (not built yet):** `$station -> is script '!station.cmd.manage.pl' on stack of task=0`. It uses a standard command (id 1072, page 2003) with a plain script name, so it also loads on AP, where it simply returns FALSE. It assumes station command scripts run on task 0 (VERIFY). `get command` is a ship/wing command in the compiler data, and `COMMAND_STATION_MANAGER` is FL-only, so neither is used.
 - **T9b** (`tests/xml/test.LI.FDN.T9b.xml`, new) logs the stack check, `is task running [Task.StationMgr]` with the constant, and `playing time` next to `egosoft.stationmgr.time`. Run it on the SM station with SM on, then again about 30 s after switching SM off.
 
 ### T7: script engine version (lib.LI.FDN.Game)
@@ -130,7 +133,7 @@ Source: the plain `.pck` scripts in `addon2\scripts` on Matt's PC (gzip XML with
 
 ## Pending
 
-- **T9b:** SM station with SM on, then about 30 s after SM is switched off (does the time go stale; do the locals stay).
+- **T9b 'on' sample:** run T9b on the SM station with SM **on** (the 'off' sample is done).
 - **T6 by hand:** on-screen message and Statistics "ships lost" before/after a drone destruct.
 - **T7 on AP 3.3** (and FL without the patch, if easy).
 - **T1 extra:** arithmetic with null (`$x + null`).
@@ -155,6 +158,12 @@ Known bugs that do **not** stop supply entirely: B1 (no real lock, so runs can o
 - Manual runs are harmless: each is a single pass, with no extra loop. A manual run can overlap a timer-started pass (B1: no real lock), which can supply twice in that moment but leaves nothing running. A hand run also advances the dock counter.
 - Signs it is running by itself (Supply Debug ON): `log09910.txt` gets `<time>;plugin.LI.FDN.Supply.Start; Start Supply Called` about every 25 s with no hand runs. If you only see one line per hand run, the timer is not driving it.
 
+### Why the FDN menu entry never appears on FL (2026-10-17)
+- **No version check is involved.** The only game check anywhere in v8.04 is `lib.BW.isAP` (`script engine version >= 50`, TRUE on FL's 60). It is called only inside Main.Menu, after the menu is open, to pick the AP menu layouts. al.plugin.LI.FDN.register, al.LI.FDN.event and Setup check nothing but FDN's own `[0]` flag.
+- **How the entry is made:** `al.LI.FDN.event` calls `plugin.LI.FDN.Setup` on the AL events `init`/`reinit`/`start`/`stop`. If `[0]` is TRUE, Setup calls `plugin.config.addscript` (Community Plugin Configuration, CPC) with section text 101 "Logain Industries Menus" and name text 102 "FDN Main Menu". There is no hotkey and no ship or station command.
+- **What FL ships:** CPC is present in `addon2\scripts` (`init.community.config` v3, engine 62; `plugin.config.*`; text page 7000, "Plugin Configurations"). On **every game load**, `init.community.config` **wipes** the CPC registry (global `plugin.config`, comment "whipe all settings at begining"). It then opens the "Plugin Configurations" menu through a hotkey, `add script options`, a personal sidebar entry and a script global command. `plugin.config.addscript` (v5) stores the entry in `plugin.config[0]` and returns FALSE if that global does not exist yet.
+- **Cause:** FDN registers only from AL events, not from a `setup.*` script that runs on every load after CPC's init. If the AL `init`/`reinit` event is handled before `init.community.config` runs (or, on a new game, before `plugin.config` exists), the entry is wiped or never stored, and nothing re-adds it until the next AL `start`. FDN's own removal code still reads the old CPC global `config.scripts`, which shows it was written for an older CPC that did not wipe. The exact AL vs `init.*` load order is not visible in scripts (VERIFY), but this is the only point in the path that can fail.
+- **Fix (v8.04 hotfix, Matt to add):** a new script `setup.LI.FDN.config` (setup scripts run on every load after `init.*`) that re-registers the menu when FDN is enabled. v9 already plans a hotkey fallback (P4-03) and should register from a `setup.*` script as well as on AL `start`.
 ## Design consideration: per-station tasks vs central timer (recorded 2026-10-17, plan unchanged)
 
 Matt: earlier FDN versions ran a task (script) per station that called wares when needed. That hurt performance (possibly the way it was coded), so v8 moved to the current central AL timer (25 s tick; factory pass every tick, dock pass every 7th tick, about 175 s). For v9 this stays a design note, not a plan change:
