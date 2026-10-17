@@ -15,6 +15,7 @@ Steps (one answer each):
 2. `lib.LI.FDN.Menu.Row`, `Menu.Toggle`, `Menu.ObjLine` (paste `Menu.Ware.Details.txt` as the pattern).
 3. `lib.LI.FDN.Menu.WareRow` (paste `Wares.Summary.txt`).
 4. `plugin.LI.FDN.Menu.Command` (paste `Main.Menu.txt`): table-style dispatch per REFERENCE §E; one numeric-input handler, one price handler, one toggle handler; `set.dc` validates the dock (Is.Valid need.dock) and asks for confirmation; `master.reset` confirms.
+4b. `plugin.LI.FDN.DC.Change` (SCHEDULED by Matt 2026-10-17, card P3-04b, `docs/DESIGN_v9_direction.md` item 1): wait-free DC change. Take the supply-run lock, validate, create records for all network wares on the new DC (B30), carry over DC policy, turn the old DC into a normal dock with surplus on, set `[2]`, log `DC changed`, release. `set.dc` calls it.
 5. `plugin.LI.FDN.Main.Menu` (controller rewrite).
 6. `plugin.LI.FDN.Menu.Station` (paste `Menu.AP.DC.Details.txt` + `Menu.AP.Dock.Details.txt`).
 7. `plugin.LI.FDN.Menu.Stations` (paste `Menu.AP.Factory.List.txt`).

@@ -52,7 +52,7 @@ Buy/sell:
   - abort reason: lock busy, task cap [18]/[19], drone create failed, partner gone
 - Remove the `Remove 0` noise: log the product pass only when the amount is > 0.
 
-DC change: logged by the menu (P3-04 `set.dc`): `DC changed: <old> -> <new>`. Also, Supply.Start logs `DC: <dc>` once per Scan run, so every log shows which station is the DC.
+DC change: logged by `plugin.LI.FDN.DC.Change` (P3-04b): `DC changed: <old> -> <new>`. Also, Supply.Start logs `DC: <dc>` once per Scan run, so every log shows which station is the DC.
 
 ## Key facts
 

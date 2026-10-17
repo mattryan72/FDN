@@ -41,9 +41,11 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | B16 | P1-08, P4-04 |
 | B17-B26 | P1-09b, P1-13a-e (B25: P2-06; B24: P1-09a) |
 | B29 | P2-12a (dead Debug.Sub in Update.Ware, found in P0-A) |
-| B30 | suspected from FL log 2 (2026-10-17): Update.Ware L051-057 does not reload the record after creating it, so the first remove from a record-less DC ware returns null; P1-04, P2-12a |
+| B30 | suspected from FL log 2 (2026-10-17): Update.Ware L051-057 does not reload the record after creating it, so the first remove from a record-less DC ware returns null; P1-04, P2-12a, P3-04b (DC change) |
 | Debug logging (dock pass, buy/sell, DC change) | requested by Matt 2026-10-17; P2-14, P3-04 (DC change line) |
 | FL Station Manager | approved 2026-10-17; P0-C3 (test T9), P2-06 (Scan drop), P4-06 (detection) |
+
+Design proposals beyond v9.01 (hubs with range, energy cost, freighters, status screen, ...): `docs/DESIGN_v9_direction.md`. Only item 1 (DC change event, P3-04b) is scheduled.
 
 ## Phase 0: check the analysis, write test scripts
 
@@ -119,6 +121,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | [P3-02](P3-02_lib_Menu_Row_Toggle_ObjLine.md) | Write Menu.Row, Menu.Toggle and Menu.ObjLine | yes | 6,125 |
 | [P3-03](P3-03_lib_Menu_WareRow.md) | Write Menu.WareRow | yes | 5,794 |
 | [P3-04](P3-04_Menu.Command.md) | Write the menu dispatcher plugin.LI.FDN.Menu.Command | yes | 7,353 |
+| [P3-04b](P3-04b_DC_Change_event.md) | Write plugin.LI.FDN.DC.Change (DC change as one event; fixes B30 for DC changes) | yes | 4,417 |
 | [P3-05](P3-05_Main.Menu_controller.md) | Rewrite plugin.LI.FDN.Main.Menu as the controller | yes | 4,760 |
 | [P3-06](P3-06_Menu.Station.md) | Write plugin.LI.FDN.Menu.Station (DC and dock in one view) | yes | 7,032 |
 | [P3-07](P3-07_Menu.Stations.md) | Write plugin.LI.FDN.Menu.Stations (stations list) | yes | 5,996 |

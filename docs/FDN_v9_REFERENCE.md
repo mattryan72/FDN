@@ -57,6 +57,7 @@
 | `lib.LI.FDN.Ware.Rec` | station, ware, create (Boolean) | record array (created with v9 defaults if `create`) or null | D3, B2, B18 |
 | `lib.LI.FDN.Fac.Cfg` | factory | settings array (get-or-create, applies auto-manage once) | D4 |
 | `lib.LI.FDN.Lock` | obj (or null = global), key (String), action ('try'/'release'), timeout s | TRUE if acquired/released | B1, B11 |
+| `plugin.LI.FDN.DC.Change` | old, new (Dock) | 'ok' / 'busy' / refusal reason; wait-free; holds the supply-run lock; creates new-DC records for all network wares, copies DC policy, makes the old DC a normal dock (surplus on), logs `DC changed` | v8 add.dc/change.dc, B30 (P3-04b) |
 | `lib.LI.FDN.Sectors` | mode (1 factories, 2 docks, 3 trade = all + adv. sats) | sector array from cache `[15]` (no scanning) | Sector.Array readers |
 | `lib.LI.FDN.Trade` | mode ('buy'/'sell'), partner (NPC station), ware, amount, home (player station whose account pays/receives), dest (optional, buy only: where bought wares go, default home) | units traded (0 on any failure, never null/negative). **Wait-free.** Spec: §G | D9, B15 |
 | `lib.LI.FDN.Menu.Row` | menu, label, value, retval (null = info line) | null | D5 |
@@ -82,7 +83,7 @@ Return values are arrays `[cmd, obj, ware, extra]`, with strings only for global
 * Surplus (B5): `surplus` cycles the ware's [7] Default (−1) → On (1) → Off (0) → Default; `surplus.default` cycles settings [28] On → Off → v8 compatible (Config menu row, texts 320–325).
 * Toggle (one handler): `can.buy`→[3]; factory `product`→[0], `resource`→[1]; settings `debug`→[7], `auto`→[9], `dynamic.dc`→[6][0], `dynamic.dock`→[6][2].
 * Stock: `move.ware`, `to.physical`, `to.virtual` (one handler), `add.ware`, `remove.ware` (re-check stock == 0).
-* Global: `product.all.on/off`, `resource.all.on/off`, `set.dc` (merges add.dc/change.dc), `master.reset` (confirm).
+* Global: `product.all.on/off`, `resource.all.on/off`, `set.dc` (merges add.dc/change.dc; confirms, then calls `plugin.LI.FDN.DC.Change`, P3-04b), `master.reset` (confirm).
 * Removed: `switch.menu` (becomes a nav row), `show.factory`, `show.type.dc`, `show.type.dock` (TC only).
 
 ## F. Key known bugs (details in ANALYSIS §4)
