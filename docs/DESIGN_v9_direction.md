@@ -59,7 +59,11 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
 - **Reserve floor (DECIDED):** each DC keeps a per-ware **floor F** below which it will not give stock to other DCs (it is "not drained"). **F = 25 % of that DC's maximum storage capacity for the ware** (DECIDED, Q2.7/Q2.9), configurable. The floor does not shrink as stock falls, and a DC never gives stock to another DC below it.
   - VERIFY the capacity command on a dock: v8 uses `$factory -> get max amount of ware $ware that can be stored in cargo bay` on factories (Supply.Factory L092); check that it works on Dock-class stations (TC/AP/FL).
   - VERIFY/decide how virtual storage counts. v8 virtual stock ([0]) has no capacity limit, so the floor uses physical capacity only (proposal). Stock for the floor test = physical + virtual. v8 "remote" ([1]) is a share level, not storage, so it does not change capacity.
-  - Cache the capacity per DC and ware on Scan (it only changes with station type). A DC's own stations are still served down to its share level, as in v8.
+  - Cache the capacity per DC and ware on Scan (it only changes with station type).
+  - **Percentage resolves in three layers (DECIDED, Q2.9b):** DC ware record first, then the DC's own setting, then the Global setting (default 25 %) as the catch-all. Unset (null or −1) at a layer means inherit from the next layer.
+    - This is the same pattern as B5: per-ware surplus [7] −1/null falls back to the global [28]. Both should use **one resolver helper** (proposal: `lib.LI.FDN.Resolve(ware.value, dc.value, global.value)` → the first value that is set; test null with DATATYPE_NULL before comparing, as for B5). It fits item 7 (single settings helper).
+    - New storage needed: a per-ware slot in the ware record, a per-DC value (station local), and one global (settings index; see Q7.2 on array size). VERIFY the free slots when this is scheduled.
+    - Floor = ceil(capacity × pct / 100) (rounding per Q2.9a). A DC's own stations are still served down to its share level, as in v8.
 - **Engine:** one DC per pass, round-robin (cursor like `[13]`), so per-tick cost stays bounded. Backbone pulls happen inside the home DC's pass, at most `[n]` pulls per pass (proposal).
 - **Upgrade:** a v8 save has one DC, so there is no backbone and behaviour is identical. A "range off" setting keeps far stations served (Q2.4).
 - **Decided / open questions:**
@@ -74,7 +78,7 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
   - Q2.6 **Multi-hop: DECIDED.** Unlimited daisy-chaining along the fewest-jumps route, with only a safety cap against loops and performance.
   - Q2.7 **Reserve floor default: DECIDED.** 25 % of the DC's **max storage capacity** per ware, configurable (see Q2.9).
   - Q2.8 **Rebalance: DECIDED.** v9 is supply and demand only: stock moves between DCs only when a home DC pulls on shortage. Proactive balancing is deferred as a possible later feature and is **not** an option in v9.
-  - Q2.9 **Reserve floor basis: DECIDED.** Max storage capacity, not current stock, so the floor is fixed per DC and ware. Still open: Q2.9a rounding (proposal: round up, so the floor is never 0 for a ware with capacity); Q2.9b one global 25 % with per-ware overrides, or global only (per the options principle, proposal: global only)?
+  - Q2.9 **Reserve floor basis: DECIDED.** Max storage capacity, not current stock, so the floor is fixed per DC and ware. Q2.9a rounding is still open (proposal: round up, so the floor is never 0 for a ware the DC can store). Q2.9b **percentage layers: DECIDED** (Matt, 2026-10-17); see the reserve floor bullet above.
 
 ## 3. Energy transfer cost (Matt's idea, proposal)
 
