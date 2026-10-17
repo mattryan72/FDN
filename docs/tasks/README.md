@@ -41,6 +41,8 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | B16 | P1-08, P4-04 |
 | B17-B26 | P1-09b, P1-13a-e (B25: P2-06; B24: P1-09a) |
 | B29 | P2-12a (dead Debug.Sub in Update.Ware, found in P0-A) |
+| B30 | suspected from FL log 2 (2026-10-17): Update.Ware L051-057 does not reload the record after creating it, so the first remove from a record-less DC ware returns null; P1-04, P2-12a |
+| Debug logging (dock pass, buy/sell, DC change) | requested by Matt 2026-10-17; P2-14, P3-04 (DC change line) |
 | FL Station Manager | approved 2026-10-17; P0-C3 (test T9), P2-06 (Scan drop), P4-06 (detection) |
 
 ## Phase 0: check the analysis, write test scripts
@@ -107,6 +109,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | [P2-12a](P2-12a_Update.Ware_use_libs.md) | Update.Ware on the shared libraries | yes | 4,665 |
 | [P2-12b](P2-12b_Move.Ware_use_libs.md) | Move.Ware on the shared libraries | yes | 4,712 |
 | [P2-13](P2-13_wrappers_Sector.Array_Format.Name.md) | Turn Sector.Array and Format.Name into thin wrappers | yes | 3,454 |
+| [P2-14](P2-14_debug_logging.md) | Decision logging for the dock pass, buy and sell (debug [7]) | yes | 6,337 |
 
 ## Phase 3: one menu framework
 

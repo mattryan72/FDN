@@ -44,6 +44,7 @@ Return values are arrays [cmd, obj, ware, extra]; strings only for global action
 - Phase 3 = unified menus. Keep the script name plugin.LI.FDN.Main.Menu (saves store it).
 - Menu builders never wait. Rows only via the Menu.* libraries once they exist.
 - Never invent commands; menu commands used in the pasted scripts are safe, others need VERIFY.
+- set.dc logs `DC changed: <old> -> <new>` with lib.LI.FDN.Log (debug [7]; Matt 2026-10-17, see P2-14).
 
 ## Instruction
 

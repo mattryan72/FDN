@@ -20,6 +20,8 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - B2 (high, confirmed in P0-A) Update.Ware 33-35 (+ Add.Ware.Sub 125-140); callers Main.Menu 475, Supply.Dock 100. `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a null name. Result: Add Ware never creates settings, and Supply.Dock's create-then-read returns null. Fix direction: build `$pointer` before any gosub.
 - B5 (approved by Matt 2026-10-17: make it configurable) Update.Ware 136; Wares.Summary 257; Supply.Dock 84-91. v8: default [7] = -1 counts as TRUE, so 'pass surplus to DC' is ON for every new ware; null only appears when the player switches it off. v9: global default [28] (1 on, 0 off, 2 v8 compatible) for records whose [7] is -1/null; per-ware [7] 1 = on, 0 = off, -1/null = use default. New records keep -1. v8 upgrade (migration approved by Matt 2026-10-17) sets [28] = 1 and migrates [7] null -> 0, so existing saves behave as before. Config menu row texts 320-325.
 
+- B30 (suspected, FL log 2, 2026-10-17) Update.Ware 051-057: after `gosub Add.Ware.Sub:` the new record is not re-read, so `$ware.array`/`$virtual.stock` stay null. The first remove from a DC ware with no record returned null (`Buy null` lines at 01:30:02), and L112 may still remove DC physical stock. Fix: re-read the record (or use the record Ware.Rec returns) before using it.
+
 ### Ware record: station local `FDN.Ware.<ware>` (name from text 4000 via sprintf), array size 12
 | Idx | Meaning | v8 default |
 |---|---|---|
@@ -45,6 +47,8 @@ Created by Update.Ware (Add.Ware.Sub) and Wares.Summary (Build.Ware.Array.Sub), 
 - If NOTES_semantics.md was included, follow its test results; if not, mark those engine points `VERIFY:`.
 
 ## Instruction
+
+(Also fix B30 in the same place: re-read the record after Add.Ware.Sub.)
 
 Phase 1, task P1-04. Fix plugin.LI.FDN.Update.Ware:
 (1) B2: build `$pointer` before the `create` gosub (around line 33).

@@ -20,6 +20,9 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - `lib.LI.FDN.Log` | args: text (String), obj (Value, optional) | returns null; writes to log file [1] only if [7] (debug) is on | replaces 9 copies of Debug.Sub (D2)
 - `lib.LI.FDN.Ware.Rec` | args: station, ware, create (Boolean) | record array (created with v9 defaults if create) or null; create=FALSE never writes | D3, B2, B18
 
+### Bug notes
+- B30 (suspected, FL log 2, 2026-10-17) Update.Ware 051-057: after `gosub Add.Ware.Sub:` the new record is not re-read, so `$ware.array`/`$virtual.stock` stay null. The first remove from a DC ware with no record returned null (`Buy null` lines at 01:30:02), and L112 may still remove DC physical stock. Fix: re-read the record (or use the record Ware.Rec returns) before using it.
+
 ### v9 standard header (the only allowed copy of the settings fetch)
 ```
 $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
