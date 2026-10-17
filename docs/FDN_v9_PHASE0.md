@@ -32,6 +32,8 @@
 | `P0-C2_drone_tests` | Test scripts T5-T6 for the trade drone (create ship checks, does destruct fire signals) | primer + the drone lines of `Buy.Ware` / `Sell.Ware` |
 | `P0-D_changelog_draft` | Drafts the v9.01 CHANGELOG skeleton | `CHANGELOG.md` |
 
+**Progress:** P0-A done 2026-10-17 (checked; see `notes/P0-A_findings.md`). It confirmed B1 and B2, so cards P0-B-B1 and P0-B-B2 are optional now; it also corrected the [11] range and found B29.
+
 You run the test scripts and record the log results in `notes/NOTES_semantics.md`. Check every answer with `docs/CHECKING_ANSWERS.md`.
 
 **Done when:** PIPELINE is decided, the baseline save and log exist, `notes/NOTES_semantics.md` exists (including the E trade results and engine versions), and the bug list is confirmed. Commit and tag `v9-phase0`.

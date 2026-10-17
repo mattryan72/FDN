@@ -9,12 +9,12 @@
 | 3 | factory array | same; only valid player factories |
 | 4 | dock array (incl. DC) | same |
 | 5 | open menu view | same, plus `[20]` token |
-| 6 | is.dynamic array: [0] DC view, [2] dock view ([1] obsolete) | use [0] and [2] only |
+| 6 | is.dynamic array: [0] DC view, [2] dock view ([1] obsolete). Allocated with size=10 (al.LI.FDN.event L017) but only [0]–[2] are set (L018–020); [3]–[9] stay null (P0-A) | use [0] and [2] only |
 | 7 | debug | same |
 | 8 | exclude array (all player stations) | same, refreshed by Scan |
 | 9 | auto-manage new factories | same |
 | 10 | unused | reserved |
-| 11 | dock-check tick counter | same |
+| 11 | dock-check tick counter (Supply.Start L031, L072–077): while `< 6` it is incremented and the call returns early; at 6 it is reset to 0 and dock supply runs. So dock supply is skipped for 6 calls and runs on every 7th (~175 s at 25 s). The L071 comment "until call 3 times" is wrong (P0-A) | same |
 | 12 | (v8: broken running flag) | **factory-check lock**: `playing time` when started, null when free; stale after `[22]`×4 s |
 | 13 | (v8: reverse toggle, collided with 12) | **factory cursor / reverse toggle** |
 | 14 | — | **schema version** (901) |
@@ -34,7 +34,7 @@
 | 28–29 | free | |
 
 ## B. Station locals
-* `FDN.Ware.<ware>` (text 4000 via sprintf), size 12: [0] virtual stock, [1] DC remote reserve (>0 = share), [2] dock maintain level, [3] DC may buy, [4] buy-at price, [5] sell-above level (−1/null = off), [6] sell-at price, [7] surplus→DC (v9 default null = off; v8 default −1 = on), [8] v9: last trade `playing time`, [9]–[11] free.
+* `FDN.Ware.<ware>` (text 4000 via sprintf), size 12: [0] virtual stock, [1] DC remote reserve (>0 = share), [2] dock maintain level, [3] DC may buy, [4] buy-at price, [5] sell-above level (−1/null = off), [6] sell-at price, [7] surplus→DC (v9 default null = off; v8 default −1 = on), [8] v9: last trade `playing time`, [9]–[11] free. Note (P0-A): the record is allocated with size=12 (Update.Ware L128); Add.Ware.Sub sets [0]–[9] and [11] (L129–139) but never [10], which is null only because the alloc leaves it null. v9 code should set it explicitly.
 * `FDN.Settings` (text 4001) on factories, size 6: [0] manage product, [1] manage resources, [2] seen-once flag, [3] v9: busy-until time, [4]–[5] free.
 * v9 `FDN.Trade.<ware>` (text 4101, on the home station): per station/ware trade guard (`playing time`, stale after 120 s), used through `lib.LI.FDN.Lock`.
 * v9 `FDN.Trade.Drone` (text 4102, on the temporary drone): tag (value = `playing time`) so the init sweep can find orphaned drones.
@@ -82,7 +82,7 @@ Return values are arrays `[cmd, obj, ware, extra]`, with strings only for global
 * Removed: `switch.menu` (becomes a nav row), `show.factory`, `show.type.dc`, `show.type.dock` (TC only).
 
 ## F. Key known bugs (details in ANALYSIS §4)
-B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wares vanish) · B4 null sell cap → sell all · B5 surplus default −1 · B6 config-menu dependency · B7 dynamic index 1 vs 2 · B8 stacked _D updaters · B9 Reset regex `FDN*` · B10 Sector.Array modes · B11 duplicate Buy/Sell tasks · B12 no re-validation after waits · B13 reverse array copy · B14 wait in AL path · B15 fragile temp-drone trades (drone **kept**, hardened in `lib.LI.FDN.Trade`, §G) · B16 settings schema unversioned.
+B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wares vanish) · B4 null sell cap → sell all · B5 surplus default −1 · B6 config-menu dependency · B7 dynamic index 1 vs 2 · B8 stacked _D updaters · B9 Reset regex `FDN*` · B10 Sector.Array modes · B11 duplicate Buy/Sell tasks · B12 no re-validation after waits · B13 reverse array copy · B14 wait in AL path · B15 fragile temp-drone trades (drone **kept**, hardened in `lib.LI.FDN.Trade`, §G) · B16 settings schema unversioned. Minor: B29 dead `Debug.Sub` in Update.Ware (fix in Phase 2 with `lib.LI.FDN.Log`). B1 and B2 confirmed in P0-A.
 
 ## G. `lib.LI.FDN.Trade` spec (decision R-T1: KEEP the docked trade drone, make it robust)
 **Why it exists:** MSCI has no station-to-station trade command. A docked ship's `buy`/`sell` is the only way into the native economy (real price, homebase account, NPC stock, possibly trade rank/stats). The drone is created already docked and destroyed in the same wait-free block, so freight was never visible. Keeping it changes nothing the player sees.

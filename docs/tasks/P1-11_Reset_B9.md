@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~3,989 tokens when built
+- Estimated size: ~4,027 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-11_Reset_B9.md`
 - Save the answer as: `notes/P1-11.md`
 
@@ -28,12 +28,12 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 | 3 | factory array | al.LI.FDN.event, Sector.Array, Reset |
 | 4 | dock array (includes the DC) | al.LI.FDN.event, Sector.Array, Reset |
 | 5 | open menu view (1 DC, 2 stations, 4 factory, 5 dock, 6 ware, 7 config) | Main.Menu |
-| 6 | is.dynamic array: [0] DC view, [1] dock list (UI removed), [2] dock view | al.LI.FDN.event, Main.Menu |
+| 6 | is.dynamic array: [0] DC view, [1] dock list (UI removed), [2] dock view; allocated size 10, only [0]-[2] set | al.LI.FDN.event, Main.Menu |
 | 7 | debug on/off | Main.Menu |
 | 8 | exclude array (all player stations) | Sector.Array |
 | 9 | auto-manage new factories | Main.Menu |
 | 10 | unused in v8 (used in v7.2) | none |
-| 11 | dock-check tick counter (0..6) | Supply.Start |
+| 11 | dock-check counter: incremented while < 6 (call returns early), reset to 0 at 6 and docks supplied, so docks run every 7th call | Supply.Start |
 | 12 | used twice: "factory supply running" flag (Supply.Start) AND reverse-order toggle (Supply.Factory.Check) | both (bug B1) |
 | 13-29 | free in v8 | none |
 

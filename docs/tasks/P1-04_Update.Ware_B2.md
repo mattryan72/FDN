@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,880 tokens when built
+- Estimated size: ~4,902 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-04_Update.Ware_B2.md`
 - Save the answer as: `notes/P1-04.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B2 (high) Update.Ware 33-35 (+ Add.Ware.Sub 125-140); callers Main.Menu 475, Supply.Dock 100. `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a null name. Result: Add Ware never creates settings, and Supply.Dock's create-then-read returns null. Fix direction: build `$pointer` before any gosub.
+- B2 (high, confirmed in P0-A) Update.Ware 33-35 (+ Add.Ware.Sub 125-140); callers Main.Menu 475, Supply.Dock 100. `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a null name. Result: Add Ware never creates settings, and Supply.Dock's create-then-read returns null. Fix direction: build `$pointer` before any gosub.
 - B5 (medium/high, needs Matt's decision) Update.Ware 136; Wares.Summary 257; Supply.Dock 84-91. Default [7] = -1 counts as TRUE, so 'pass surplus to DC' is ON for every new ware; with maintain level null the whole stock of every non-DC dock is pulled into the DC. Recommended: default OFF (null) and migrate -1 to null in the upgrade, only if Matt approves.
 
 ### Ware record: station local `FDN.Ware.<ware>` (name from text 4000 via sprintf), array size 12
@@ -31,7 +31,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 | 5 | sell-above level (-1 = off) | -1 |
 | 6 | sell-at price | station price |
 | 7 | pass surplus to DC | -1 (counts as TRUE, bug B5) |
-| 8-11 | unused in v8 (v9: [8] = last trade `playing time`) | null |
+| 8-11 | unused in v8 (v9: [8] = last trade `playing time`); [10] is never set, null only from `array alloc: size=12` | null |
 Created by Update.Ware (Add.Ware.Sub) and Wares.Summary (Build.Ware.Array.Sub), duplicate code.
 
 ## Key facts

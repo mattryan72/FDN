@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~4,630 tokens when built
+- Estimated size: ~4,665 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-12a_Update.Ware_use_libs.md`
 - Save the answer as: `notes/P2-12a.md`
 
@@ -39,5 +39,5 @@ $PageID = $al.Settings[1]
 
 ## Instruction
 
-Phase 2, task P2-12a. Switch Update.Ware to Ware.Rec and Log. Keep its arguments and return the real amount moved.
+Phase 2, task P2-12a. Switch Update.Ware to Ware.Rec and Log. Keep its arguments and return the real amount moved. B29: delete the dead Debug.Sub (L151-157, never called) and add lib.LI.FDN.Log calls at the add/remove/create decisions.
 Start with "Assumptions" and "Questions for Matt" (short), then follow the answer format in CORE RULES.

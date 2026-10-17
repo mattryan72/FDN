@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~4,118 tokens when built
+- Estimated size: ~4,123 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B2_create_null_pointer.md`
 - Save the answer as: `notes/P0-B-B2.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B2 (high) Update.Ware 33-35 (+ Add.Ware.Sub 125-140); callers Main.Menu 475, Supply.Dock 100. `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a null name. Result: Add Ware never creates settings, and Supply.Dock's create-then-read returns null. Fix direction: build `$pointer` before any gosub.
+- B2 (high, confirmed in P0-A) Update.Ware 33-35 (+ Add.Ware.Sub 125-140); callers Main.Menu 475, Supply.Dock 100. `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a null name. Result: Add Ware never creates settings, and Supply.Dock's create-then-read returns null. Fix direction: build `$pointer` before any gosub.
 
 ## Key facts
 

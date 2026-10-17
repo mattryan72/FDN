@@ -138,12 +138,12 @@ Runtime fan-out per 25 s tick (worst case): `Supply.Start` → START `Sector.Arr
 | 3 | Factory array | al.event, Sector.Array, Reset | purged lazily in Factory.Check |
 | 4 | Dock array (includes the DC) | al.event, Sector.Array, Reset | purged lazily in Dock.Check |
 | 5 | Open menu view (1 = DC, 5 = Dock …) | Main.Menu | read by the *_D updaters |
-| 6 | `is.dynamic` array [0]=DC view, [1]=dock list (UI removed), [2]=dock view | al.event, Main.Menu | **B7: Dock_D reads [1], the UI toggles [2]** |
+| 6 | `is.dynamic` array [0]=DC view, [1]=dock list (UI removed), [2]=dock view | al.event, Main.Menu | **B7: Dock_D reads [1], the UI toggles [2]**. Allocated size=10 (al.event L017), only [0]–[2] set (P0-A) |
 | 7 | Debug on/off | Main.Menu | |
 | 8 | Exclude array (all player stations) for find-station | Sector.Array | rebuilt on every scan |
 | 9 | Auto-manage new factories | Main.Menu | |
 | 10 | unused in v8 (used in v7.2) | — | |
-| 11 | Dock-check tick counter (0..6) | Supply.Start | |
+| 11 | Dock-check tick counter | Supply.Start | Incremented while `< 6` (call returns early), reset to 0 at 6, then docks are supplied: skips 6 calls, runs every 7th. L071 comment "3 times" is wrong (P0-A) |
 | 12 | **Collision:** "factory supply running" flag (Supply.Start) *and* "reverse array on alternate runs" toggle (Factory.Check) | both | **B1** |
 | 13–29 | free | | v9 can use these (see master prompt) |
 
@@ -159,7 +159,8 @@ Runtime fan-out per 25 s tick (worst case): `Supply.Start` → START `Sector.Arr
 | 5 | Sell-above level (−1 = off) | −1 | sell.cap |
 | 6 | Sell-at price | station price | sell.at |
 | 7 | Pass surplus to DC | **−1 (= TRUE!)** | surplus (toggles null/1) — **B5** |
-| 8,9,11 | unused (10 never set) | null | |
+| 8,9,11 | unused (set to null explicitly) | null | |
+| 10 | unused; never set at all, null only because of `array alloc: size=12` (Update.Ware L128; P0-A) | null | |
 
 **Factory settings. Station local `FDN.Settings` (text 4001), array size 6:** [0] manage product, [1] manage resources, [2] "already seen" flag (used to apply auto-manage once); [3..5] unused.
 
@@ -206,7 +207,7 @@ Method: comment and blank lines stripped, whitespace normalised, `difflib.Sequen
 | # | Cluster | Locations | Similarity / count | v9 replacement |
 |---|---|---|---|---|
 | D1 | Settings fetch header (`get global variable 'al.LI.FDN.event'` + PageID/DebugID/dc…) | 26 of 31 scripts, lines ~16–35 each | 9 scripts share the identical 5-line block | `lib.LI.FDN.Cfg.Get` (returns the settings array, or null if FDN is not initialised) plus one standard 4-line header |
-| D2 | `Debug.Sub` (time + script + text → log 9910) | Buy.Ware, Move.Ware, Sell.Ware, Supply.Dock.Check, Supply.Dock, Supply.Factory.Check, Supply.Factory, Supply.Start, Update.Ware | 9 identical copies | `lib.LI.FDN.Log` (args: text, object) checks `[7]` itself |
+| D2 | `Debug.Sub` (time + script + text → log 9910) | Buy.Ware, Move.Ware, Sell.Ware, Supply.Dock.Check, Supply.Dock, Supply.Factory.Check, Supply.Factory, Supply.Start, Update.Ware | 9 identical copies (the Update.Ware copy is never called: B29) | `lib.LI.FDN.Log` (args: text, object) checks `[7]` itself |
 | D3 | Ware record create (12-element default array + add/remove 1 unit trick) | Update.Ware 125–148 = Wares.Summary 247–268; `sprintf textid=4000` pointer built in 13 places | identical | `lib.LI.FDN.Ware.Rec` (station, ware, create=TRUE/FALSE) → array |
 | D4 | Factory settings get-or-create + auto-manage first-seen | Supply.Factory.Check 65–84, Menu.AP.Factory.List 187–204, Menu.Factory.List (same), Menu.Factory.Details 8–14 | 3 identical + 1 variant | `lib.LI.FDN.Fac.Cfg` (factory) → array |
 | D5 | 4-column menu row / ON-OFF toggle row | Config.Menu ×8, Menu.Ware.Details ×11, Menu.Factory.Details ×3, details menus ×4; ON/OFF text 148/149 ×9 | ~28 copies | `lib.LI.FDN.Menu.Row` (menu, label, value, retval) and `lib.LI.FDN.Menu.Toggle` (menu, label, bool, retval) |
@@ -228,8 +229,8 @@ Severity: **C** critical (data loss or runaway), **H** high, **M** medium, **L**
 
 | ID | Sev | Script : lines | Problem | Fix direction |
 |---|---|---|---|---|
-| B1 | C | Supply.Start 55–57; Supply.Factory.Check 35–40, 153 | `$is.running = [TRUE]` sets a *local copy* and never writes `al.Settings[12]`, so the guard never engages and overlapping Factory.Check runs pile up whenever one run takes longer than 25 s (300+ factories × 100–200 ms waits plus supply). Factory.Check also uses `[12]` as its reverse-order toggle and clears it at the end. | Split into `[12]` run-lock (store `playing time` and treat it as stale after N s) and `[13]` reverse toggle. Set the lock with `$al.Settings[12] = …`. Release it in every exit path. |
-| B2 | H | Update.Ware 33–35 (+ Add.Ware.Sub 125–140); callers Main.Menu 475, Supply.Dock 100 | `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a **null name**. Result: "Add Ware" never creates settings, and Supply.Dock's create-then-read returns null. | Build `$pointer` before any gosub, or replace with `lib.LI.FDN.Ware.Rec(create)`. |
+| B1 | C (**confirmed in P0-A**) | Supply.Start 55–57; Supply.Factory.Check 35–40, 153 | `$is.running = [TRUE]` sets a *local copy* and never writes `al.Settings[12]`, so the guard never engages and overlapping Factory.Check runs pile up whenever one run takes longer than 25 s (300+ factories × 100–200 ms waits plus supply). Factory.Check also uses `[12]` as its reverse-order toggle and clears it at the end. | Split into `[12]` run-lock (store `playing time` and treat it as stale after N s) and `[13]` reverse toggle. Set the lock with `$al.Settings[12] = …`. Release it in every exit path. |
+| B2 | H (**confirmed in P0-A**) | Update.Ware 33–35 (+ Add.Ware.Sub 125–140); callers Main.Menu 475, Supply.Dock 100 | `action='create'` jumps to Add.Ware.Sub before `$pointer` is assigned (only set at line 46), so the record is written under a **null name**. Result: "Add Ware" never creates settings, and Supply.Dock's create-then-read returns null. | Build `$pointer` before any gosub, or replace with `lib.LI.FDN.Ware.Rec(create)`. |
 | B3 | C | Supply.Start 46; Supply.Factory 67–72; Supply.Factory.Check 63; Supply.Dock.Check 39/47; Main.Menu 51 | Only `if $dc` / `-> exists` are checked. (a) If the DC is destroyed, `$dc` is a dead reference: Supply.Factory still removes factory product (71–72) after "adding" it to a non-existent DC, so **wares vanish**. (b) Stations sold, captured or given away stay in the arrays and keep being supplied and drained. | Validate the DC once per tick (`exists`, `get owner race == Player`, `is of class Dock`). On failure, pause FDN and notify the player. Add an owner check in both Check loops and drop non-player stations from the arrays. |
 | B4 | H (verify) | Supply.Dock 146–156 (Sell.Ware.Sub); Sell.Ware 44–49 | If a ware has no record, `$sell = null`, and `null >= 0` is probably TRUE in MSCI (null behaves as 0). Sell.Ware then computes `amount = stock - null = stock` and **sells the whole stock**. Records are only created lazily when a menu shows the ware, so docks never opened in the menu are exposed. | Skip when the record is null; treat the sell cap as active only if `is datatyp == DATATYPE_INT` and `>= 0`. |
 | B5 | M/H | Update.Ware 136; Wares.Summary 257; Supply.Dock 84–91 | The default `[7] = -1` is TRUE in MSCI, so "pass surplus to DC" is ON for every new ware. With maintain level null (→ 0), the **entire stock of every non-DC dock is pulled into the DC** every dock cycle. The menu shows "ON", so this may be intended, but it is surprising and undocumented. | Decide the intended default with Matt (recommend OFF = null). Migrate `-1` → null in the v9 upgrade. |
@@ -256,6 +257,9 @@ Severity: **C** critical (data loss or runaway), **H** high, **M** medium, **L**
 | B26 | L | Main.Menu 507–511 | Remove Ware deletes the record (and any virtual stock) without confirmation. The UI only offers it at stock 0 in Ware.Details, but the command path does not re-check. | Re-check stock == 0. |
 | B27 | L | t/9910-L044.xml | Empty page 17, stray `L`, typos, English only. | Clean up; add L049 (German) etc. as copies. |
 | B28 | L | Format.Name 16–19; others | Scripts continue with `$PageID` null if settings are missing (some return, some do not). | The standard header returns null. |
+| B29 | L | Update.Ware 151–157 | `Debug.Sub:` (label at L152) is dead code: no `gosub Debug.Sub:` anywhere in the file, and Update.Ware never reads settings `[7]`, so it never logs (found in P0-A). | Phase 2: delete it when Update.Ware switches to `lib.LI.FDN.Log` (task P2-12a), and add log calls at its decision points. |
+
+**Verification status (Phase 0):** B1 and B2 were confirmed against the code in task P0-A (2026-10-17, see `notes/P0-A_findings.md`). The other bugs are still to be checked in the P0-B cards.
 
 ### 4.1 Why FDN trades through a temporary drone (decision R-T1: keep it)
 X3 MSCI has no command for one station to trade with another. Only a ship docked at a station can `buy`/`sell`, so FDN creates a player ship already docked at the NPC station, sets its homebase to the DC or dock (that account pays or receives), trades, and destroys it in the same wait-free block. The game therefore applies the real price, moves the money and changes the NPC stock, and the trade may also count towards trade rank and statistics (Phase 0 E checks this). The drone never flies, so nothing visible is lost or gained either way. Matt's decision: keep it, and make it robust (REFERENCE §G). Direct transfer remains only a possible future config option.

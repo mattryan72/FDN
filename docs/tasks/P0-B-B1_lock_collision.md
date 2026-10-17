@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~5,346 tokens when built
+- Estimated size: ~5,389 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B1_lock_collision.md`
 - Save the answer as: `notes/P0-B-B1.md`
 
@@ -16,7 +16,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B1 (critical) Supply.Start 55-57; Supply.Factory.Check 35-40, 153. `$is.running = [TRUE]` sets a local copy and never writes `al.Settings[12]`, so the guard never engages and overlapping Factory.Check runs pile up when one run takes longer than 25 s. Factory.Check also uses [12] as its reverse-order toggle and clears it at the end. Fix direction: [12] = run-lock (store `playing time`, stale after N s), [13] = reverse toggle; set the lock with `$al.Settings[12] = ...`; release on every exit.
+- B1 (critical, confirmed in P0-A) Supply.Start 55-57; Supply.Factory.Check 35-40, 153. `$is.running = [TRUE]` sets a local copy and never writes `al.Settings[12]`, so the guard never engages and overlapping Factory.Check runs pile up when one run takes longer than 25 s. Factory.Check also uses [12] as its reverse-order toggle and clears it at the end. Fix direction: [12] = run-lock (store `playing time`, stale after N s), [13] = reverse toggle; set the lock with `$al.Settings[12] = ...`; release on every exit.
 
 ### Global `al.LI.FDN.event` settings array (v8.04 meanings, from REFERENCE A / ANALYSIS 1.3)
 | Idx | v8.04 meaning | Written by (per analysis) |
@@ -27,12 +27,12 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 | 3 | factory array | al.LI.FDN.event, Sector.Array, Reset |
 | 4 | dock array (includes the DC) | al.LI.FDN.event, Sector.Array, Reset |
 | 5 | open menu view (1 DC, 2 stations, 4 factory, 5 dock, 6 ware, 7 config) | Main.Menu |
-| 6 | is.dynamic array: [0] DC view, [1] dock list (UI removed), [2] dock view | al.LI.FDN.event, Main.Menu |
+| 6 | is.dynamic array: [0] DC view, [1] dock list (UI removed), [2] dock view; allocated size 10, only [0]-[2] set | al.LI.FDN.event, Main.Menu |
 | 7 | debug on/off | Main.Menu |
 | 8 | exclude array (all player stations) | Sector.Array |
 | 9 | auto-manage new factories | Main.Menu |
 | 10 | unused in v8 (used in v7.2) | none |
-| 11 | dock-check tick counter (0..6) | Supply.Start |
+| 11 | dock-check counter: incremented while < 6 (call returns early), reset to 0 at 6 and docks supplied, so docks run every 7th call | Supply.Start |
 | 12 | used twice: "factory supply running" flag (Supply.Start) AND reverse-order toggle (Supply.Factory.Check) | both (bug B1) |
 | 13-29 | free in v8 | none |
 
