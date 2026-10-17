@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Library contracts (REFERENCE D; all synchronous, wait-free, return null on bad input)
-- `lib.LI.FDN.Game` | args: none | returns 1 TC / 2 AP / 3 FL from `script engine version` with >= thresholds (VERIFY values) | replaces lib.BW.isAP uses
+- `lib.LI.FDN.Game` | args: none | returns 1 TC / 2 AP / 3 FL from `script engine version` with >= thresholds (FL 1.3 + UP 1.3.20 = 60 from test T7; provisional >= 60 FL, >= 50 AP, else TC; VERIFY the AP 3.3 value) | replaces lib.BW.isAP uses
 
 ### Compatibility notes (ANALYSIS 7)
 - AP 3.3: native target (script engine 50 or more). FL 1.3: expected to work; FL patch scripts carry engine 60-74; install folder `addon2`. TC (about 44): out of scope.

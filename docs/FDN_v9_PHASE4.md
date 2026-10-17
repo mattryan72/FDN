@@ -4,7 +4,7 @@
 **Branch:** `phase4-compat`.
 
 Steps (one answer each):
-1. `lib.LI.FDN.Game`: return 1/2/3 from `script engine version` using Matt's logged numbers (FL patch scripts are engine 60–74; AP ≥ 50; TC ~44). Use `>=` thresholds only. Store the result in `[23]`.
+1. `lib.LI.FDN.Game`: return 1/2/3 from `script engine version` using Matt's logged numbers (T7: FL 1.3 + UP 1.3.20 returns 60; AP 3.3 still to log; TC ~44; provisional >= 60 FL, >= 50 AP). Use `>=` thresholds only. Store the result in `[23]`.
 2. FL patch feature flag `[24]`: decide a safe detection (for example engine version ≥ the value logged with the patch installed). VERIFY with Matt; if there is no safe test, default to FALSE and leave the feature off.
 3. `plugin.LI.FDN.Setup`: (a) Community Plugin Configuration entry (unchanged text 101/102 and the script name `'plugin.LI.FDN.Main.Menu'`); (b) **hotkey fallback** with `register hotkey <name> to call script plugin.LI.FDN.Main.Menu`, id stored in `[21]`, `unregister hotkey` on stop (VERIFY exact syntax against the MSCI command list or the in-game editor); (c) if `[24]`, optionally `add sidebar custom entry` / `add script selection option` (FL Unofficial Patch commands; check exact syntax in the patch list).
 4. `plugin.LI.FDN.Upgrade`: implement MASTER §7 fully (idempotent, wait-free): `[28]` = 1 (also on fresh installs, decided 2026-10-17), B5 record migration (`[7]` null → 0, approved by Matt 2026-10-17), B9 registry seed and prune.

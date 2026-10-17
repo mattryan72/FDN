@@ -51,7 +51,7 @@
 |---|---|---|---|
 | `lib.LI.FDN.Cfg.Get` | — | settings array or null | D1 header |
 | `lib.LI.FDN.Log` | text (String), obj (Value, optional) | null; writes only if `[7]` | D2 Debug.Sub ×9 |
-| `lib.LI.FDN.Game` | — | 1 TC / 2 AP / 3 FL (`script engine version` thresholds; VERIFY the values in each game) | lib.BW.isAP uses |
+| `lib.LI.FDN.Game` | — | 1 TC / 2 AP / 3 FL (`script engine version` thresholds: FL 1.3 + UP 1.3.20 = 60 (T7); provisional `>= 60` FL, `>= 50` AP, else TC; VERIFY the AP 3.3 value and FL without the patch) | lib.BW.isAP uses |
 | `lib.LI.FDN.Is.Valid` | obj, need.dock (Boolean) | TRUE if it exists, owner race == Player (and is a Dock if asked) | B3, B12 |
 | `lib.LI.FDN.Is.Factory` | station | TRUE if managed factory (Factory, not Complex Hub, detectable rule; VERIFY intent of `is detectable == 0`) | D10 |
 | `lib.LI.FDN.Ware.Rec` | station, ware, create (Boolean) | record array (created with v9 defaults if `create`) or null | D3, B2, B18 |
@@ -86,7 +86,7 @@ Return values are arrays `[cmd, obj, ware, extra]`, with strings only for global
 * Removed: `switch.menu` (becomes a nav row), `show.factory`, `show.type.dc`, `show.type.dock` (TC only).
 
 ## F. Key known bugs (details in ANALYSIS §4)
-B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wares vanish) · B4 null sell cap → sell all · B5 surplus default −1 · B6 config-menu dependency · B7 Dock_D reads [6][1] not [6][2] (one-line fix) · B8 stacked _D updaters · B9 Reset regex `FDN*` · B10 Sector.Array modes · B11 duplicate Buy/Sell tasks · B12 no re-validation after waits · B13 reverse array copy · B14 wait in AL path · B15 fragile temp-drone trades (drone **kept**, hardened in `lib.LI.FDN.Trade`, §G) · B16 settings schema unversioned. Approved behaviour changes (Matt, 2026-10-17): B5 configurable default `[28]`; B9 reset over registry `[29]`; FL Station Manager stations dropped (§H). Minor: B29 dead `Debug.Sub` in Update.Ware (fix in Phase 2 with `lib.LI.FDN.Log`). Verified: B1, B2 (P0-A); B3, B7, B9 (P0-B); B4 partly (needs test C1 T1).
+B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wares vanish) · B4 null sell cap → sell all · B5 surplus default −1 · B6 config-menu dependency · B7 Dock_D reads [6][1] not [6][2] (one-line fix) · B8 stacked _D updaters · B9 Reset regex `FDN*` · B10 Sector.Array modes · B11 duplicate Buy/Sell tasks · B12 no re-validation after waits · B13 reverse array copy · B14 wait in AL path · B15 fragile temp-drone trades (drone **kept**, hardened in `lib.LI.FDN.Trade`, §G) · B16 settings schema unversioned. Approved behaviour changes (Matt, 2026-10-17): B5 configurable default `[28]`; B9 reset over registry `[29]`; FL Station Manager stations dropped (§H). Minor: B29 dead `Debug.Sub` in Update.Ware (fix in Phase 2 with `lib.LI.FDN.Log`). Verified: B1, B2 (P0-A); B3, B7, B9 (P0-B); B3, B9 and B13 in-game (tests C1 T4, T8, T2); B4 partly, downgraded to medium (T1: `null >= 0` is FALSE). See `notes/NOTES_semantics.md`.
 
 ## G. `lib.LI.FDN.Trade` spec (decision R-T1: KEEP the docked trade drone, make it robust)
 **Why it exists:** MSCI has no station-to-station trade command. A docked ship's `buy`/`sell` is the only way into the native economy (real price, homebase account, NPC stock, possibly trade rank/stats). The drone is created already docked and destroyed in the same wait-free block, so freight was never visible. Keeping it changes nothing the player sees.

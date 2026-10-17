@@ -26,7 +26,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | B1 | confirmed in P0-A; P0-B-B1 (optional), P1-01, P1-02 |
 | B2 | confirmed in P0-A; P0-B-B2 (optional), P1-04 |
 | B3 | confirmed in P0-B; P1-01, P1-02, P1-03, P1-06 |
-| B4 | partly confirmed in P0-B (needs C1 T1); P1-05, P1-07a |
+| B4 | partly confirmed in P0-B; downgraded after C1 T1 (`null >= 0` is FALSE); P1-05, P1-07a |
 | B5 | approved 2026-10-17 (configurable default [28]); P1-04 (keeps -1 = use default), P3-04, P3-08b, P3-08c (menus), P4-04 (upgrade), P4-04b (engine) |
 | B6 | P1-12, P4-03 |
 | B7 | confirmed in P0-B (one-line fix); P1-10a |
@@ -35,7 +35,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | B10 | P2-06 (split into Scan + Sectors) |
 | B11 | P1-03, P2-11a/b |
 | B12 | P1-05, P1-07a/b |
-| B13 | P0-C1 (test), P1-02 |
+| B13 | confirmed by P0-C1 T2 (`reverse array` returns a copy); P1-02 |
 | B14 | P1-08 |
 | B15 | P0-C2 (tests), P1-07a/b, P2-07a, P2-07b |
 | B16 | P1-08, P4-04 |

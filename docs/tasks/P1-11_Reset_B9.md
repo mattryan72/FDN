@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B9 (confirmed in P0-B; scope approved by Matt 2026-10-17) Reset L064 regex `'FDN*'` matches any variable containing 'FD'. L028-030: no null/exists check on the DC. Reset never pauses FDN ([0]). L043-048 only clear docks still in the dock array. Approved fix: set [0] FALSE first; walk the registry [29] plus [2], [3], [4]; skip stations that don't exist; clear with `'^FDN\.'` if test T8 passed, otherwise an exact-prefix loop (only names starting `FDN.`); then empty [3], [4], [29] and set [2] = null.
+- B9 (confirmed in P0-B; scope approved by Matt 2026-10-17) Reset L064 regex `'FDN*'` matches any variable containing 'FD'. L028-030: no null/exists check on the DC. Reset never pauses FDN ([0]). L043-048 only clear docks still in the dock array. Approved fix: set [0] FALSE first; walk the registry [29] plus [2], [3], [4]; skip stations that don't exist; clear with `'^FDN\.'` (test T8 passed on FL 2026-10-17: one backslash, never two; `'^FDN[.]'` also works); then empty [3], [4], [29] and set [2] = null.
 
 ### Global `al.LI.FDN.event` settings array (v8.04 meanings, from REFERENCE A / ANALYSIS 1.3)
 | Idx | v8.04 meaning | Written by (per analysis) |
@@ -52,7 +52,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 Phase 1, task P1-11. Fix plugin.LI.FDN.Reset as Matt approved on 2026-10-17:
 (1) Set `$al.Settings[0]` FALSE first and wait one tick (Reset runs from the menu, so a wait is fine).
 (2) Build the list of stations: the registry [29] (if it is an array), plus [2], [3] and [4], without duplicates.
-(3) For each station: skip it if it is null or does not `exist`. Clear its FDN locals: with regex `'^FDN\.'` if test C1 T8 (NOTES_semantics) showed `^` and `\.` work; otherwise list locals with the widest pattern T8 proved and clear only names that start with `FDN.` (mark the string command you use VERIFY if it is not in the pasted script).
+(3) For each station: skip it if it is null or does not `exist`. Clear its FDN locals with regex `'^FDN\.'` (single backslash; test C1 T8 in NOTES_semantics showed `^` and `\.` work). Setting a local to null removes it (T8).
 (4) Empty [3], [4] and [29], set [2] = null, clear [12] to [20].
 List the wider scope under 'Behaviour changes (approved)' in the CHANGELOG entry.
 Start with "Assumptions" and "Questions for Matt" (short), then follow the answer format in CORE RULES.

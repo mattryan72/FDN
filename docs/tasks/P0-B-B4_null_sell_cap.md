@@ -24,7 +24,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - Quote code exactly, with its 3-digit line number from the pasted file. If you cannot find a line, say "not found" rather than guessing.
 - Use only the pasted files. If you need another script, name it and stop.
 - Claim: in Supply.Dock Sell.Ware.Sub (146-156) and Sell.Ware 44-49, a missing record gives `$sell = null`, and if `null >= 0` is TRUE the whole stock is sold.
-- Whether `null >= 0` is TRUE is not known yet; Phase 0 task C test 1 settles it. Treat it as unknown.
+- Settled after this review: test C1 T1 (2026-10-17, FL) showed `null >= 0` is FALSE (see notes/NOTES_semantics.md).
 
 ## Instruction
 

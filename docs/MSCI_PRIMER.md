@@ -28,6 +28,7 @@ Each line is `NNN  <indent><statement>`. NNN is the Script Editor line number. I
 Execution model (keep these in mind):
 * Scripts are **cooperative**. A task runs until it hits a `wait` or another interruptible command, so code between two waits behaves as atomic. Races between FDN tasks happen **across waits**: re-read state and re-validate objects after every wait.
 * `null` behaves like 0/false in comparisons. **Always null-check arrays and records before comparing their elements** (bug B4).
-* An object variable can point to a destroyed object: `if $obj` is not enough, so use `$obj -> exists`. For ownership use `$obj -> get owner race` == `Player`.
+* An object variable can point to a destroyed object: `if $obj` is not enough (test T4: still TRUE after destruct), so use `$obj -> exists`.
+* Comparisons with null are always FALSE (`null >= 0`, `null < 6`, `null == 0`; test T1), so negative guards and `else` branches take null. Arrays are shared references (T3); `reverse array` returns a copy (T2). Regex strings use one backslash: `'^FDN\.'` (T8). For ownership use `$obj -> get owner race` == `Player`.
 * Long loops must `wait` periodically; the engine has infinite-loop detection.
 * Running tasks keep the script version they started with (`is new script version available` exists for long loops). Long-lived loops should exit when that returns TRUE.
