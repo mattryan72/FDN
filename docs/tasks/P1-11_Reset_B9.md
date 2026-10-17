@@ -1,8 +1,8 @@
-# P1-11: Reset: exact regex and safe scope (B9)
+# P1-11: Reset: registry walk, exact names, safe scope (B9, approved)
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,117 tokens when built
+- Estimated size: ~4,236 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-11_Reset_B9.md`
 - Save the answer as: `notes/P1-11.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B9 (medium, confirmed in P0-B) Reset L064 regex `'FDN*'` means 'FD followed by any number of N', so it matches any variable containing 'FD', including other mods' locals. L028-030: no null/exists check on the DC. Reset never pauses FDN (enable flag [0]). L043-048 only clear docks still in the dock array, so docks that left it keep their FDN.Ware.* locals. Fix direction: regex `'^FDN\.'` (VERIFY X3 regex supports ^ and \. : test C1 T8; Cleanup L018 uses 'FDND.*'), exists checks, set enabled FALSE first, sweep all player docks.
+- B9 (confirmed in P0-B; scope approved by Matt 2026-10-17) Reset L064 regex `'FDN*'` matches any variable containing 'FD'. L028-030: no null/exists check on the DC. Reset never pauses FDN ([0]). L043-048 only clear docks still in the dock array. Approved fix: set [0] FALSE first; walk the registry [29] plus [2], [3], [4]; skip stations that don't exist; clear with `'^FDN\.'` if test T8 passed, otherwise an exact-prefix loop (only names starting `FDN.`); then empty [3], [4], [29] and set [2] = null.
 
 ### Global `al.LI.FDN.event` settings array (v8.04 meanings, from REFERENCE A / ANALYSIS 1.3)
 | Idx | v8.04 meaning | Written by (per analysis) |
@@ -37,6 +37,9 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 | 12 | used twice: "factory supply running" flag (Supply.Start) AND reverse-order toggle (Supply.Factory.Check) | both (bug B1) |
 | 13-29 | free in v8 | none |
 
+### New indices used
+- [29] station registry: array of every station FDN has ever touched (DC, factory, dock, or given an FDN.Ware.* record). May be null on saves that have not run the Upgrade stub yet.
+
 ## Key facts
 
 - Phase 1 = bug fixes in place: minimal diffs, same script name, same arguments, no new lib scripts (small inline subs are fine).
@@ -46,5 +49,10 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 ## Instruction
 
-Phase 1, task P1-11. Fix plugin.LI.FDN.Reset: B9 use regex `'^FDN\.'` only if test C1 T8 (in NOTES_semantics) showed `^` and `\.` work, otherwise use the pattern T8 proved and say so; add a null/exists check on the DC (L028-030) and every station; set `$al.Settings[0]` FALSE first and wait one tick (Reset is called from the menu, so a wait here is fine); sweep all player docks and factories, not just the arrays; clear settings [12] to [20]. The wider reset scope is a behaviour change: list it under 'Behaviour changes (need approval)' in the CHANGELOG entry.
+Phase 1, task P1-11. Fix plugin.LI.FDN.Reset as Matt approved on 2026-10-17:
+(1) Set `$al.Settings[0]` FALSE first and wait one tick (Reset runs from the menu, so a wait is fine).
+(2) Build the list of stations: the registry [29] (if it is an array), plus [2], [3] and [4], without duplicates.
+(3) For each station: skip it if it is null or does not `exist`. Clear its FDN locals: with regex `'^FDN\.'` if test C1 T8 (NOTES_semantics) showed `^` and `\.` work; otherwise list locals with the widest pattern T8 proved and clear only names that start with `FDN.` (mark the string command you use VERIFY if it is not in the pasted script).
+(4) Empty [3], [4] and [29], set [2] = null, clear [12] to [20].
+List the wider scope under 'Behaviour changes (approved)' in the CHANGELOG entry.
 Start with "Assumptions" and "Questions for Matt" (short), then follow the answer format in CORE RULES.

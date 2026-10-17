@@ -8,8 +8,9 @@
 2. `lib.LI.FDN.Is.Valid` + `lib.LI.FDN.Is.Factory` (paste `Sector.Array.txt`).
 3. `lib.LI.FDN.Ware.Rec` (paste `Update.Ware.txt` (Add.Ware.Sub) and `Wares.Summary.txt`). Defaults per REFERENCE §B; `create=FALSE` must never write.
 4. `lib.LI.FDN.Fac.Cfg` (paste `Supply.Factory.Check.txt` (factory-settings init, cluster D4)).
+5a. `lib.LI.FDN.Reg.Add` (B9 registry `[29]`): append if not present; wait-free. Ware.Rec calls it when it creates a record.
 5. `lib.LI.FDN.Lock`: object local `FDN.Busy.<key>` (text 4100) or the global key, storing `playing time`, with a timeout. No waits.
-6. `plugin.LI.FDN.Scan` + `lib.LI.FDN.Sectors`: Scan does the single station pass (one loop, no O(n²) `find in array`; use a temporary "seen" local or sorted merge, and VERIFY the cost), fills `[3]`, `[4]`, `[8]`, `[15]` and sets `[16]`. Sectors only reads `[15]`. Include the advanced satellites for mode 3. Scan yields (`wait`) every 50 stations.
+6. `plugin.LI.FDN.Scan` + `lib.LI.FDN.Sectors`: Scan does the single station pass (one loop, no O(n²) `find in array`; use a temporary "seen" local or sorted merge, and VERIFY the cost), fills `[3]`, `[4]`, `[8]`, `[15]` and sets `[16]`. Every station it adds to `[3]`/`[4]` also goes through `lib.LI.FDN.Reg.Add`. On FL it drops stations run by Station Manager (REFERENCE §H) at the same point as the exists/owner checks, using `lib.LI.FDN.Is.FL.Managed` (write it as a stub returning FALSE until Phase 4 test T9 gives the detection). Sectors only reads `[15]`. Include the advanced satellites for mode 3. Scan yields (`wait`) every 50 stations.
 7. `lib.LI.FDN.Trade` (decision R-T1: **keep** the docked drone, hardened). Implement REFERENCE §G exactly: guards, price sanity, clamps, runtime type resolution, null-checked create, wait-free create→destruct with a single `Exit:` label, trade loop, record update and reconcile, log codes. Paste `Buy.Ware.txt`, `Sell.Ware.txt` and the Phase 0 C5/C6/E notes. Second answer: the orphan sweep in `plugin.LI.FDN.Cleanup` (STARTed on init/reinit; resets `[18]`, `[26]`). Add texts 310, 4101 and 4102.
 
 ### 2b. Switch the engine to the libraries

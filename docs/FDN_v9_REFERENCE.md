@@ -31,10 +31,11 @@
 | 25 | — | **trade-drone type list** (array of ship types tried in order; default: Argon Mercury Super Freighter XL) |
 | 26 | — | **resolved trade-drone type** (cache of the last type that passed the checks; cleared on init/reinit) |
 | 27 | — | **max drone loads per Trade call** (default 5) |
-| 28–29 | free | |
+| 28 | — | **default surplus→DC** (B5, approved 2026-10-17): used when a ware record's [7] is −1/null. 1 = on, 0 = off, 2 = v8 compatible (per-ware −1 or 1 = on, null or 0 = off). Fresh install: 1 (VERIFY with Matt). v8 upgrade: 1, after migrating v8 records' [7] null → 0 (see §B) |
+| 29 | — | **station registry** (B9, approved 2026-10-17): array of every station FDN has ever touched (DC, factory, dock, or given an `FDN.Ware.*` record). Appended via `lib.LI.FDN.Reg.Add`; pruned of dead stations at Reset/Upgrade; seeded from [2], [3], [4] on upgrade; emptied after a Reset |
 
 ## B. Station locals
-* `FDN.Ware.<ware>` (text 4000 via sprintf), size 12: [0] virtual stock, [1] DC remote reserve (>0 = share), [2] dock maintain level, [3] DC may buy, [4] buy-at price, [5] sell-above level (−1/null = off), [6] sell-at price, [7] surplus→DC (v9 default null = off; v8 default −1 = on), [8] v9: last trade `playing time`, [9]–[11] free. Note (P0-A): the record is allocated with size=12 (Update.Ware L128); Add.Ware.Sub sets [0]–[9] and [11] (L129–139) but never [10], which is null only because the alloc leaves it null. v9 code should set it explicitly.
+* `FDN.Ware.<ware>` (text 4000 via sprintf), size 12: [0] virtual stock, [1] DC remote reserve (>0 = share), [2] dock maintain level, [3] DC may buy, [4] buy-at price, [5] sell-above level (−1/null = off), [6] sell-at price, [7] surplus→DC override (B5, approved): 1 = on, 0 = off, −1 or null = use the global default `[28]`. New records keep the v8 create value −1 (= use default). **Always test for null with `is datatyp[...] == DATATYPE_NULL` before comparing with 0** (test T1 shows whether `null == 0`). The v8 upgrade migrates [7] null → 0, because in v8 null only came from the player switching surplus OFF, [8] v9: last trade `playing time`, [9]–[11] free. Note (P0-A): the record is allocated with size=12 (Update.Ware L128); Add.Ware.Sub sets [0]–[9] and [11] (L129–139) but never [10], which is null only because the alloc leaves it null. v9 code should set it explicitly.
 * `FDN.Settings` (text 4001) on factories, size 6: [0] manage product, [1] manage resources, [2] seen-once flag, [3] v9: busy-until time, [4]–[5] free.
 * v9 `FDN.Trade.<ware>` (text 4101, on the home station): per station/ware trade guard (`playing time`, stale after 120 s), used through `lib.LI.FDN.Lock`.
 * v9 `FDN.Trade.Drone` (text 4102, on the temporary drone): tag (value = `playing time`) so the init sweep can find orphaned drones.
@@ -43,7 +44,7 @@
 
 ## C. Text page 9910 ID ranges
 * Existing: 8–19, 100–202, 1000–1003, 2000–2002, 4000–4005, 5000–5008, 9000–9007 (keep them all).
-* New in v9: **300–399** UI strings (menus, messages, hotkey name); **4100–4199** new local/global names (4100 `FDN.Busy.%s`, 4101 `FDN.Trade.%s`, 4102 `FDN.Trade.Drone`; text 310 = drone name "FDN Trade Drone"); **9100–9199** format strings (columns, colours). Fix typos in place (186, 132) and remove the empty page 17 and the stray `L`.
+* New in v9: **300–399** UI strings (menus, messages, hotkey name); **4100–4199** new local/global names (4100 `FDN.Busy.%s`, 4101 `FDN.Trade.%s`, 4102 `FDN.Trade.Drone`; text 310 = drone name "FDN Trade Drone"; 320–325 B5 surplus default: 320 Config row label "Default: pass surplus to DC", 321 "On", 322 "Off", 323 "v8 compatible", 324 ware row "Default (%s)", 325 Config help line; 330–332 FL Station Manager: 330 player message "FDN: %s is run by Station Manager and was removed from the network", 331 "FDN paused: the Distribution Centre is run by Station Manager. Choose a new one.", 332 log text "SM drop %s"); **9100–9199** format strings (columns, colours). Fix typos in place (186, 132) and remove the empty page 17 and the stray `L`.
 
 ## D. Library contracts (all synchronous, wait-free unless noted, return null on bad input)
 | Script | Args | Returns | Replaces |
@@ -62,6 +63,8 @@
 | `lib.LI.FDN.Menu.Toggle` | menu, label, bool, retval | null (uses ON/OFF texts 148/149) | D5 |
 | `lib.LI.FDN.Menu.ObjLine` | menu, object | null ("Name [ID]" + sector) | D6, Format.Name |
 | `lib.LI.FDN.Menu.WareRow` | station, ware, is.dc | formatted row array with retval `['open.ware', station, ware]` | Wares.Summary, D8 |
+| `lib.LI.FDN.Reg.Add` | station | null; appends the station to registry `[29]` if not already there (creates the array if null) | B9 registry |
+| `lib.LI.FDN.Is.FL.Managed` | station | TRUE only if `[23]` == 3 (FL, from `lib.LI.FDN.Game`) and the station is run by FL's Station Manager; always FALSE on AP. **Detection command is VERIFY** (a station local, the station's current command, or an FL Unofficial Patch command; Phase 0 test T9) | FL Station Manager decision |
 
 Standard header (the only allowed copy of D1):
 ```
@@ -76,13 +79,14 @@ $PageID = $al.Settings[1]
 Return values are arrays `[cmd, obj, ware, extra]`, with strings only for global actions.
 * Navigation: `open.dc`, `open.stations`, `open.dock`, `open.factory`, `open.ware`, `open.config`, `back`.
 * Edit number (one handler): `remote.cap`→[1], `maintain.cap`→[2], `sell.cap`→[5]. Edit price (one handler): `buy.at`→[4], `sell.at`→[6].
-* Toggle (one handler): `can.buy`→[3], `surplus`→[7]; factory `product`→[0], `resource`→[1]; settings `debug`→[7], `auto`→[9], `dynamic.dc`→[6][0], `dynamic.dock`→[6][2].
+* Surplus (B5): `surplus` cycles the ware's [7] Default (−1) → On (1) → Off (0) → Default; `surplus.default` cycles settings [28] On → Off → v8 compatible (Config menu row, texts 320–325).
+* Toggle (one handler): `can.buy`→[3]; factory `product`→[0], `resource`→[1]; settings `debug`→[7], `auto`→[9], `dynamic.dc`→[6][0], `dynamic.dock`→[6][2].
 * Stock: `move.ware`, `to.physical`, `to.virtual` (one handler), `add.ware`, `remove.ware` (re-check stock == 0).
 * Global: `product.all.on/off`, `resource.all.on/off`, `set.dc` (merges add.dc/change.dc), `master.reset` (confirm).
 * Removed: `switch.menu` (becomes a nav row), `show.factory`, `show.type.dc`, `show.type.dock` (TC only).
 
 ## F. Key known bugs (details in ANALYSIS §4)
-B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wares vanish) · B4 null sell cap → sell all · B5 surplus default −1 · B6 config-menu dependency · B7 Dock_D reads [6][1] not [6][2] (one-line fix) · B8 stacked _D updaters · B9 Reset regex `FDN*` · B10 Sector.Array modes · B11 duplicate Buy/Sell tasks · B12 no re-validation after waits · B13 reverse array copy · B14 wait in AL path · B15 fragile temp-drone trades (drone **kept**, hardened in `lib.LI.FDN.Trade`, §G) · B16 settings schema unversioned. Minor: B29 dead `Debug.Sub` in Update.Ware (fix in Phase 2 with `lib.LI.FDN.Log`). Verified: B1, B2 (P0-A); B3, B7, B9 (P0-B); B4 partly (needs test C1 T1).
+B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wares vanish) · B4 null sell cap → sell all · B5 surplus default −1 · B6 config-menu dependency · B7 Dock_D reads [6][1] not [6][2] (one-line fix) · B8 stacked _D updaters · B9 Reset regex `FDN*` · B10 Sector.Array modes · B11 duplicate Buy/Sell tasks · B12 no re-validation after waits · B13 reverse array copy · B14 wait in AL path · B15 fragile temp-drone trades (drone **kept**, hardened in `lib.LI.FDN.Trade`, §G) · B16 settings schema unversioned. Approved behaviour changes (Matt, 2026-10-17): B5 configurable default `[28]`; B9 reset over registry `[29]`; FL Station Manager stations dropped (§H). Minor: B29 dead `Debug.Sub` in Update.Ware (fix in Phase 2 with `lib.LI.FDN.Log`). Verified: B1, B2 (P0-A); B3, B7, B9 (P0-B); B4 partly (needs test C1 T1).
 
 ## G. `lib.LI.FDN.Trade` spec (decision R-T1: KEEP the docked trade drone, make it robust)
 **Why it exists:** MSCI has no station-to-station trade command. A docked ship's `buy`/`sell` is the only way into the native economy (real price, homebase account, NPC stock, possibly trade rank/stats). The drone is created already docked and destroyed in the same wait-free block, so freight was never visible. Keeping it changes nothing the player sees.
@@ -97,3 +101,10 @@ B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wa
 * **Orphan sweep:** `plugin.LI.FDN.Cleanup`, STARTed on init/reinit (never inline in the AL event): `get ship array: of race Player class/type=TS`, destruct every ship whose `FDN.Trade.Drone` local is set (the tag is required; a matching name alone is not enough, since a player can rename a ship). Log the count, reset `[18]` = 0 and `[26]` = null.
 * **Concurrency (task level):** Buy.Ware/Sell.Ware take `lib.LI.FDN.Lock(home, 'FDN.Trade.<ware>', 'try', 120)` and increment `[18]` only if `[18] < [19]`. They release the lock and decrement `[18]` on every exit (one exit label there too).
 * **Future option (not now):** a "direct transfer" config mode (add/remove money and wares by hand) only if the Phase 0 E test shows that drone trades don't affect trade rank or stats.
+
+## H. FL Station Manager exclusion (approved by Matt, 2026-10-17)
+* Any station run by Farnham's Legacy's Station Manager is dropped from the FDN network: removed from `[3]` (factories) and `[4]` (docks). If it is the DC, set `[2]` = null and FDN pauses (as for an invalid DC).
+* Detection: `lib.LI.FDN.Is.FL.Managed(station)`, used only when `[23]` == 3 (FL). The exact command is **VERIFY** (Phase 0 card P0-C3, test T9): it may be a station local, the station's current command, or a command from the FL Unofficial Patch list.
+* Where: `plugin.LI.FDN.Scan`, at the same points as the exists/owner checks (each station before it is added to `[3]`/`[4]`, and the DC). Until Scan exists (Phase 2), nothing changes.
+* Warn once: Scan rebuilds the arrays each pass, so only message when a station that was in `[3]`/`[4]` (or was the DC) is dropped. Player message text 330 (station) or 331 (DC), plus a log line via `lib.LI.FDN.Log` (text 332). Skipped stations are not re-added while Station Manager runs them.
+* The station's FDN locals are kept (not cleared), so it rejoins with its settings if the player stops Station Manager.

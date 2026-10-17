@@ -17,6 +17,7 @@
 4. **Baseline save:** start a sandbox game (AP and/or FL) with cheats or a custom start, and give yourself 1 dock (DC), 1 second dock, 3 factories in 2 sectors, and money. Install FDN v8.04, set the DC, and turn on Supply Debug. Play 10 min with SETA. Keep `log09910.txt` and the save as **baseline** (copy the log into `tests/`).
 5. **E. Trade-mechanism test (documents behaviour only, changes nothing):** on the baseline save, note your trade rank (Player profile: rank name and %), player money, the DC's account, and the Statistics screen trade/money lines. Run about 20 FDN trades (factory buys and dock sells, debug on, SETA), then note them all again. Record in `notes/NOTES_semantics.md`: did the rank or statistics change? Which account paid for buys (DC/homebase or player) and which received sales? Also run the T5/T6 test scripts from card P0-C2.
 6. Run test script T7 (card P0-C1) in each game and note the `script engine version` numbers for AP/FL in `notes/NOTES_semantics.md`. They go into `lib.LI.FDN.Game` later.
+7. **FL only:** put one of your stations under Station Manager and run test T9 (card P0-C3). Note in `notes/NOTES_semantics.md` what changes on the station (local variable, current command, anything the Unofficial Patch exposes).
 
 ## AI does (one card per chat, in this order)
 | Card | What it does | Paste (the builder does this for you) |
@@ -30,6 +31,7 @@
 | `P0-B-B9_reset_regex` | B9 | `Reset` |
 | `P0-C1_semantics_tests` | Tiny test scripts T1-T4, T7 and T8 (null compare, reverse array, array references, destroyed objects, engine version, regex `^` / `\.` support) | primer + `Supply.Start` as a syntax example |
 | `P0-C2_drone_tests` | Test scripts T5-T6 for the trade drone (create ship checks, does destruct fire signals) | primer + the drone lines of `Buy.Ware` / `Sell.Ware` |
+| `P0-C3_fl_station_manager_test` | FL only: test script T9 that shows how to detect a station run by Station Manager | primer |
 | `P0-D_changelog_draft` | Drafts the v9.01 CHANGELOG skeleton | `CHANGELOG.md` |
 
 **Progress:** P0-A done 2026-10-17 (checked; see `notes/P0-A_findings.md`). It confirmed B1 and B2, so cards P0-B-B1 and P0-B-B2 are optional now; it also corrected the [11] range and found B29.

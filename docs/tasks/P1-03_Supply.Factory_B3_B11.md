@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~5,069 tokens when built
+- Estimated size: ~5,115 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-03_Supply.Factory_B3_B11.md`
 - Save the answer as: `notes/P1-03.md`
 
@@ -33,7 +33,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 | 4 | buy-at price | station price |
 | 5 | sell-above level (-1 = off) | -1 |
 | 6 | sell-at price | station price |
-| 7 | pass surplus to DC | -1 (counts as TRUE, bug B5) |
+| 7 | pass surplus to DC. v8: -1 default (counts as TRUE, B5), null = player switched it off. v9 (approved): 1 on, 0 off, -1/null = use global default [28]. Test null with DATATYPE_NULL before comparing with 0 | -1 |
 | 8-11 | unused in v8 (v9: [8] = last trade `playing time`); [10] is never set, null only from `array alloc: size=12` | null |
 Created by Update.Ware (Add.Ware.Sub) and Wares.Summary (Build.Ware.Array.Sub), duplicate code.
 

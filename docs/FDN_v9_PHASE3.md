@@ -18,7 +18,7 @@ Steps (one answer each):
 5. `plugin.LI.FDN.Main.Menu` (controller rewrite).
 6. `plugin.LI.FDN.Menu.Station` (paste `Menu.AP.DC.Details.txt` + `Menu.AP.Dock.Details.txt`).
 7. `plugin.LI.FDN.Menu.Stations` (paste `Menu.AP.Factory.List.txt`).
-8. `Menu.Factory.Details`, `Menu.Ware.Details`, `Config.Menu` on the libs (one answer each).
+8. `Menu.Factory.Details`, `Menu.Ware.Details`, `Config.Menu` on the libs (one answer each). **B5 (approved 2026-10-17):** Ware.Details shows the surplus row as Default (On/Off) / On / Off and returns `surplus`; Config.Menu adds the row "Default: pass surplus to DC" (texts 320–325) returning `surplus.default`. Menu.Command (step 4) cycles them as REFERENCE §E says. `set.dc` also calls `lib.LI.FDN.Reg.Add`.
 9. `plugin.LI.FDN.Menu.Refresh` (paste `Menu.DC.Details_D.txt`).
 10. Stubs: `Menu.AP.DC.Details`, `Menu.DC.Details`, `Menu.AP.Dock.Details`, `Menu.Dock.Details`, `Menu.AP.Factory.List`, `Menu.Factory.List`, `Menu.DC.Details_D`, `Menu.Dock.Details_D`, `Wares.Summary` → `return null` with a v9 comment.
 

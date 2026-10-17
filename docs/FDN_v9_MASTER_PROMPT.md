@@ -34,7 +34,7 @@ The game files are XML (`<name>`, `<version>`, `<engineversion>`, `<arguments>`,
 2. **Optimise**: rate-limited station scans with caching (P1–P2); bounded task fan-out with locks and per-tick budgets (P3–P5); no scans inside trade tasks; hoist invariants.
 3. **Deduplicate** into shared library scripts (§6) so each rule lives in one place (clusters D1–D12).
 4. **One menu framework**: one controller, one dispatcher, one station view for both DC and docks, one stations list, shared row builders, consistent text and colours. Delete the TC-only twins.
-5. **Compatibility**: AP 3.3 and Farnham's Legacy 1.3, with or without the Unofficial Patch. Work **with or without** Community Plugin Configuration (add a hotkey fallback). No hard-coded ware types, and no hard-coded ship types except the default entry of the configurable trade-drone list `[25]`, which is checked at runtime. Trading keeps the native docked-drone mechanism (Matt's decision R-T1), hardened in `lib.LI.FDN.Trade` (REFERENCE §G); do not replace it with direct transfer. Use FL patch features only behind a feature check.
+5. **Compatibility**: AP 3.3 and Farnham's Legacy 1.3, with or without the Unofficial Patch. On FL, stations run by Station Manager are dropped from the network (REFERENCE §H, approved 2026-10-17). Work **with or without** Community Plugin Configuration (add a hotkey fallback). No hard-coded ware types, and no hard-coded ship types except the default entry of the configurable trade-drone list `[25]`, which is checked at runtime. Trading keeps the native docked-drone mechanism (Matt's decision R-T1), hardened in `lib.LI.FDN.Trade` (REFERENCE §G); do not replace it with direct transfer. Use FL patch features only behind a feature check.
 6. **Versioning and upgrade**: v9.01. A v8.04 save must upgrade in place (§7). Fresh installs must also work.
 7. Keep gameplay behaviour the same unless a change is listed in CHANGELOG under "Behaviour changes" and Matt has approved it.
 
@@ -59,18 +59,18 @@ Target script set (see REFERENCE for argument contracts):
 |---|---|
 | AL / setup | `al.plugin.LI.FDN.register`, `al.LI.FDN.event` (wait-free, STARTs the scheduler), `plugin.LI.FDN.Setup` (config entry + hotkey fallback), **new** `plugin.LI.FDN.Upgrade`, `plugin.LI.FDN.Reset`, `plugin.LI.FDN.Cleanup` |
 | Engine | `plugin.LI.FDN.Supply.Start`, **new** `plugin.LI.FDN.Scan` (replaces the scanning half of Sector.Array), `plugin.LI.FDN.Supply.Factory.Check`, `plugin.LI.FDN.Supply.Factory`, `plugin.LI.FDN.Supply.Dock.Check`, `plugin.LI.FDN.Supply.Dock`, `plugin.LI.FDN.Buy.Ware`, `plugin.LI.FDN.Sell.Ware`, `plugin.LI.FDN.Update.Ware`, `plugin.LI.FDN.Move.Ware` |
-| Libraries (new) | `lib.LI.FDN.Cfg.Get`, `lib.LI.FDN.Log`, `lib.LI.FDN.Game`, `lib.LI.FDN.Is.Valid`, `lib.LI.FDN.Is.Factory`, `lib.LI.FDN.Ware.Rec`, `lib.LI.FDN.Fac.Cfg`, `lib.LI.FDN.Lock`, `lib.LI.FDN.Sectors`, `lib.LI.FDN.Trade`, `lib.LI.FDN.Menu.Row`, `lib.LI.FDN.Menu.Toggle`, `lib.LI.FDN.Menu.ObjLine`, `lib.LI.FDN.Menu.WareRow` |
+| Libraries (new) | `lib.LI.FDN.Cfg.Get`, `lib.LI.FDN.Log`, `lib.LI.FDN.Game`, `lib.LI.FDN.Is.Valid`, `lib.LI.FDN.Is.Factory`, `lib.LI.FDN.Ware.Rec`, `lib.LI.FDN.Fac.Cfg`, `lib.LI.FDN.Lock`, `lib.LI.FDN.Sectors`, `lib.LI.FDN.Trade`, `lib.LI.FDN.Reg.Add`, `lib.LI.FDN.Is.FL.Managed`, `lib.LI.FDN.Menu.Row`, `lib.LI.FDN.Menu.Toggle`, `lib.LI.FDN.Menu.ObjLine`, `lib.LI.FDN.Menu.WareRow` |
 | Menus | `plugin.LI.FDN.Main.Menu` (controller), **new** `plugin.LI.FDN.Menu.Command` (dispatcher), **new** `plugin.LI.FDN.Menu.Station` (DC + dock), **new** `plugin.LI.FDN.Menu.Stations` (list), `plugin.LI.FDN.Menu.Factory.Details`, `plugin.LI.FDN.Menu.Ware.Details`, `plugin.LI.FDN.Config.Menu`, **new** `plugin.LI.FDN.Menu.Refresh` (single dynamic updater), `plugin.LI.FDN.Sort.Wares` |
 | Stubs in v9.01 | `Menu.AP.DC.Details`, `Menu.DC.Details`, `Menu.AP.Dock.Details`, `Menu.Dock.Details`, `Menu.AP.Factory.List`, `Menu.Factory.List`, `Menu.DC.Details_D`, `Menu.Dock.Details_D`, `Wares.Summary`, `Sector.Array`, `Format.Name` |
 
 ## 7. Upgrade path from v8.04 saves
 
 `plugin.LI.FDN.Upgrade` is called from `al.LI.FDN.event` on `init`/`reinit`. If `al.Settings[14]` is lower than 901:
-1. Resize the array to 30 if needed. Set `[12]` = null (lock), `[13]` = null (reverse toggle/cursor). Initialise the new indices 15–27 (REFERENCE).
+1. Resize the array to 30 if needed. Set `[12]` = null (lock), `[13]` = null (reverse toggle/cursor). Initialise the new indices 15–29 (REFERENCE): `[28]` = 1 (surplus default on, B5), `[29]` = registry seeded from `[2]`, `[3]`, `[4]` (B9).
 2. Fix `[6]` (is.dynamic): make sure index 2 exists. Stop reading index 1.
 3. Validate `[2]` (DC): exists, player-owned, dock. If invalid → null, and send the player a message (“FDN paused: choose a new Distribution Centre”).
 4. Purge dead or non-player stations from `[3]` and `[4]`.
-5. **Optional, only if Matt approves the B5 behaviour change:** sweep the ware records on the DC and the docks and set `[7] = -1` → null.
+5. **B5 (approved 2026-10-17):** migrate the v8 ware records on the stations in `[29]`: `[7]` null → 0 (explicit off; in v8 null only came from the player switching it off). Leave −1 (now "use default" = on via `[28]` = 1) and 1 alone. If this is too much work for one wait-free script, START a one-off migration task and set a flag so it runs once. Also prune dead stations from `[29]`.
 6. START `plugin.LI.FDN.Cleanup` (orphaned trade-drone sweep, REFERENCE §G). Do this on every init/reinit, not just upgrades.
 7. Set `[14] = 901`, and log “FDN upgraded 8.04 → 9.01”.
 Must be idempotent (safe to run twice) and must not use `wait`.
