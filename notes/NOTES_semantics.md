@@ -3,7 +3,7 @@
 Game: X3 Farnham's Legacy 1.3 with the Unofficial Patch 1.3.20 (Matt's PC, Steam, `D:\Steam\steamapps\common\X3 Terran Conflict\addon2`).
 Scripts: compiled test XMLs from `tests/xml/` (sources in `tests/xml/xs/`), saved at engine 50. Run by Matt on 2026-10-17. Output from `log09999.txt`.
 
-Status: T1-T8 done. T9 done for a station **not** under Station Manager; the positive sample (a Station Manager station) is still pending. The first T5/T6/T9 run got a null argument; rerun 2026-10-17 ~16:37 BST with the argument picked from the prompt worked (the game folder still had the old 1-based `<arguments>` XMLs, so the index base did not matter).
+Status: T1-T8 done. T9 done on both a normal station and a Station Manager station (2026-10-17). Pending: T9b (task-constant check and time-local freshness) and whether the SM locals clear when SM is turned off. The first T5/T6/T9 run got a null argument; rerun 2026-10-17 ~16:37 BST with the argument picked from the prompt worked (the game folder still had the old 1-based `<arguments>` XMLs, so the index base did not matter).
 
 ## Raw log
 
@@ -93,12 +93,26 @@ T9   task: 28
 - **Yes.** A secondary SIGNAL_KILLED handler on the docked drone ran on `destruct: show no explosion=[TRUE]` (drone at Wheat Farm M beta, Cloudbase North West).
 - **Rule:** any SIGNAL_KILLED handler (other mods, or the game) can see FDN's drones die. v9 drones must not carry handlers, and the trade lib must stay wait-free. Still to check by hand: on-screen message and the Statistics "ships lost" line before/after (not reported yet).
 
-### T9: Station Manager detection (P4-06), negative sample only
+### T9: Station Manager detection (P4-06), negative sample
 - Station: Your Solar Power Plant XL alpha (Akeela's Beacon), **not** under Station Manager.
 - `is task running 448` (Task.Stationmanage, from the compiler's FL constants) = **FALSE**. `get all running task ids` (FL-only) = 22, 1, 28: low custom task ids from other scripts, none in the 440-455 built-in range.
 - Locals: `FDN.Settings` (FDN v8: this factory is in FDN's factory list, so v8's `is detectable == 0` factory rule passes on FL), plus `graph.data`, `graph.data.lastmoney`, `graph.data.warearray`, `graph.data.player.running`, `graph.data.player.station`, `money.transfer`, `transfered`. These belong to another mod or an FL feature, not FDN.
 - **Regex safety:** none of those names contain `FD`, so v8 Reset's `'FDN*'` would not touch them, and v9's `'^FDN\.'` cannot. Cleanup's `'FDND.*'` works on globals only. Keep v9 strictly anchored to `^FDN\.` so other mods' locals stay safe.
-- **Still pending:** run T9 on a station that **is** under Station Manager. Detection is reliable if task 448 turns TRUE there, or a new local/task id appears only there (also watch 449 Task.Stationpricing). Until then `lib.LI.FDN.Is.FL.Managed` stays a stub (FALSE).
+
+### T9: Station Manager detection, positive sample (2026-10-17)
+- Station: Your Solar Power Plant XL alpha (Argon Prime gamma), **under** Station Manager. 11 locals: `egosoft.price.time`, `egosoft.stationmgr.time`, `egosoft.stationmgr.blacklist`, plus the same 8 as the normal station (`graph.data.*`, `transfered`, `FDN.Settings`, `money.transfer`).
+- `is task running 448` = FALSE (same as the normal station). Running tasks: 10, 22, 25, 1, 24, 28, 11 (normal station: 22, 1, 28), so 10, 11, 24 and 25 are new.
+- **Detection candidate:** the station local `egosoft.stationmgr.time` (and/or `egosoft.stationmgr.blacklist`). **Task 448 as a number is rejected.** The extra task ids 10/11/24/25 are noted but not reliable alone (their numbers are not documented and may differ per game or patch).
+
+### FL Station Manager scripts (read from the game files, 2026-10-17)
+Source: the plain `.pck` scripts in `addon2\scripts` on Matt's PC (gzip XML with source text). FL's cat/dat were not opened.
+- `!init.station.globalscriptmap`: the station command `COMMAND_STATION_MANAGER` (player stations) runs `!station.cmd.manage.pl`. Auto prices (`COMMAND_STATION_AUTOPRICE`) runs `!station.cmd.pricing.pl`.
+- `!station.cmd.manage.pl` (engine 60): sets `egosoft.stationmgr.time` = `playing time`, then `start task [Task.StationMgr] with script plugin.stationmgr.run`. While the command runs it **rewrites `egosoft.stationmgr.time` every 1 s** and restarts `plugin.stationmgr.run` if it is no longer on the stack of `[Task.StationMgr]`.
+- `plugin.stationmgr.run` (v16, Cycrow) creates `egosoft.stationmgr.blacklist` on first start. Every 6 s it reads `egosoft.stationmgr.time` and **quits if `playing time` minus that value is more than 10 s**. That is how SM notices it was switched off.
+- **No script clears `egosoft.stationmgr.time` or `.blacklist`** (only `.wage` and `.unpaid` are set to null). So after SM is turned off, both locals most likely **stay on the station, with a time that stops updating**. "Local exists" alone would then give a false TRUE. Matt is retesting this.
+- `[Task.StationMgr]` is FL constant 448 (text page 392002, FL only). The game resolves it to a task slot at runtime, so T9 passing the plain number 448 tested the wrong slot. T9's "task 448 = FALSE" says nothing about SM. Auto prices uses `[Task.StationPrice]` (449) and `egosoft.price.time` the same way (that is why the SM station also has `egosoft.price.time`).
+- **Reliable detection (proposal, VERIFY with T9b):** TRUE when `$t = $station -> get local variable: name='egosoft.stationmgr.time'` is a number and `playing time - $t <= 10`. This is SM's own liveness rule, and it uses only standard commands, so the script also loads on AP. Optional FL-only confirmation: `$station -> is script plugin.stationmgr.run on stack of task=[Task.StationMgr]` (the check FL itself uses; constant 448 does not exist on AP).
+- **T9b** (`tests/xml/test.LI.FDN.T9b.xml`, new) logs the stack check, `is task running [Task.StationMgr]` with the constant, and `playing time` next to `egosoft.stationmgr.time`. Run it on the SM station with SM on, then again about 30 s after switching SM off.
 
 ### T7: script engine version (lib.LI.FDN.Game)
 - FL 1.3 + Unofficial Patch 1.3.20 returns **60**.
@@ -116,7 +130,7 @@ T9   task: 28
 
 ## Pending
 
-- **T9 positive sample:** a station run by Station Manager (see T9 above).
+- **T9b:** SM station with SM on, then about 30 s after SM is switched off (does the time go stale; do the locals stay).
 - **T6 by hand:** on-screen message and Statistics "ships lost" before/after a drone destruct.
 - **T7 on AP 3.3** (and FL without the patch, if easy).
 - **T1 extra:** arithmetic with null (`$x + null`).
@@ -133,6 +147,13 @@ No FL- or engine-60-specific blocker was found in the code: `lib.BW.isAP` is TRU
 5. **Cadence.** The factory pass runs every 25 s tick. The dock pass runs every 7th tick (about 175 s) plus 1-2 s per dock and 0.5-1 s per ware, so 3 minutes is borderline for docks.
 
 Known bugs that do **not** stop supply entirely: B1 (no real lock, so runs can overlap), B3, B4, B13 (wrong amounts or ghost entries). The dock path writes no debug lines at all (Supply.Dock.Check and Supply.Dock never call Debug.Sub). Only Supply.Start, Supply.Factory(.Check), Buy.Ware and Sell.Ware log.
+
+### How v8.04 supply is started (Matt ran Supply.Start by hand, 2026-10-17)
+- `plugin.LI.FDN.Supply.Start` is **one pass, not a loop**. It refreshes the station lists (Sector.Array), waits 1 s, then, if a DC is set, starts one `Supply.Factory.Check` pass (in the background). It also counts calls in `[11]`: only every 7th call starts one `Supply.Dock.Check` pass. It never starts a timer or another copy of itself.
+- The repeat comes from the AL engine. `al.plugin.LI.FDN.register` runs at game load and registers `al.LI.FDN.event`. On `init`/`reinit` that script sets the plugin timer to 25 s. On every `timer` event it calls Supply.Start **only if `[0]` is TRUE**. `[0]` starts FALSE and is set TRUE only by the AL `start` event (cleared by `stop`). FL's own AL plugin (`al.plugin.x3fl` / `al.audiolfl.main`) uses the same pattern (state flag FALSE until `start`), so FL's AL engine is compatible.
+- Running Supply.Start by hand skips the `[0]` check, which explains "it started when run manually": the timer path was off (`[0]` FALSE, i.e. FDN not switched on as an AL plugin) or the AL timer never fired. Whether a newly registered plugin gets `start` automatically or must be switched on by the player can't be seen in the scripts. Check it in game.
+- Manual runs are harmless: each is a single pass, with no extra loop. A manual run can overlap a timer-started pass (B1: no real lock), which can supply twice in that moment but leaves nothing running. A hand run also advances the dock counter.
+- Signs it is running by itself (Supply Debug ON): `log09910.txt` gets `<time>;plugin.LI.FDN.Supply.Start; Start Supply Called` about every 25 s with no hand runs. If you only see one line per hand run, the timer is not driving it.
 
 ## Design consideration: per-station tasks vs central timer (recorded 2026-10-17, plan unchanged)
 

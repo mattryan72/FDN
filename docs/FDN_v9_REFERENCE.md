@@ -64,7 +64,7 @@
 | `lib.LI.FDN.Menu.ObjLine` | menu, object | null ("Name [ID]" + sector) | D6, Format.Name |
 | `lib.LI.FDN.Menu.WareRow` | station, ware, is.dc | formatted row array with retval `['open.ware', station, ware]` | Wares.Summary, D8 |
 | `lib.LI.FDN.Reg.Add` | station | null; appends the station to registry `[29]` if not already there (creates the array if null) | B9 registry |
-| `lib.LI.FDN.Is.FL.Managed` | station | TRUE only if `[23]` == 3 (FL, from `lib.LI.FDN.Game`) and the station is run by FL's Station Manager; always FALSE on AP. **Detection command is VERIFY** (a station local, the station's current command, or an FL Unofficial Patch command; Phase 0 test T9) | FL Station Manager decision |
+| `lib.LI.FDN.Is.FL.Managed` | station | TRUE only if `[23]` == 3 (FL, from `lib.LI.FDN.Game`) and the station is run by FL's Station Manager; always FALSE on AP. Detection (T9 + FL scripts, VERIFY with T9b): station local `egosoft.stationmgr.time` is a number and `playing time` minus it is <= 10 (FL's `!station.cmd.manage.pl` refreshes it every 1 s; `plugin.stationmgr.run` quits when it is > 10 s old). Existence alone is not enough: FL never clears it | FL Station Manager decision |
 
 Standard header (the only allowed copy of D1):
 ```
@@ -104,7 +104,7 @@ B1 lock/[12] collision · B2 'create' null pointer · B3 DC/owner validation (wa
 
 ## H. FL Station Manager exclusion (approved by Matt, 2026-10-17)
 * Any station run by Farnham's Legacy's Station Manager is dropped from the FDN network: removed from `[3]` (factories) and `[4]` (docks). If it is the DC, set `[2]` = null and FDN pauses (as for an invalid DC).
-* Detection: `lib.LI.FDN.Is.FL.Managed(station)`, used only when `[23]` == 3 (FL). The exact command is **VERIFY** (Phase 0 card P0-C3, test T9): first candidate: `is task running 448` (Task.Stationmanage; FALSE on a normal station in T9, positive sample pending); otherwise it may be a station local, the station's current command, or a command from the FL Unofficial Patch list.
+* Detection: `lib.LI.FDN.Is.FL.Managed(station)`, used only when `[23]` == 3 (FL). Rule (VERIFY with T9b, NOTES_semantics T9): `$t = $station -> get local variable: name='egosoft.stationmgr.time'`; managed if `is datatyp[ $t ] == DATATYPE_INT` and `playing time - $t <= 10`. Only standard commands, so the lib still loads on AP. Rejected: `is task running 448` (448 is the FL constant `[Task.StationMgr]`; as a number it is the wrong slot), the extra task ids 10/11/24/25 (not reliable alone), and "`egosoft.stationmgr.time`/`.blacklist` exists" alone (FL never clears them, so they probably stay after SM is switched off). Optional FL-only confirmation: `is script plugin.stationmgr.run on stack of task=[Task.StationMgr]`.
 * Where: `plugin.LI.FDN.Scan`, at the same points as the exists/owner checks (each station before it is added to `[3]`/`[4]`, and the DC). Until Scan exists (Phase 2), nothing changes.
 * Warn once: Scan rebuilds the arrays each pass, so only message when a station that was in `[3]`/`[4]` (or was the DC) is dropped. Player message text 330 (station) or 331 (DC), plus a log line via `lib.LI.FDN.Log` (text 332). Skipped stations are not re-added while Station Manager runs them.
 * The station's FDN locals are kept (not cleared), so it rejoins with its settings if the player stops Station Manager.

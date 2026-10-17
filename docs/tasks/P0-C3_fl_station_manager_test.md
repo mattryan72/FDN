@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ### Why this test
 Matt decided (2026-10-17) that on Farnham's Legacy any station run by the native Station Manager is dropped from FDN. We do not know yet how a script can tell. Candidates: a local variable FL sets on the station, the station's current command, or a command from the FL Unofficial Patch 1.3.20 list (https://www.xpluginmanager.co.uk/addons/x3-farnhams-legacy-addons/x3fl-unoffical-patch/). This test finds out.
 
-**Results so far (FL, 2026-10-17, NOTES_semantics T9):** negative sample only (a player factory not under Station Manager): `is task running 448` FALSE, running tasks 22/1/28, locals from FDN and another mod (`graph.data.*`, `money.transfer`, `transfered`). Positive sample (a Station Manager station) still pending.
+**Results (FL, 2026-10-17, NOTES_semantics T9):** the SM station has the extra locals `egosoft.stationmgr.time` and `egosoft.stationmgr.blacklist`; `is task running 448` is FALSE on both stations (448 is the FL constant `[Task.StationMgr]`, not a slot number). FL's scripts refresh `egosoft.stationmgr.time` every 1 s and never clear it, so the proposed rule is freshness (<= 10 s). Follow-up test T9b checks this; still pending: does the time go stale after SM is switched off.
 
 ## Key facts
 

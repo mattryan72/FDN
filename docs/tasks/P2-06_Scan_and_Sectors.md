@@ -20,7 +20,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - `lib.LI.FDN.Is.Factory` | args: station | TRUE if managed factory (Factory, not Complex Hub, detectable rule; VERIFY intent of `is detectable == 0`) | D10
 - `lib.LI.FDN.Is.Valid` | args: obj, need.dock (Boolean) | TRUE if obj exists, owner race == Player, and is a Dock if asked | B3, B12
 - `lib.LI.FDN.Reg.Add` | args: station | null; appends the station to registry [29] if not already there (creates the array if null) | B9 registry
-- `lib.LI.FDN.Is.FL.Managed` | args: station | TRUE only on FL ([23] == 3) when the station is run by Station Manager; always FALSE on AP. Detection command is VERIFY (Phase 0 test T9) | FL Station Manager decision
+- `lib.LI.FDN.Is.FL.Managed` | args: station | TRUE only on FL ([23] == 3) when the station is run by Station Manager; always FALSE on AP. Phase 2 stub returns FALSE; Phase 4 rule: `egosoft.stationmgr.time` is fresh (<= 10 s old, VERIFY with T9b) | FL Station Manager decision
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
 - B10 (medium) Sector.Array 7-10, 84; callers pass search=4 (Supply.Start 37, Menu.AP.Factory.List 15) or 3 (Buy/Sell). Documented modes 1/2/3 are ignored except 3. It both scans (changes [3]/[4]/[8]) and returns a list. Fix: split into plugin.LI.FDN.Scan and lib.LI.FDN.Sectors.
