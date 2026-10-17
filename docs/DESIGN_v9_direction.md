@@ -1,6 +1,6 @@
 # FDN v9: design direction (approved by Matt 2026-10-17)
 
-Status: **item 1 is SCHEDULED for v9.01** (card `docs/tasks/P3-04b_DC_Change_event.md`). Items 2-8 are **proposals**, not scheduled. Each has open questions for Matt; no code until they are answered and a phase is chosen.
+Status: **item 1 is SCHEDULED for v9.01** (card `docs/tasks/P3-04b_DC_Change_event.md`). Items 2-8 are **proposals**, not scheduled. Item 2's overlap rule (closest DC serves, with fallback to other DCs) is **DECIDED** (Matt, 2026-10-17). Each has open questions for Matt; no code until they are answered and a phase is chosen.
 
 Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semantics.md`).
 
@@ -43,13 +43,18 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
   - `R_base` is configurable (example default 3 jumps).
   - The hub type modifies it: `R = R_base + R_type[hub]`. Example values: Player HQ +2, Trading Station +1, Equipment Dock 0, other docks −1, minimum 1. FL-specific station types: Q2.5.
   - Jumps are computed on Scan and cached per station (VERIFY the jumps command), never in the transfer loop.
-- **Membership:** each factory and dock belongs to **exactly one** hub, among the hubs whose range covers it. The overlap rule is open question Q2.1. Stored as a station local `FDN.Hub` (new text 41xx) plus a hub list in settings.
+- **Membership (DECIDED by Matt 2026-10-17):** each factory and dock is served by the **closest DC** whose range covers it (its home hub). Ties need a rule (Q2.1c; proposal: larger range, then older hub).
+- **Fallback (DECIDED by Matt 2026-10-17):** if the home hub cannot supply a ware (stock at or below its share level), it checks the other DCs to cover the shortfall. The station still deals only with its home hub. The fallback is a lookup by the hub, so stations never pick DCs themselves. Fallback order: nearest other DC first (proposal). Log `fallback: <ware> <n> from <DC>`. The status screen shows fallback supply and failed fallbacks. Stored as a station local `FDN.Hub` (new text 41xx) plus a hub list in settings.
 - **Out of range = not served.** A station outside every hub's range gets no products collected, no resources and no top-ups. The status screen (item 5) lists it as **out of range**, with the nearest hub and its distance, and Scan logs it once (P2-14 format). Its existing records and virtual stock stay untouched until it is in range again.
-- **Flow:** stations exchange only with their own hub, exactly like v8 with one DC. Hubs form a **tree, not peer-to-peer**: one primary hub, with regional hubs as its children. A regional hub must itself be within range of its parent (so coverage grows by building chains), and is treated as a dock of the parent. Its "keep at least" acts as Maintain, and the parent shares above its own Remote level. So the remote-level rule moves stock down the tree; surplus moves it up.
+- **Flow:** stations exchange only with their own hub, exactly like v8 with one DC. Normal hub-to-hub top-up follows a **tree, not peer-to-peer**: one primary hub, with regional hubs as its children. A regional hub must itself be within range of its parent (so coverage grows by building chains), and is treated as a dock of the parent. Its "keep at least" acts as Maintain, and the parent shares above its own Remote level. So the remote-level rule moves stock down the tree; surplus moves it up.
 - **Engine:** one hub per pass, round-robin (cursor like `[13]`), so per-tick cost stays bounded.
 - **Upgrade:** a v8 save has one hub (the DC). For identical v8 behaviour the range check needs a "range off" setting (Q2.4); otherwise stations far from the old DC drop out on upgrade.
 - **Open questions:**
-  - Q2.1 **Overlap:** when a station is in range of two or more hubs, does the **nearest hub win** (ties: the hub with the larger range, then the older hub), or **manual assignment** (player picks from the hubs in range; default nearest)? Proposal: nearest wins, with an optional manual override per station.
+  - Q2.1 **Overlap: DECIDED.** Closest DC serves, with fallback to other DCs (see above). Sub-questions still open:
+    - Q2.1a Fallback scope: only DCs whose **own range reaches the station** (direct delivery), or **any DC**, with the stock moving via hub-to-hub top-up to the home hub first (slower, but it uses the tree)?
+    - Q2.1b Does the fallback need a share rule of its own (the fallback DC gives only stock above its own share level, as for its stations; proposal: yes), and does it come before or after buying at market?
+    - Q2.1c Tie-break when two DCs are equally close (proposal: larger range, then older hub)?
+    - Q2.1d An optional manual override per station (pin to a DC), or never?
   - Q2.2 May a regional hub be out of range of every other hub (an isolated network), or must every hub chain to the primary?
   - Q2.3 How deep may the tree go (2 levels is enough)?
   - Q2.4 Upgraded v8 saves: start with range off (v8 behaviour) and let the player switch it on?
@@ -85,7 +90,7 @@ cost_EC = ceil( U * vol * (B + J * jumps) * C[class] * V[tier] * H[hub] / 10^12 
 - 20 units of a tech ware (example vol 10, class M, average price 50,000 → tier 3) moved 3 jumps from an Equipment Dock hub:
   20 × 10 × 50 = 10,000; × 1.5 × 2.5 × 1.0 = 37,500 milli-EC → **38 EC**. Item 4 would flag it before cost even applies.
 
-**Open questions.** Q3.1 Default on or off for new installs; and for upgraded v8 saves (proposed: off)? Q3.2 Moving EC itself: pay from the shipment, from the hub, or exempt? Q3.3 FL station types and the HQ's efficiency values? Q3.4 Do factory product pushes (factory → hub) cost too, paid by the factory? Q3.5 Should cost be shown in the status screen per transfer or per cycle?
+**Open questions.** Q3.1 Default on or off for new installs; and for upgraded v8 saves (proposed: off)? Q3.2 Moving EC itself: pay from the shipment, from the hub, or exempt? Q3.3 FL station types and the HQ's efficiency values? Q3.4 Do factory product pushes (factory → hub) cost too, paid by the factory? Q3.5 Should cost be shown in the status screen per transfer or per cycle? Q3.6 **Fallback cost:** is `jumps` the distance from the **actual source DC** (so a fallback costs more than home-hub supply; proposal: yes, which pushes players to build DCs where demand is), or always the home hub's distance? If fallback goes via hub-to-hub top-up (Q2.1a), is it charged per leg (source → home hub, then home hub → station)?
 
 ## 4. Freighter preference for high-value / complex wares (Matt's idea, proposal)
 
