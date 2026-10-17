@@ -4,6 +4,10 @@
 Community Plugin Configuration on every game load. It is a test-only hotfix for FDN v8.04 on
 X3 Farnham's Legacy 1.3 + Unofficial Patch 1.3.20. It is not part of the released mod.
 
+**Status (2026-10-17): optional.** Matt's missing menu turned out to be user error (the entry had been moved
+inside Plugin Configurations). Install this only if the FDN entry is seen to vanish after a game load. It is
+harmless if installed.
+
 ## Why
 
 FL's Community Plugin Configuration (`init.community.config` v3) clears its menu list on every
