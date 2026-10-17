@@ -1,0 +1,39 @@
+* Script: test.LI.FDN.T4  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C1 - T4 what a variable holding a destroyed object returns (B3)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/07/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  * test object = a player drone, same type FDN already uses for trade (Buy.Ware L074).
+011  * It spawns at the player ship and is destructed moments later, so it is safe.
+012  * VERIFY: 'Argon Mercury Super Freighter XL' is a compiled ship type; if your install has no TS mod with that exact name, pick any cheap player ship type in the editor instead (B15).
+013  $obj = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=[PLAYERSHIP] x=null y=null z=null
+014  
+015  if $obj -> exists
+016   write to log file 9999 append=[TRUE] value='T4 before destruct: $obj -> exists = TRUE'
+017  else
+018   write to log file 9999 append=[TRUE] value='T4 before destruct: $obj -> exists = FALSE'
+019  end
+020  
+021  * same destruct call FDN uses after every drone trade (Sell.Ware L098)
+022  $obj  ->  destruct: show no explosion=[TRUE]
+023  
+024  if $obj
+025   write to log file 9999 append=[TRUE] value='T4 after destruct: if $obj = TRUE'
+026  else
+027   write to log file 9999 append=[TRUE] value='T4 after destruct: if $obj = FALSE (null)'
+028  end
+029  
+030  if $obj -> exists
+031   write to log file 9999 append=[TRUE] value='T4 after destruct: $obj -> exists = TRUE'
+032  else
+033   write to log file 9999 append=[TRUE] value='T4 after destruct: $obj -> exists = FALSE'
+034  end
+035  
+036  return null

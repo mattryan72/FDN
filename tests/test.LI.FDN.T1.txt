@@ -1,0 +1,32 @@
+* Script: test.LI.FDN.T1  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C1 - T1 null comparison semantics (B4)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/07/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  $null = null
+011  if $null >= 0
+012   write to log file 9999 append=[TRUE] value='T1 null >= 0 -> TRUE'
+013  else
+014   write to log file 9999 append=[TRUE] value='T1 null >= 0 -> FALSE'
+015  end
+016  
+017  if $null < 6
+018   write to log file 9999 append=[TRUE] value='T1 null < 6 -> TRUE'
+019  else
+020   write to log file 9999 append=[TRUE] value='T1 null < 6 -> FALSE'
+021  end
+022  
+023  if $null == 0
+024   write to log file 9999 append=[TRUE] value='T1 null == 0 -> TRUE'
+025  else
+026   write to log file 9999 append=[TRUE] value='T1 null == 0 -> FALSE'
+027  end
+028  
+029  return null

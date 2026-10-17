@@ -1,0 +1,29 @@
+* Script: test.LI.FDN.T3  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C1 - T3 array reference rule through get global variable
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/07/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  $a = = array alloc: size=3
+011  $a[0] = 1
+012  set global variable: name='FDND.T3.test' value=$a
+013  
+014  $b = get global variable: name='FDND.T3.test'
+015  write to log file 9999 append=[TRUE] value='T3 before [0]: ' + $b[0]
+016  
+017  * change through the reference, without set global variable
+018  $b[0] = 42
+019  
+020  $c = get global variable: name='FDND.T3.test'
+021  write to log file 9999 append=[TRUE] value='T3 after [0]: ' + $c[0]
+022  
+023  * tidy up the test global (VERIFY: if this command does not compile, delete it and recompile)
+024  set global variable: name='FDND.T3.test' value=null
+025  
+026  return null

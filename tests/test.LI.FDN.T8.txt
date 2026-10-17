@@ -1,0 +1,43 @@
+* Script: test.LI.FDN.T8  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C1 - T8 does X3 regex support '^' and '\.' (B9 fix check)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/07/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  * host object = the player ship, so nothing extra has to be created and it cannot die mid-test
+011  $obj = [PLAYERSHIP]
+012  if not $obj -> exists
+013   write to log file 9999 append=[TRUE] value='T8 abort: no player ship, run from a ship'
+014   return null
+015  end
+016  
+017  * two test locals: one must match 'FDN.', the other contains FDN but not at position 0 and without a dot after it (Reset L069 spelling)
+018  $obj  ->  set local variable: name='FDN.Test.A' value=1
+019  $obj  ->  set local variable: name='XFDNY' value=2
+020  
+021  * escape backslash doubled as in MSCI string literals; VERIFY the pattern syntax if it does not compile
+022  $arr = $obj  ->  get local variables: regular expression='^FDN\\.'
+023  write to log file 9999 append=[TRUE] value='T8 regex ^FDN\. -> ' + size of array $arr
+024  
+025  $arr = $obj  ->  get local variables: regular expression='FDN\\.'
+026  write to log file 9999 append=[TRUE] value='T8 regex FDN\. -> ' + size of array $arr
+027  
+028  * the pattern v8 Reset actually uses - baseline for comparison (Reset L064)
+029  $arr = $obj  ->  get local variables: regular expression='FDN*'
+030  write to log file 9999 append=[TRUE] value='T8 regex FDN* -> ' + size of array $arr
+031  
+032  * remove the test locals; VERIFY: setting null is the only removal FDN uses (Reset L069), a real delete command would be cleaner if one exists
+033  $obj  ->  set local variable: name='FDN.Test.A' value=null
+034  $obj  ->  set local variable: name='XFDNY' value=null
+035  
+036  * if null-valued locals still match, this will be > 0 and tells us why
+037  $arr = $obj  ->  get local variables: regular expression='FDN*'
+038  write to log file 9999 append=[TRUE] value='T8 after clear FDN* -> ' + size of array $arr
+039  
+040  return null

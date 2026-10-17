@@ -1,0 +1,23 @@
+* Script: test.LI.FDN.T2  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C1 - T2 does 'reverse array' work in place or return a copy (B13)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/07/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  $a = = create new array, arguments=1, 2, 3, null, null
+011  write to log file 9999 append=[TRUE] value='T2 before: ' + $a[0] + '/' + $a[1] + '/' + $a[2]
+012  
+013  * v8 spells the command with a return variable (Supply.Factory.Check L038), so capture it
+014  $r = reverse array $a
+015  write to log file 9999 append=[TRUE] value='T2 returned: ' + $r[0] + '/' + $r[1] + '/' + $r[2]
+016  
+017  * if the original also reads reversed, it is in place; otherwise the edit went to a copy
+018  write to log file 9999 append=[TRUE] value='T2 after: ' + $a[0] + '/' + $a[1] + '/' + $a[2]
+019  
+020  return null

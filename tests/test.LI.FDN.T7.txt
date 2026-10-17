@@ -1,0 +1,16 @@
+* Script: test.LI.FDN.T7  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C1 - T7 log the raw script engine version (AP / FL detection)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/07/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  $scriptEngineVersion = = script engine version
+011  write to log file 9999 append=[TRUE] value='T7 script engine version = ' + $scriptEngineVersion
+012  
+013  return null
