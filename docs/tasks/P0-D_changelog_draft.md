@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~3,175 tokens when built
+- Estimated size: ~3,241 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-D_changelog_draft.md`
 - Save the answer as: `notes/P0-D.md`
 

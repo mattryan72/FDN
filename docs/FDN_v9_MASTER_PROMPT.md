@@ -66,11 +66,11 @@ Target script set (see REFERENCE for argument contracts):
 ## 7. Upgrade path from v8.04 saves
 
 `plugin.LI.FDN.Upgrade` is called from `al.LI.FDN.event` on `init`/`reinit`. If `al.Settings[14]` is lower than 901:
-1. Resize the array to 30 if needed. Set `[12]` = null (lock), `[13]` = null (reverse toggle/cursor). Initialise the new indices 15–29 (REFERENCE): `[28]` = 1 (surplus default on, B5), `[29]` = registry seeded from `[2]`, `[3]`, `[4]` (B9).
+1. Resize the array to 30 if needed. Set `[12]` = null (lock), `[13]` = null (reverse toggle/cursor). Initialise the new indices 15–29 (REFERENCE): `[28]` = 1 (surplus default on, B5; same for fresh installs, decided 2026-10-17), `[29]` = registry seeded from `[2]`, `[3]`, `[4]` (B9).
 2. Fix `[6]` (is.dynamic): make sure index 2 exists. Stop reading index 1.
 3. Validate `[2]` (DC): exists, player-owned, dock. If invalid → null, and send the player a message (“FDN paused: choose a new Distribution Centre”).
 4. Purge dead or non-player stations from `[3]` and `[4]`.
-5. **B5 (approved 2026-10-17):** migrate the v8 ware records on the stations in `[29]`: `[7]` null → 0 (explicit off; in v8 null only came from the player switching it off). Leave −1 (now "use default" = on via `[28]` = 1) and 1 alone. If this is too much work for one wait-free script, START a one-off migration task and set a flag so it runs once. Also prune dead stations from `[29]`.
+5. **B5 migration (approved by Matt 2026-10-17):** migrate the v8 ware records on the stations in `[29]`: `[7]` null → 0 (explicit off; in v8 null only came from the player switching it off). Leave −1 (now "use default" = on via `[28]` = 1) and 1 alone. If this is too much work for one wait-free script, START a one-off migration task and set a flag so it runs once. Also prune dead stations from `[29]`.
 6. START `plugin.LI.FDN.Cleanup` (orphaned trade-drone sweep, REFERENCE §G). Do this on every init/reinit, not just upgrades.
 7. Set `[14] = 901`, and log “FDN upgraded 8.04 → 9.01”.
 Must be idempotent (safe to run twice) and must not use `wait`.

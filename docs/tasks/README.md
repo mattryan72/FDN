@@ -57,7 +57,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | [P0-C1](P0-C1_semantics_tests.md) | Write tiny test scripts for MSCI behaviour (tests 1-4, engine version, regex) | yes | 4,234 |
 | [P0-C2](P0-C2_drone_tests.md) | Write test scripts for the temporary trade drone (tests 5 and 6) | yes | 4,260 |
 | [P0-C3](P0-C3_fl_station_manager_test.md) | FL only: test how to detect a station run by Station Manager (T9) | yes | 2,866 |
-| [P0-D](P0-D_changelog_draft.md) | Draft the v9.01 CHANGELOG skeleton | no | 3,175 |
+| [P0-D](P0-D_changelog_draft.md) | Draft the v9.01 CHANGELOG skeleton | no | 3,241 |
 
 ## Phase 1: bug fixes in place
 
@@ -66,7 +66,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | [P1-01](P1-01_Supply.Start_B1_B3.md) | Supply.Start: real run-lock (B1), DC check (B3), slower scan (P1) | yes | 4,793 |
 | [P1-02](P1-02_Supply.Factory.Check_B1_B13.md) | Supply.Factory.Check: lock release (B1), no reverse array (B13), owner check (B3) | yes | 5,314 |
 | [P1-03](P1-03_Supply.Factory_B3_B11.md) | Supply.Factory: no lost product (B3), no duplicate buys (B11) | yes | 5,115 |
-| [P1-04](P1-04_Update.Ware_B2.md) | Update.Ware: build the record name before 'create' (B2) | yes | 5,125 |
+| [P1-04](P1-04_Update.Ware_B2.md) | Update.Ware: build the record name before 'create' (B2) | yes | 5,137 |
 | [P1-05](P1-05_Supply.Dock_B4_B12.md) | Supply.Dock: safe sell cap (B4), re-check after waits (B12) | yes | 5,353 |
 | [P1-06](P1-06_Supply.Dock.Check_B3.md) | Supply.Dock.Check: drop dead or lost docks (B3) | yes | 3,949 |
 | [P1-07a](P1-07a_Sell.Ware_B4_B12_B15.md) | Sell.Ware: guard records, re-check, safer drone (B4, B12, B15) | yes | 5,171 |
@@ -132,8 +132,8 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | [P4-01](P4-01_lib_Game.md) | Write lib.LI.FDN.Game | yes | 3,060 |
 | [P4-02](P4-02_FL_feature_flag.md) | Decide the FL patch feature flag [24] | no | 1,793 |
 | [P4-03](P4-03_Setup_hotkey.md) | plugin.LI.FDN.Setup: config entry, hotkey fallback, optional FL entries (B6) | yes | 3,591 |
-| [P4-04](P4-04_Upgrade.md) | Write plugin.LI.FDN.Upgrade (v8.04 save -> v9.01) | yes | 3,965 |
-| [P4-04b](P4-04b_Supply.Dock_B5_surplus_default.md) | Supply.Dock: effective surplus flag with global default (B5, approved) | yes | 5,277 |
+| [P4-04](P4-04_Upgrade.md) | Write plugin.LI.FDN.Upgrade (v8.04 save -> v9.01) | yes | 4,006 |
+| [P4-04b](P4-04b_Supply.Dock_B5_surplus_default.md) | Supply.Dock: effective surplus flag with global default (B5, approved) | yes | 5,289 |
 | [P4-05](P4-05_al.event_final.md) | al.LI.FDN.event: v9.01 description and Upgrade call | yes | 3,249 |
 | [P4-06](P4-06_FL_Station_Manager.md) | lib.LI.FDN.Is.FL.Managed: detect FL Station Manager (approved) | yes | 3,135 |
 | [P4-07](P4-07_text_file.md) | Clean up the text file 9910-L044.xml | no | 3,361 |
@@ -145,7 +145,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 |---|---|---|---|
 | [P5-01](P5-01_test_plan.md) | Write the v9.01 test checklist | no | 1,747 |
 | [P5-02](P5-02_version_bumps.md) | Version bump list | no | 1,652 |
-| [P5-03](P5-03_readme.md) | Write the readme (forum BBCode and Markdown) | no | 3,167 |
+| [P5-03](P5-03_readme.md) | Write the readme (forum BBCode and Markdown) | no | 3,233 |
 | [P5-04](P5-04_spk_spec.md) | Plugin Manager package spec | no | 1,670 |
-| [P5-05](P5-05_final_changelog.md) | Final CHANGELOG for v9.01 | no | 2,933 |
-| [P5-06](P5-06_forum_post.md) | Forum post for the FDN thread | no | 2,922 |
+| [P5-05](P5-05_final_changelog.md) | Final CHANGELOG for v9.01 | no | 2,999 |
+| [P5-06](P5-06_forum_post.md) | Forum post for the FDN thread | no | 2,988 |

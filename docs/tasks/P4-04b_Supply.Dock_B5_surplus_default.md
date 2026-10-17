@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: yes
-- Estimated size: ~5,277 tokens when built
+- Estimated size: ~5,289 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-04b_Supply.Dock_B5_surplus_default.md`
 - Save the answer as: `notes/P4-04b.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B5 (approved by Matt 2026-10-17: make it configurable) Update.Ware 136; Wares.Summary 257; Supply.Dock 84-91. v8: default [7] = -1 counts as TRUE, so 'pass surplus to DC' is ON for every new ware; null only appears when the player switches it off. v9: global default [28] (1 on, 0 off, 2 v8 compatible) for records whose [7] is -1/null; per-ware [7] 1 = on, 0 = off, -1/null = use default. New records keep -1. v8 upgrade sets [28] = 1 and migrates [7] null -> 0, so existing saves behave as before. Config menu row texts 320-325.
+- B5 (approved by Matt 2026-10-17: make it configurable) Update.Ware 136; Wares.Summary 257; Supply.Dock 84-91. v8: default [7] = -1 counts as TRUE, so 'pass surplus to DC' is ON for every new ware; null only appears when the player switches it off. v9: global default [28] (1 on, 0 off, 2 v8 compatible) for records whose [7] is -1/null; per-ware [7] 1 = on, 0 = off, -1/null = use default. New records keep -1. v8 upgrade (migration approved by Matt 2026-10-17) sets [28] = 1 and migrates [7] null -> 0, so existing saves behave as before. Config menu row texts 320-325.
 
 ### Ware record: station local `FDN.Ware.<ware>` (name from text 4000 via sprintf), array size 12
 | Idx | Meaning | v8 default |
