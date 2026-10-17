@@ -56,7 +56,10 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
 - **Shortage → pull via the backbone (DECIDED):** stations still deal only with their home DC. If the home DC cannot supply a ware (stock at or below its share level), it pulls the shortfall from **any DC reachable over the backbone** (this resolves Q2.1a).
   - Nearest by route first. Then it delivers to the station on the normal station leg.
   - Log `backbone: <ware> <n> <source> -> <home> (<hops> hops, <jumps> j)`. The status screen shows backbone pulls and failed pulls.
-- **Reserve floor (DECIDED):** each DC keeps a per-ware **floor F** below which it will not give stock to other DCs (it is "not drained"). **Default F = 25 % of that DC's current stock of the ware** (DECIDED, Q2.7), configurable per ware. Rounding and whether 25 % is a global setting: Q2.9. A DC's own stations are still served down to its share level, as in v8.
+- **Reserve floor (DECIDED):** each DC keeps a per-ware **floor F** below which it will not give stock to other DCs (it is "not drained"). **F = 25 % of that DC's maximum storage capacity for the ware** (DECIDED, Q2.7/Q2.9), configurable. The floor does not shrink as stock falls, and a DC never gives stock to another DC below it.
+  - VERIFY the capacity command on a dock: v8 uses `$factory -> get max amount of ware $ware that can be stored in cargo bay` on factories (Supply.Factory L092); check that it works on Dock-class stations (TC/AP/FL).
+  - VERIFY/decide how virtual storage counts. v8 virtual stock ([0]) has no capacity limit, so the floor uses physical capacity only (proposal). Stock for the floor test = physical + virtual. v8 "remote" ([1]) is a share level, not storage, so it does not change capacity.
+  - Cache the capacity per DC and ware on Scan (it only changes with station type). A DC's own stations are still served down to its share level, as in v8.
 - **Engine:** one DC per pass, round-robin (cursor like `[13]`), so per-tick cost stays bounded. Backbone pulls happen inside the home DC's pass, at most `[n]` pulls per pass (proposal).
 - **Upgrade:** a v8 save has one DC, so there is no backbone and behaviour is identical. A "range off" setting keeps far stations served (Q2.4).
 - **Decided / open questions:**
@@ -69,9 +72,9 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
   - Q2.4 Upgraded v8 saves: start with range off (v8 behaviour) and let the player switch it on?
   - Q2.5 Range modifiers (station and backbone) for FL station types; should a DC type modify `R_bb` too?
   - Q2.6 **Multi-hop: DECIDED.** Unlimited daisy-chaining along the fewest-jumps route, with only a safety cap against loops and performance.
-  - Q2.7 **Reserve floor default: DECIDED.** 25 % of the DC's stock per ware, configurable.
+  - Q2.7 **Reserve floor default: DECIDED.** 25 % of the DC's **max storage capacity** per ware, configurable (see Q2.9).
   - Q2.8 **Rebalance: DECIDED.** v9 is supply and demand only: stock moves between DCs only when a home DC pulls on shortage. Proactive balancing is deferred as a possible later feature and is **not** an option in v9.
-  - Q2.9 Reserve floor details: computed from current stock at pull time (proposal; the floor then shrinks as stock falls), rounded down; is the 25 % default one global setting with per-ware overrides?
+  - Q2.9 **Reserve floor basis: DECIDED.** Max storage capacity, not current stock, so the floor is fixed per DC and ware. Still open: Q2.9a rounding (proposal: round up, so the floor is never 0 for a ware with capacity); Q2.9b one global 25 % with per-ware overrides, or global only (per the options principle, proposal: global only)?
 
 ## 3. Energy transfer cost (Matt's idea, proposal)
 
