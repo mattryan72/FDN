@@ -1,0 +1,15 @@
+* Script: plugin.LI.FDN.T6.KillHandler  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C2 - T6 secondary SIGNAL_KILLED handler for the test drone
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: none (signal script)
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/10/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  = write to log file 9999 append=[TRUE] value='T6 SIGNAL_KILLED handler fired'
+011  
+012  return null

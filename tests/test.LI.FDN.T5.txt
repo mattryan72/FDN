@@ -1,0 +1,57 @@
+* Script: test.LI.FDN.T5  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C2 - T5 does a docked TS spawn at an NPC station and pass the drone checks (B15)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: ware (Argument) - a trade ware, e.g. 'Hydrogen'
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/10/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  * VERIFY (B15): type and the four check commands below are not in the pasted v8 code, so confirm the exact spellings compile.
+011  $station = find station: product $ware with best price:  max.price=2000, amount=1000, max.jumps=99, startsector=[PLAYERSHIP], trader=null, exclude array=null
+012  write to log file 9999 append=[TRUE] value='T5 station found: ' + $station
+013  if not $station -> exists
+014   return null
+015  end
+016  * -----------------------------------------------------------------------------------
+017  
+018  $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$station x=null y=null z=null
+019  write to log file 9999 append=[TRUE] value='T5 create ship returned ' + $drone
+020  
+021  if $drone -> exists
+022   $name = $drone  ->  get name
+023   * VERIFY (B15): confirm this command and its return type in the X-Studio command list.
+024   $maker.race = $drone  ->  get maker race
+025   write to log file 9999 append=[TRUE] value='T5 exists=TRUE name=' + $name + ' maker=' + $maker.race
+026  else
+027   write to log file 9999 append=[TRUE] value='T5 exists=FALSE'
+028  end
+029  * -----------------------------------------------------------------------------------
+030  
+031  if $drone -> is docking allowed at $station
+032   write to log file 9999 append=[TRUE] value='T5 docking allowed = TRUE'
+033  else
+034   write to log file 9999 append=[TRUE] value='T5 docking allowed = FALSE'
+035  end
+036  
+037  if $drone -> can transport ware $ware
+038   write to log file 9999 append=[TRUE] value='T5 can transport ' + $ware + ' = TRUE'
+039  else
+040   write to log file 9999 append=[TRUE] value='T5 can transport ' + $ware + ' = FALSE'
+041  end
+042  
+043  $max.cargo = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+044  write to log file 9999 append=[TRUE] value='T5 max cargo ' + $ware + ' = ' + $max.cargo
+045  
+046  * same destruct call FDN uses after every drone trade (Sell.Ware L098)
+047  $drone  ->  destruct: show no explosion=[TRUE]
+048  * -----------------------------------------------------------------------------------
+049  
+050  * second attempt with type=null; a fake name would not compile, but null tests the same failure (B15)
+051  $bad = = create ship: type=null owner=Player addto=$station x=null y=null z=null
+052  write to log file 9999 append=[TRUE] value='T5 bad type returned ' + $bad
+053  
+054  return null

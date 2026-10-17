@@ -1,0 +1,34 @@
+* Script: test.LI.FDN.T6  (v1.0, engine 50)
+* Desc: FDN v9 Phase 0 C2 - T6 does destructing a docked drone fire SIGNAL_KILLED and show side effects (B15)
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * Expected values: ware (Argument) - only used to find the station, e.g. 'Hydrogen'
+004  * Return values: N/A
+005  * Version: 1.0
+006  * Date: 17/10/2026
+007  * Tested: not tested yet
+008  * -----------------------------------------------------------------------------------
+009  
+010  $station = find station: product $ware with best price:  max.price=2000, amount=1000, max.jumps=99, startsector=[PLAYERSHIP], trader=null, exclude array=null
+011  if not $station -> exists
+012   return null
+013  end
+014  
+015  * VERIFY (B15): 'Argon Mercury Super Freighter XL' is a compiled ship type; if your install has no TS mod with that exact name, pick any cheap player TS in the editor instead.
+016  $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$station x=null y=null z=null
+017  
+018  if $drone -> exists
+019   * VERIFY (B15): confirm the exact spelling and whether a killed docked ship really delivers SIGNAL_KILLED to this handler.
+020   = $drone  ->  add secondary signal: SIGNAL_KILLED script=plugin.LI.FDN.T6.KillHandler
+021   write to log file 9999 append=[TRUE] value='T6 drone docked at ' + $station + ', handler set'
+022   * same destruct call FDN uses after every drone trade (Sell.Ware L098)
+023   $drone  ->  destruct: show no explosion=[TRUE]
+024  else
+025   write to log file 9999 append=[TRUE] value='T6 abort: create ship failed'
+026  end
+027  
+028  * whether the handler ran: look for the 'T6 SIGNAL_KILLED handler fired' line in log09999.txt, and note which line comes first - if the KillHandler line appears before this one it ran synchronously inside destruct; if only after (or never) it is queued or not fired. VERIFY (B15): a docked ship killed with no explosion may deliver SIGNAL_KILLED to a secondary handler at all.
+029  write to log file 9999 append=[TRUE] value='T6 main script finished, check KillHandler line'
+030  
+031  return null
