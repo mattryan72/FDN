@@ -10,9 +10,9 @@
 - B5, B9 and the FL Station Manager exclusion approved by Matt on 2026-10-17 (see Behaviour changes).
 
 ### Fixed
-- [B1] Lock and settings index 12 collision (planned)
+- [B1] Supply.Start: real run-lock on settings [12] (stores `playing time`, stale after 120 s, set on the array not a local copy); lock only takes effect after P1-02; v8 Factory.Check still clears [12], and it remains the reverse toggle until P1-02 moves it to [13].
 - [B2] 'create' null pointer (planned)
-- [B3] DC/owner validation (planned)
+- [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Other B3 sites (Supply.Factory, Factory.Check, Dock.Check) are their own cards.
 - [B4] Null sell cap sells all stock (planned)
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
@@ -28,7 +28,7 @@
 - [B16] Settings schema unversioned (planned)
 
 ### Changed
-- None yet.
+- [P1] Supply.Start: `Sector.Array` refresh now throttled to at most every 300 s via timestamp settings `[16]`; a null `[16]` means never-scanned so the first tick still runs it. Throttle uses a `$do.scan` flag and never blocks supply - when throttled, the existing arrays are reused for this cycle (no wait added).
 
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:

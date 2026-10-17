@@ -1,107 +1,187 @@
-* Script: plugin.LI.FDN.Supply.Start  (v1.0, engine 50)
-* Desc: FDN v8 - Starts supply process
+* Script: plugin.LI.FDN.Supply.Start  (v2.0, engine 50)
+* Desc: FDN v9.01 - Starts supply process
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script ic called by the AL Plugin timer event and starts the supply cycle
+* 
+* Expected values:
+* - N/A the Factory and dock arrays are stored in the AL Plugin variable
+* 
+* Returns values:
+* - N/A
+* 
+* To Do - N/A
+* 
+* Version: 2.0
+* Date: 17/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+* v9.01 B1/B3/P1 changes (Supply.Start):
+*   B1  [12] is now a real run-lock storing 'playing time' (stale after 120 s), set on
+*       the array, not a local copy. [13] becomes the reverse toggle (handled by P1-02).
+*   B3  The DC is validated every tick (exists / owner race == Player / Dock class);
+*       if invalid it is cleared to null, the player is told once, and FDN pauses.
+*   P1  Sector.Array now runs at most every 300 s using timestamp [16].
+* -----------------------------------------------------------------------------------
+* - DC
+* - factory arrray - holds all the know player factories
+* - dock arrray - holds all the know player docks
+* Note: The two arrays are updated each timethe main menu opens, but it is the
+* supply logic which removes any destroyed stations
+$script = = get script name
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if $al.Settings
+ $PageID = $al.Settings[1]
+ $DebugID = 0 + $PageID
+ $dc = $al.Settings[2]
+ $factory.array = $al.Settings[3]
+ $dock.array = $al.Settings[4]
+ $call.count.dock = $al.Settings[11]
+ * v9.01 B1: [12] is the run-lock (playing time of last start; null = free)
+ $is.running = $al.Settings[12]
+ * v9.01 P1: [16] holds the playing time of the last Sector.Array scan
+ $scan.time = $al.Settings[16]
+ * v9.01 B1/B3/P1: current playing time, used for the lock and scan stamps
+ $now = = playing time
+else
+ return null
+end
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * This script ic called by the AL Plugin timer event and starts the supply cycle
-004  
-005  * Expected values:
-006  * - N/A the Factory and dock arrays are stored in the AL Plugin variable
-007  
-008  * Returns values:
-009  * - N/A
-010  
-011  * To Do - N/A
-012  
-013  * Version: 1.0
-014  * Date: 22/05/2012
-015  * Tested: 22/05/2012
-016  * -----------------------------------------------------------------------------------
-017  
-018  * - DC
-019  * - factory arrray - holds all the know player factories
-020  * - dock arrray - holds all the know player docks
-021  * Note: The two arrays are updated each timethe main menu opens, but it is the
-022  * supply logic which removes any destroyed stations
-023  $script = = get script name
-024  $al.Settings = get global variable: name='al.LI.FDN.event'
-025  if $al.Settings
-026   $PageID = $al.Settings[1]
-027   $DebugID = 0 + $PageID
-028   $dc = $al.Settings[2]
-029   $factory.array = $al.Settings[3]
-030   $dock.array = $al.Settings[4]
-031   $call.count.dock = $al.Settings[11]
-032   $is.running = $al.Settings[12]
-033  else
-034   return null
-035  end
-036  * -----------------------------------------------------------------------------------
-037  START  = [THIS] -> call script plugin.LI.FDN.Sector.Array : search=4
-038   = wait 1000 ms
-039  
-040  if $al.Settings[7]
-041   $txt.debug = ' Start Supply Called'
-042   gosub Debug.Sub:
-043  end
-044  
-045  * check there is a DC the script will only continue if one is set
-046  if $dc
-047   * if there is a factory array call 'plugin.LI.FDN.Supply.Factory.Check'
-048   * else if debug is on log failure
-049   if $factory.array
-050    * debug
-051    * -----------------------------------------------------------------------------------
-052    
-053    * v 2 change - add flag to show factory supply is running
-054    * the flag will be cleared when 'plugin.LI.FDN.Supply.Factory.Check' ends
-055    if not $is.running
-056     $is.running = [TRUE]
-057     set global variable: name='al.LI.FDN.event' value=$al.Settings
-058     * -----------------------------------------------------------------------------------
-059     
-060     if $al.Settings[7]
-061      $txt.debug = 'Factory Array found'
-062      gosub Debug.Sub:
-063     end
-064     
-065     * start the factory supply script
-066     START  = null -> call script plugin.LI.FDN.Supply.Factory.Check :
-067     * -----------------------------------------------------------------------------------
-068    end
-069   end
-070   
-071   * this check skips the dock supply until call 3 times
-072   if $call.count.dock < 6
-073    inc $call.count.dock =
-074    $al.Settings[11] = $call.count.dock
-075    return null
-076   else
-077    $al.Settings[11] = 0
-078    
-079    if $dock.array
-080     * debug
-081     if $al.Settings[7]
-082      $txt.debug = 'Dock Array found'
-083      gosub Debug.Sub:
-084     end
-085     * start the dock supply script
-086     START  = null -> call script plugin.LI.FDN.Supply.Dock.Check :
-087     * -----------------------------------------------------------------------------------
-088    end
-089   end
-090  end
-091  return null
-092  * -----------------------------------------------------------------------------------
-093  
-094  * Debug Massage handling
-095  Debug.Sub:
-096  $d.time = = playing time
-097  $d.time = = format time: $d.time
-098  $txt = $d.time + ';' + $script + ';' + $txt.debug
-099  write to log file $DebugID  append=[TRUE]  value=$txt
-100  endsub
-101  * -----------------------------------------------------------------------------------
-102  return null
-103  
-104  
+* -----------------------------------------------------------------------------------
+
+* v9.01 P1: refresh the station arrays at most every 300 s (was every call)
+* a null [16] means 'never scanned' so we run once and stamp it
+$do.scan = [TRUE]
+if $scan.time
+ * already scanned before - only re-scan when 300 s have passed
+ $elapsed = $now - $scan.time
+ if $elapsed < 300
+  $do.scan = [FALSE]
+ end
+end
+if $do.scan
+ START  = [THIS] -> call script plugin.LI.FDN.Sector.Array : search=4
+ $al.Settings[16] = $now
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+end
+ = wait 1000 ms
+
+if $al.Settings[7]
+ $txt.debug = ' Start Supply Called'
+ gosub Debug.Sub:
+end
+
+* v9.01 B3: no DC set at all - quietly do nothing (no message, no log) so the player is
+* only told once, when a real DC first fails validation below
+if not $dc
+ return null
+end
+
+* v9.01 B3: validate the DC - it must exist, be player owned and a Dock
+* (v8 only checked 'if $dc', which misses destroyed / sold / captured stations)
+$dc.valid = [TRUE]
+if not $dc -> exists
+ * destroyed or never set
+ $dc.valid = [FALSE]
+ $txt.debug = 'DC does not exist'
+end
+if $dc.valid
+ $owner = $dc -> get owner race
+ if not $owner == Player
+  * sold, captured or given away
+  $dc.valid = [FALSE]
+  $txt.debug = 'DC is not owned by the player'
+ end
+end
+if $dc.valid
+ if not $dc -> is of class Dock 2007
+  * wrong station type for a DC
+  $dc.valid = [FALSE]
+  $txt.debug = 'DC is not a Dock class station'
+ end
+end
+
+* v9.01 B3: one place to clear the DC, tell the player and pause (see sub below)
+if not $dc.valid
+ gosub DC.Invalid:
+ return null
+end
+
+* v9.01 B3: from here on $dc is a valid, existing, player owned Dock
+if $factory.array
+ * debug
+ * -----------------------------------------------------------------------------------
+ 
+ * v9.01 B1 - real run-lock on [12] (was a local flag that never engaged the guard)
+ * [12] holds the playing time of the last Factory.Check start; null = free, stale after 120 s
+ $skip.factory = [FALSE]
+ if $is.running
+  * locked - only let this tick through when the lock is more than 120 s old (stale)
+  $elapsed = $now - $is.running
+  if $elapsed < 120
+   $skip.factory = [TRUE]
+   if $al.Settings[7]
+    $txt.debug = 'Factory Check already running or recently started - skip'
+    gosub Debug.Sub:
+   end
+  end
+ end
+ if not $skip.factory
+  * free (or stale) - take the lock on the array, then start Factory.Check
+  $al.Settings[12] = $now
+  set global variable: name='al.LI.FDN.event' value=$al.Settings
+  * note: this script never releases [12]; plugin.LI.FDN.Supply.Factory.Check does (P1-02)
+  if $al.Settings[7]
+   $txt.debug = 'Factory Array found'
+   gosub Debug.Sub:
+  end
+  START  = null -> call script plugin.LI.FDN.Supply.Factory.Check :
+ end
+ * -----------------------------------------------------------------------------------
+end
+
+* this check skips the dock supply until call 3 times
+if $call.count.dock < 6
+ inc $call.count.dock =
+ $al.Settings[11] = $call.count.dock
+ return null
+else
+ $al.Settings[11] = 0
+
+ if $dock.array
+  * debug
+  if $al.Settings[7]
+   $txt.debug = 'Dock Array found'
+   gosub Debug.Sub:
+  end
+  * start the dock supply script
+  START  = null -> call script plugin.LI.FDN.Supply.Dock.Check :
+  * -----------------------------------------------------------------------------------
+ end
+end
+return null
+* -----------------------------------------------------------------------------------
+
+* v9.01 B3 - clear an invalid DC, tell the player once and pause FDN
+* $txt.debug holds the reason (set by the caller before the gosub)
+DC.Invalid:
+$al.Settings[2] = null
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+ * v9.01 B3: tell the player once (logbook entry; same command on AP and FL)
+write to player logbook 'FDN: Distribution Centre lost or invalid - FDN paused. Pick a new DC in the FDN menu.'
+if $al.Settings[7]
+ $txt.debug = $txt.debug + ' - cleared and paused'
+ gosub Debug.Sub:
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* Debug Massage handling
+Debug.Sub:
+$d.time = = playing time
+$d.time = = format time: $d.time
+$txt = $d.time + ';' + $script + ';' + $txt.debug
+write to log file $DebugID  append=[TRUE]  value=$txt
+endsub
+* -----------------------------------------------------------------------------------
+return null
