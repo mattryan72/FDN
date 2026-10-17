@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,027 tokens when built
+- Estimated size: ~4,117 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-11_Reset_B9.md`
 - Save the answer as: `notes/P1-11.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B9 (medium) Reset 28-30, 64. Regex `'FDN*'` means 'FD followed by any number of N', so it matches any variable containing 'FD', including other mods' locals. No null/exists check (null DC). Running supply tasks are not stopped. Docks no longer in the arrays keep their records. Fix direction: regex `'^FDN\.'`, exists checks, set enabled FALSE first, sweep all player docks.
+- B9 (medium, confirmed in P0-B) Reset L064 regex `'FDN*'` means 'FD followed by any number of N', so it matches any variable containing 'FD', including other mods' locals. L028-030: no null/exists check on the DC. Reset never pauses FDN (enable flag [0]). L043-048 only clear docks still in the dock array, so docks that left it keep their FDN.Ware.* locals. Fix direction: regex `'^FDN\.'` (VERIFY X3 regex supports ^ and \. : test C1 T8; Cleanup L018 uses 'FDND.*'), exists checks, set enabled FALSE first, sweep all player docks.
 
 ### Global `al.LI.FDN.event` settings array (v8.04 meanings, from REFERENCE A / ANALYSIS 1.3)
 | Idx | v8.04 meaning | Written by (per analysis) |
@@ -46,5 +46,5 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 ## Instruction
 
-Phase 1, task P1-11. Fix plugin.LI.FDN.Reset: B9 use regex `'^FDN\.'`; add exists checks; set `$al.Settings[0]` FALSE first and wait one tick (Reset is called from the menu, so a wait here is fine); sweep all player docks and factories, not just the arrays; clear settings [12] to [20]. The wider reset scope is a behaviour change: list it under 'Behaviour changes (need approval)' in the CHANGELOG entry.
+Phase 1, task P1-11. Fix plugin.LI.FDN.Reset: B9 use regex `'^FDN\.'` only if test C1 T8 (in NOTES_semantics) showed `^` and `\.` work, otherwise use the pattern T8 proved and say so; add a null/exists check on the DC (L028-030) and every station; set `$al.Settings[0]` FALSE first and wait one tick (Reset is called from the menu, so a wait here is fine); sweep all player docks and factories, not just the arrays; clear settings [12] to [20]. The wider reset scope is a behaviour change: list it under 'Behaviour changes (need approval)' in the CHANGELOG entry.
 Start with "Assumptions" and "Questions for Matt" (short), then follow the answer format in CORE RULES.

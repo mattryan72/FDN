@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,682 tokens when built
+- Estimated size: ~4,793 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-01_Supply.Start_B1_B3.md`
 - Save the answer as: `notes/P1-01.md`
 
@@ -18,7 +18,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
 - B1 (critical, confirmed in P0-A) Supply.Start 55-57; Supply.Factory.Check 35-40, 153. `$is.running = [TRUE]` sets a local copy and never writes `al.Settings[12]`, so the guard never engages and overlapping Factory.Check runs pile up when one run takes longer than 25 s. Factory.Check also uses [12] as its reverse-order toggle and clears it at the end. Fix direction: [12] = run-lock (store `playing time`, stale after N s), [13] = reverse toggle; set the lock with `$al.Settings[12] = ...`; release on every exit.
-- B3 (critical) Supply.Start 46; Supply.Factory 67-72; Supply.Factory.Check 63; Supply.Dock.Check 39/47; Main.Menu 51. Only `if $dc` / `-> exists` are checked. (a) If the DC is destroyed, Supply.Factory still removes factory product (71-72) after adding it to a non-existent DC, so wares vanish. (b) Sold, captured or given-away stations stay in the arrays and keep being supplied and drained. Fix direction: validate the DC once per tick (exists, owner race == Player, is of class Dock); on failure pause and notify; owner check in both Check loops.
+- B3 (critical, confirmed in P0-B) Supply.Start 46; Supply.Factory 67-72, 107, 129; Supply.Factory.Check 63; Supply.Dock.Check 39/47; Main.Menu 51. Only `if $dc` / `-> exists` are checked (Supply.Start L046 is just `if $dc`). (a) Destroyed DC: Supply.Factory L067 calls Update.Ware 'add' on the DC, but Update.Ware only handles stock if the station `is of class Dock` (L043), so it does nothing and returns 0; L071-072 then remove the product from the factory anyway, so wares vanish. L107 ('remove' from the DC) and L129 (reads the DC record) also use $dc unchecked. (b) No ownership check anywhere: the only `owner` in the code is `owner=Player` on the drone `create ship`. Sold or captured stations stay managed. Fix direction: validate the DC once per tick (exists, owner race == Player, is of class Dock); on failure pause and notify; remove from the factory only what Update.Ware reports as added; owner check in both Check loops.
 
 ### Global `al.LI.FDN.event` settings array (v8.04 meanings, from REFERENCE A / ANALYSIS 1.3)
 | Idx | v8.04 meaning | Written by (per analysis) |

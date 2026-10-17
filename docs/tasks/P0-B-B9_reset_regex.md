@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~2,675 tokens when built
+- Estimated size: ~2,720 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B9_reset_regex.md`
 - Save the answer as: `notes/P0-B-B9.md`
 
@@ -15,7 +15,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B9 (medium) Reset 28-30, 64. Regex `'FDN*'` means 'FD followed by any number of N', so it matches any variable containing 'FD', including other mods' locals. No null/exists check (null DC). Running supply tasks are not stopped. Docks no longer in the arrays keep their records. Fix direction: regex `'^FDN\.'`, exists checks, set enabled FALSE first, sweep all player docks.
+- B9 (medium, confirmed in P0-B) Reset L064 regex `'FDN*'` means 'FD followed by any number of N', so it matches any variable containing 'FD', including other mods' locals. L028-030: no null/exists check on the DC. Reset never pauses FDN (enable flag [0]). L043-048 only clear docks still in the dock array, so docks that left it keep their FDN.Ware.* locals. Fix direction: regex `'^FDN\.'` (VERIFY X3 regex supports ^ and \. : test C1 T8; Cleanup L018 uses 'FDND.*'), exists checks, set enabled FALSE first, sweep all player docks.
 
 ## Key facts
 
