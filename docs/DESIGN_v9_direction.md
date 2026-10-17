@@ -4,6 +4,10 @@ Status: **item 1 is SCHEDULED for v9.01** (card `docs/tasks/P3-04b_DC_Change_eve
 
 Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semantics.md`).
 
+## Design principle
+
+**Avoid adding options unless they are clearly needed** (Matt, 2026-10-17). Each option multiplies the testing (TC/AP/FL × fresh/upgrade × every toggle state) and adds menu rows. Prefer one good default. Add an option only when players clearly need both behaviours, and record why in this note. Proposals below that add a toggle should be re-checked against this rule before scheduling.
+
 ## Critical assessment of FDN v8.04
 
 **Strengths**
@@ -48,11 +52,11 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
 - **Backbone (DECIDED, replaces the earlier tree idea):** DCs form a **peer-to-peer network**.
   - Any two DCs within **backbone range** `R_bb` of each other are **linked** and can move stock between each other.
   - `R_bb` is longer than the station range: example `R_bb = 2 × R`, configurable. For a link between two DCs, use the smaller of the two `R_bb` values (proposal).
-  - Stock may travel **multi-hop** through linked DCs. The route is the one with the fewest total jumps over links (precomputed on Scan into a small route table, since DC counts are small). The hop limit is Q2.6.
+  - Stock may **daisy-chain** through any number of linked DCs (DECIDED, Q2.6). The route is the one with the fewest total jumps over links, precomputed on Scan into a small route table (DC counts are small). The route search has a **safety cap** (example 16 hops) and never revisits a DC. That only guards against loops and runaway cost; it is not a design limit.
 - **Shortage → pull via the backbone (DECIDED):** stations still deal only with their home DC. If the home DC cannot supply a ware (stock at or below its share level), it pulls the shortfall from **any DC reachable over the backbone** (this resolves Q2.1a).
   - Nearest by route first. Then it delivers to the station on the normal station leg.
   - Log `backbone: <ware> <n> <source> -> <home> (<hops> hops, <jumps> j)`. The status screen shows backbone pulls and failed pulls.
-- **Reserve floor (DECIDED):** each DC keeps a per-ware **floor F** below which it will not give stock to other DCs (it is "not drained"). F is configurable; the default is Q2.7. A DC's own stations are still served down to its share level, as in v8.
+- **Reserve floor (DECIDED):** each DC keeps a per-ware **floor F** below which it will not give stock to other DCs (it is "not drained"). **Default F = 25 % of that DC's current stock of the ware** (DECIDED, Q2.7), configurable per ware. Rounding and whether 25 % is a global setting: Q2.9. A DC's own stations are still served down to its share level, as in v8.
 - **Engine:** one DC per pass, round-robin (cursor like `[13]`), so per-tick cost stays bounded. Backbone pulls happen inside the home DC's pass, at most `[n]` pulls per pass (proposal).
 - **Upgrade:** a v8 save has one DC, so there is no backbone and behaviour is identical. A "range off" setting keeps far stations served (Q2.4).
 - **Decided / open questions:**
@@ -64,9 +68,10 @@ Evidence base: FL 1.3 + UP 1.3.20 tests and supply logs 1-2 (`notes/NOTES_semant
   - Q2.2 **Isolated DCs:** a DC with no backbone link serves only its own stations. Allow it silently, or warn on the status screen ("not linked")?
   - Q2.4 Upgraded v8 saves: start with range off (v8 behaviour) and let the player switch it on?
   - Q2.5 Range modifiers (station and backbone) for FL station types; should a DC type modify `R_bb` too?
-  - Q2.6 **Multi-hop limit:** maximum hops per pull (proposal: 3), or unlimited within the route table?
-  - Q2.7 **Reserve floor default:** the DC's own share level (v8 field [1]), a percentage of its current stock (example 25 %), or the larger of the two?
-  - Q2.8 **Rebalance:** move stock between DCs only **on demand** (a pull on shortage), or also **proactively** (a slow background pass that evens out stock above floors toward DCs with shortages or no stock)? Proposal: on demand for v9; proactive later, as an option.
+  - Q2.6 **Multi-hop: DECIDED.** Unlimited daisy-chaining along the fewest-jumps route, with only a safety cap against loops and performance.
+  - Q2.7 **Reserve floor default: DECIDED.** 25 % of the DC's stock per ware, configurable.
+  - Q2.8 **Rebalance: DECIDED.** v9 is supply and demand only: stock moves between DCs only when a home DC pulls on shortage. Proactive balancing is deferred as a possible later feature and is **not** an option in v9.
+  - Q2.9 Reserve floor details: computed from current stock at pull time (proposal; the floor then shrinks as stock falls), rounded down; is the 25 % default one global setting with per-ware overrides?
 
 ## 3. Energy transfer cost (Matt's idea, proposal)
 
