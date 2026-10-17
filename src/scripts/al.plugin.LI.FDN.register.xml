@@ -1,0 +1,23 @@
+<?xml version="1.0" standalone="yes"?>
+<?xml-stylesheet href="x2script.xsl" type="text/xsl"?>
+<!--Produced externally by the Exscriptor-->
+<script>
+   <name>al.plugin.LI.FDN.register</name>
+   <version>8</version>
+   <engineversion>50</engineversion>
+   <description>v4 AL Plugin registration script</description>
+   <arguments />
+   <sourcetext>
+      <line linenr="001" indent=""><var>$PageID = </var><text></text><var>9910 </var><text></text></line>
+      <line linenr="002" indent=""><text>load text: id=</text><var>$PageID</var><text></text></line>
+      <line linenr="003" indent=""> </line>
+      <line linenr="004" indent=""><text>al engine: register script=</text><var></var><call>al.LI.FDN.event</call><var></var><text></text></line>
+      <line linenr="005" indent=""> </line>
+      <line linenr="006" indent=""><text>return </text><var>null</var><text></text></line>
+      <line linenr="007" indent=""> </line>
+      <line linenr="008" indent=""> </line>
+      <line linenr="009" indent=""> </line>
+   </sourcetext>
+   <codearray><sval type="array" size="10"><sval type="string" val="al.plugin.LI.FDN.register" /><sval type="int" val="50" /><sval type="string" val="v4 AL Plugin registration script" /><sval type="int" val="8" /><sval type="int" val="0" /><sval type="array" size="1"><sval type="string" val="PageID" /></sval><sval type="array" size="4"><sval type="array" size="7"><sval type="int" val="104" /><sval type="int" val="0" /><sval type="int" val="1" /><sval type="int" val="4" /><sval type="int" val="9910" /><sval type="int" val="1" /><sval type="int" val="-1" /></sval><sval type="array" size="3"><sval type="int" val="151" /><sval type="int" val="131074" /><sval type="int" val="0" /></sval><sval type="array" size="2"><sval type="int" val="1000" /><sval type="string" val="al.LI.FDN.event" /></sval><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="0" /><sval type="int" val="0" /></sval></sval><sval type="int" val="0" /><sval type="array" size="5"><sval type="array" size="2"><sval type="int" val="2" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="3" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="4" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="4" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="4" /><sval type="int" val="2" /></sval></sval><sval type="int" val="0" /></sval>
+   </codearray>
+</script>

@@ -1,0 +1,107 @@
+* Script: plugin.LI.Dock.Replace  (v1, engine 44)
+* Desc: 
+* Arg 0: stn (Var/Station) 'stn'
+
+001  $sector = $stn  ->  get sector
+002  $sub = = $stn  ->  get subtype
+003  
+004  $new.sub = $sub - 9
+005  $type = = get ware from maintype 5 and subtype $new.sub
+006  $dummy = = create station: type=$type owner=Neutral Race addto=$sector x=0 y=100000 z=0
+007  
+008  skip if $dummy  ->  exists
+009   return null
+010  
+011  $dummy  ->  set owner race to Player
+012  
+013  $dummy  ->  add default wares to station/dock
+014  $dummy  ->  station trade and production tasks: on=[TRUE]
+015  $max = $dummy  ->  get maximum shield strength
+016  $dummy  ->  set current shield strength to $max
+017  
+018  $hull = $dummy  ->  get hull
+019  $dummy  ->  set hull to $hull
+020  
+021  $ware.Array = $stn  ->  get tradeable ware array from station
+022  $s = size of array $ware.Array
+023  while $s > 0
+024   dec $s =
+025   $ware = $ware.Array[$s]
+026   $amount = $stn  ->  get amount of ware $ware in cargo bay
+027   $price = $stn  ->  get price of ware $ware
+028   $amount  ->  add product to factory or dock: $ware
+029    = $dummy  ->  add $amount units of $ware
+030   $dummy  ->  set price of ware $ware to $price Cr
+031  end
+032  
+033  $credits = $stn  ->  get money
+034  $dummy  ->  add money: $credits
+035  $name = $stn  ->  get name
+036  $dummy  ->  set name to $name
+037  $jumps = $stn  ->  get max trade jumps
+038  $dummy  ->  set max trade jumps: $jumps
+039  
+040  
+041  $docked.Ship.Array = = $stn  ->  get ship array from sector/ship/station
+042  $s = size of array $docked.Ship.Array
+043  while $s > 0
+044   dec $s =
+045   $ship = $docked.Ship.Array[$s]
+046   skip if $ship  ->  exists
+047    continue
+048   $base = $ship  ->  get homebase
+049   skip if not $base == $stn
+050    $ship  ->  set homebase to $stn
+051   skip if not $ship  ->  get local variable: name='com.agent.homebase'
+052    $ship  ->  set local variable: name='com.agent.homebase' value=$dummy
+053   if $dummy  ->  is docking possible of $ship
+054    $ship  ->  put into environment $dummy
+055   else
+056    START  = $ship -> call script !move.undock :
+057   end
+058  end
+059  
+060  $owned.Ship.Array = = $stn  ->  get owned ships: class/type=null
+061  $s = size of array $owned.Ship.Array
+062  while $s > 0
+063   dec $s =
+064   $ship = $owned.Ship.Array[$s]
+065   skip if $ship  ->  exists
+066    continue
+067   $ship  ->  set homebase to $dummy
+068   skip if not $ship  ->  get local variable: name='com.agent.homebase'
+069    $ship  ->  set local variable: name='com.agent.homebase' value=$dummy
+070  end
+071  
+072  $var.Array = $stn  ->  get all local variable keys, starting with=''
+073  $s = size of array $var.Array
+074  while $s
+075   dec $s =
+076   $var = $var.Array[$s]
+077   $data = $stn  ->  get local variable: name=$var
+078   skip if not is datatyp[ $data ] == DATATYP_ARRAY
+079    $data = = clone array $data : index 0 ... null
+080   $dummy  ->  set local variable: name=$var value=$data
+081  end
+082  
+083  skip if not $dummy  ->  get local variable: name='com.agent.auto.price'
+084   $dummy  ->  set local variable: name='com.agent.auto.price' value=null
+085  skip if not $dummy  ->  get local variable: name='com.agent.auto.account'
+086   $dummy  ->  set local variable: name='com.agent.auto.account' value=null
+087  
+088  $PosX = $stn  ->  get x position
+089  $PosY = $stn  ->  get y position
+090  $PosZ = $stn  ->  get z position
+091  $RotA = $stn  ->  get rot alpha
+092  $RotB = $stn  ->  get rot beta
+093  $RotC = $stn  ->  get rot gamma
+094  
+095  $stn  ->  destruct: show no explosion=[TRUE]
+096  
+097  $dummy  ->  force position: x=$PosX y=$PosY z=$PosZ
+098  $dummy  ->  set rotation: alpha=$RotA beta=$RotB gamma=$RotC
+099  $dummy  ->  set current shield strength to $max
+100  
+101  return null
+102  
+103  

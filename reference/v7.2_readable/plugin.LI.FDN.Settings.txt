@@ -1,0 +1,200 @@
+* Script: plugin.LI.FDN.Settings  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  * Build settings array to be save in AL status Array
+004  * Array of Node Sub Types
+005  * Trade Post Sub Types
+006  * Relay Sub Type
+007  * Task Versions
+008  * Dynamic Menu settings
+009  * Hotkey Ref
+010  
+011  * returns null if FDN stations are not found
+012  
+013  $return.Array = = array alloc: size=0
+014  
+015  
+016  $nodeS = = read text: page=17 id=300020
+017  $nodeM = = read text: page=17 id=300022
+018  $nodeL = = read text: page=17 id=300024
+019  $nodeXL = = read text: page=17 id=300026
+020  $nodeT = = read text: page=17 id=300028
+021  $nodeR = = read text: page=17 id=300030
+022  $node.Array = = array alloc: size=0
+023  $relay.Array = = array alloc: size=0
+024  $trade.Array = = array alloc: size=0
+025  
+026  $nodeXL = = sprintf: fmt='%s', $nodeXL, null, null, null, null
+027  $sub = = get number of subtypes of maintype 5
+028  while $sub
+029   dec $sub =
+030   $node = = get ware from maintype 5 and subtype $sub
+031   $node = = sprintf: fmt='%s', $node, null, null, null, null
+032   if $nodeXL == $node
+033    append $sub to array $node.Array
+034   end
+035  end
+036  $nodeL = = sprintf: fmt='%s', $nodeL, null, null, null, null
+037  $sub = = get number of subtypes of maintype 5
+038  while $sub
+039   dec $sub =
+040   $node = = get ware from maintype 5 and subtype $sub
+041   $node = = sprintf: fmt='%s', $node, null, null, null, null
+042   if $nodeL == $node
+043    append $sub to array $node.Array
+044   end
+045  end
+046  $nodeM = = sprintf: fmt='%s', $nodeM, null, null, null, null
+047  $sub = = get number of subtypes of maintype 5
+048  while $sub
+049   dec $sub =
+050   $node = = get ware from maintype 5 and subtype $sub
+051   $node = = sprintf: fmt='%s', $node, null, null, null, null
+052   if $nodeM == $node
+053    append $sub to array $node.Array
+054   end
+055  end
+056  $nodeS = = sprintf: fmt='%s', $nodeS, null, null, null, null
+057  $sub = = get number of subtypes of maintype 5
+058  while $sub
+059   dec $sub =
+060   $node = = get ware from maintype 5 and subtype $sub
+061   $node = = sprintf: fmt='%s', $node, null, null, null, null
+062   if $nodeS == $node
+063    append $sub to array $node.Array
+064   end
+065  end
+066  append $node.Array to array $return.Array
+067  
+068  $nodeT = = sprintf: fmt='%s', $nodeT, null, null, null, null
+069  $sub = = get number of subtypes of maintype 5
+070  while $sub
+071   dec $sub =
+072   $node = = get ware from maintype 5 and subtype $sub
+073   $node = = sprintf: fmt='%s', $node, null, null, null, null
+074   if $nodeT == $node
+075    append $sub to array $trade.Array
+076   end
+077  end
+078  append $trade.Array to array $return.Array
+079  
+080  $nodeR = = sprintf: fmt='%s', $nodeR, null, null, null, null
+081  $sub = = get number of subtypes of maintype 5
+082  while $sub
+083   dec $sub =
+084   $node = = get ware from maintype 5 and subtype $sub
+085   $node = = sprintf: fmt='%s', $node, null, null, null, null
+086   if $nodeR == $node
+087    append $sub to array $relay.Array
+088   end
+089  end
+090  append $relay.Array to array $return.Array
+091  
+092  
+093  * Debug----
+094  $debug.Array = = array alloc: size=4
+095  append $debug.Array to array $return.Array
+096  
+097  
+098  * Dummy----
+099  $nodeS = = read text: page=17 id=300038
+100  $nodeM = = read text: page=17 id=300040
+101  $nodeL = = read text: page=17 id=300042
+102  $nodeXL = = read text: page=17 id=300044
+103  $nodeT = = read text: page=17 id=300046
+104  $nodeR = = read text: page=17 id=300048
+105  $node.Array = = array alloc: size=0
+106  $relay.Array = = array alloc: size=0
+107  $trade.Array = = array alloc: size=0
+108  
+109  $nodeXL = = sprintf: fmt='%s', $nodeXL, null, null, null, null
+110  $sub = = get number of subtypes of maintype 5
+111  while $sub
+112   dec $sub =
+113   $node = = get ware from maintype 5 and subtype $sub
+114   $node = = sprintf: fmt='%s', $node, null, null, null, null
+115   if $nodeXL == $node
+116    append $sub to array $node.Array
+117   end
+118  end
+119  $nodeL = = sprintf: fmt='%s', $nodeL, null, null, null, null
+120  $sub = = get number of subtypes of maintype 5
+121  while $sub
+122   dec $sub =
+123   $node = = get ware from maintype 5 and subtype $sub
+124   $node = = sprintf: fmt='%s', $node, null, null, null, null
+125   if $nodeL == $node
+126    append $sub to array $node.Array
+127   end
+128  end
+129  $nodeM = = sprintf: fmt='%s', $nodeM, null, null, null, null
+130  $sub = = get number of subtypes of maintype 5
+131  while $sub
+132   dec $sub =
+133   $node = = get ware from maintype 5 and subtype $sub
+134   $node = = sprintf: fmt='%s', $node, null, null, null, null
+135   if $nodeM == $node
+136    append $sub to array $node.Array
+137   end
+138  end
+139  $nodeS = = sprintf: fmt='%s', $nodeS, null, null, null, null
+140  $sub = = get number of subtypes of maintype 5
+141  while $sub
+142   dec $sub =
+143   $node = = get ware from maintype 5 and subtype $sub
+144   $node = = sprintf: fmt='%s', $node, null, null, null, null
+145   if $nodeS == $node
+146    append $sub to array $node.Array
+147   end
+148  end
+149  append $node.Array to array $return.Array
+150  
+151  $nodeT = = sprintf: fmt='%s', $nodeT, null, null, null, null
+152  $sub = = get number of subtypes of maintype 5
+153  while $sub
+154   dec $sub =
+155   $node = = get ware from maintype 5 and subtype $sub
+156   $node = = sprintf: fmt='%s', $node, null, null, null, null
+157   if $nodeT == $node
+158    append $sub to array $trade.Array
+159   end
+160  end
+161  append $trade.Array to array $return.Array
+162  
+163  $nodeR = = sprintf: fmt='%s', $nodeR, null, null, null, null
+164  $sub = = get number of subtypes of maintype 5
+165  while $sub
+166   dec $sub =
+167   $node = = get ware from maintype 5 and subtype $sub
+168   $node = = sprintf: fmt='%s', $node, null, null, null, null
+169   if $nodeR == $node
+170    append $sub to array $relay.Array
+171   end
+172  end
+173  append $relay.Array to array $return.Array
+174  
+175  
+176  * Dynamic Menu default of ON
+177  $dynamic.Array = = array alloc: size=0
+178  append [TRUE] to array $dynamic.Array
+179  append [TRUE] to array $dynamic.Array
+180  append [TRUE] to array $dynamic.Array
+181  append $dynamic.Array to array $return.Array
+182  
+183  * Menu open
+184  $is.On.Array = = array alloc: size=0
+185  append [TRUE] to array $is.On.Array
+186  append [TRUE] to array $is.On.Array
+187  append [TRUE] to array $dynamic.Array
+188  append $is.On.Array to array $return.Array
+189  
+190  
+191  skip if not $return.Array
+192   return $return.Array
+193  
+194  return null
+195  
+196  
+197  

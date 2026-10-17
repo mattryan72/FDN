@@ -1,0 +1,33 @@
+* Script: plugin.LI.FDN.Format.Name  (v1.0, engine 50)
+* Desc: FDNv8 - Formats object name for menus
+* Arg 0: object (Value) 'object'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script fromats object names for the menu
+004  
+005  * Expected values:
+006  * -object
+007  
+008  * Returns values:
+009  * - formatted name
+010  
+011  * Version: 1.0
+012  * Date: 22/05/2012
+013  * Tested: 22/05/2012
+014  * -----------------------------------------------------------------------------------
+015  
+016  $al.Settings = get global variable: name='al.LI.FDN.event'
+017  if $al.Settings
+018   $PageID = $al.Settings[1]
+019  end
+020  
+021  * -----------------------------------------------------------------------------------
+022  $name = $object  ->  get name
+023  $id = $object  ->  get ID code
+024  $return = = sprintf: pageid=$PageID textid=134, $name, $id, null, null, null
+025  * -----------------------------------------------------------------------------------
+026  return $return
+027  
+028  
+029  

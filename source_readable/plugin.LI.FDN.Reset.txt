@@ -1,0 +1,78 @@
+* Script: plugin.LI.FDN.Reset  (v1.0, engine 50)
+* Desc: FDNv8 - Reset clears all locally stored FDN values
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * this script resets all FDN locally stored values
+004  
+005  * Expected values:
+006  * - n/a
+007  
+008  * Return values:
+009  * - n/a
+010  
+011  * Version: 1.0
+012  * Date: 17/05/2012
+013  * Tested: 17/05/2012
+014  * -----------------------------------------------------------------------------------
+015  
+016  * Fetch values saved in the AL Plugin global variable:
+017  * DC
+018  * factory array
+019  * dock array
+020  $al.Settings = get global variable: name='al.LI.FDN.event'
+021  if $al.Settings
+022   $dc = $al.Settings[2]
+023   $factory.array = $al.Settings[3]
+024   $dock.array = $al.Settings[4]
+025  end
+026  * -----------------------------------------------------------------------------------
+027  
+028  $station = $dc
+029  * clear the DC
+030  gosub Clear.Local.Sub:
+031  * -----------------------------------------------------------------------------------
+032  
+033  * loop the factory array and clear
+034  $sf = size of array $factory.array
+035  while $sf > 0
+036   dec $sf =
+037   $station = $factory.array[$sf]
+038   gosub Clear.Local.Sub:
+039  end
+040  * -----------------------------------------------------------------------------------
+041  
+042  * loop the dock array and clear
+043  $sd = size of array $dock.array
+044  while $sd > 0
+045   dec $sd =
+046   $station = $dock.array[$sd]
+047   gosub Clear.Local.Sub:
+048  end
+049  * -----------------------------------------------------------------------------------
+050  
+051  * set AL Plugin global variable values
+052  $al.Settings[2] = null
+053  $factory.array = = array alloc: size=0
+054  $al.Settings[3] = $factory.array
+055  $dock.array = = array alloc: size=0
+056  $al.Settings[4] = $dock.array
+057  set global variable: name='al.LI.FDN.event' value=$al.Settings
+058  * -----------------------------------------------------------------------------------
+059  return null
+060  * -----------------------------------------------------------------------------------
+061  
+062  * this sub clears the locall stored values
+063  Clear.Local.Sub:
+064  $array = $station  ->  get local variables: regular expression='FDN*'
+065  $s = size of array $array
+066  while $s > 0
+067   dec $s =
+068   $var = $array[$s]
+069   $station  ->  set local variable: name=$var value=null
+070  end
+071  endsub
+072  * -----------------------------------------------------------------------------------
+073  return null
+074  
+075  

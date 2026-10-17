@@ -1,0 +1,5 @@
+package/*.spk
+package/*.zip
+*.bak
+__pycache__/
+Thumbs.db

@@ -1,0 +1,168 @@
+* Script: plugin.LI.FDN.Update.Ware  (v7, engine 50)
+* Desc: 
+* Arg 0: ware (Value) 'ware'
+* Arg 1: amount (Number) 'amount'
+* Arg 2: station (Value) 'station'
+* Arg 3: action (Value) 'action'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  
+004  * Expected values:
+005  * - ware
+006  * - amount
+007  * - station
+008  * - action
+009  
+010  * Returns values:
+011  * - N/A
+012  
+013  * Version: 1.0
+014  * Date: 09/06/2012
+015  * Tested: 09/06/2012
+016  * -----------------------------------------------------------------------------------
+017  
+018  * Fetch values saved in the AL Plugin global variable:
+019  $script = = get script name
+020  $al.Settings = get global variable: name='al.LI.FDN.event'
+021  if $al.Settings
+022   $PageID = $al.Settings[1]
+023   $DebugID = 0 + $PageID
+024  else
+025   return null
+026  end
+027  * -----------------------------------------------------------------------------------
+028  
+029  * return.remove is passed back but only used by the suppy factory script
+030  $return.remove = 0
+031  
+032  * if the script is call just to add the virtual ref
+033  if $action == 'create'
+034   gosub Add.Ware.Sub:
+035   return null
+036  end
+037  * -----------------------------------------------------------------------------------
+038  
+039  * check for valid amount
+040  if $amount > 0
+041   
+042   * check if dock - only dock class station have virtual storage
+043   if $station  ->  is of class Dock 2007
+044    * -----------------------------------------------------------------------------------
+045    
+046    $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+047    $ware.array = $station  ->  get local variable: name=$pointer
+048    * -----------------------------------------------------------------------------------
+049    
+050    * if no ware array is found for virtula add one
+051    if not $ware.array
+052     gosub Add.Ware.Sub:
+053    end
+054    * -----------------------------------------------------------------------------------
+055    
+056    * get virtual stock
+057    $virtual.stock = $ware.array[0]
+058    * -----------------------------------------------------------------------------------
+059   end
+060   
+061   $physical.stock = $station  ->  get amount of ware $ware in cargo bay
+062   $physical.free = $station  ->  get free amount of ware $ware in cargo bay
+063   
+064   * add and remove
+065   if $action == 'add'
+066    * -----------------------------------------------------------------------------------
+067    * add ware - priority it to add to physical first the use virtual
+068    if $station  ->  is of class Dock 2007
+069     if not $physical.free > $amount
+070      
+071      $to.virtual = $amount - $physical.free
+072      $virtual.stock = $virtual.stock + $to.virtual
+073      $ware.array[0] = $virtual.stock
+074      $station  ->  set local variable: name=$pointer value=$ware.array
+075      
+076       = $station  ->  add $physical.free units of $ware
+077      return $amount
+078      
+079     else
+080       = $station  ->  add $amount units of $ware
+081      return $amount
+082     end
+083     
+084    else
+085     if not $physical.free > $amount
+086      $amount = $physical.free
+087     end
+088      = $station  ->  add $amount units of $ware
+089     return $amount
+090    end
+091    * -----------------------------------------------------------------------------------
+092    
+093   else
+094    * -----------------------------------------------------------------------------------
+095    * remove ware - priority it to remove from virtula first then use physical
+096    if $amount < $virtual.stock
+097     $virtual.stock = $virtual.stock - $amount
+098     $ware.array[0] = $virtual.stock
+099     $return.remove = $amount
+100    else
+101     $from.physical = $amount - $virtual.stock
+102     
+103     $return.remove = $virtual.stock
+104     
+105     if $physical.stock < $from.physical
+106      $from.physical = $physical.stock
+107     end
+108     $return.remove = $return.remove + $from.physical
+109     
+110     $ware.array[0] = 0
+111     $remove = - $from.physical
+112      = $station  ->  add $remove units of $ware
+113    end
+114   end
+115   * -----------------------------------------------------------------------------------
+116   
+117   * update the virtual ware ref
+118   $station  ->  set local variable: name=$pointer value=$ware.array
+119  end
+120  
+121  * return.remove is passed back but only used by the suppy factory script
+122  return $return.remove
+123  * -----------------------------------------------------------------------------------
+124  
+125  Add.Ware.Sub:
+126  * add the virtula ref as none was found
+127  $price = $station  ->  get price of ware $ware
+128  $array = = array alloc: size=12
+129  $array[0] = 0
+130  $array[1] = null
+131  $array[2] = null
+132  $array[3] = [FALSE]
+133  $array[4] = $price
+134  $array[5] = -1
+135  $array[6] = $price
+136  $array[7] = -1
+137  $array[8] = null
+138  $array[9] = null
+139  $array[11] = null
+140  $station  ->  set local variable: name=$pointer value=$array
+141  
+142  * if no physical wares found create and delete ware so it show no the dock
+143  $physical.check = $station  ->  get amount of ware $ware in cargo bay
+144  if not $physical.check > 0
+145    = $station  ->  add 1 units of $ware
+146    = $station  ->  add -1 units of $ware
+147  end
+148  endsub
+149  * -----------------------------------------------------------------------------------
+150  
+151  * Debug Massage handling
+152  Debug.Sub:
+153  $d.time = = playing time
+154  $d.time = = format time: $d.time
+155  $txt = $d.time + ';' + $script + ';' + $txt.debug
+156  write to log file $DebugID  append=[TRUE]  value=$txt
+157  endsub
+158  * -----------------------------------------------------------------------------------
+159  return null
+160  
+161  

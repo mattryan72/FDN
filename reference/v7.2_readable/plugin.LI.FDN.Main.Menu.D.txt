@@ -1,0 +1,434 @@
+* Script: plugin.LI.FDN.Main.Menu.D  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * AL settings--
+005  $al.Settings = get global variable: name='al.LI.FDN.event'
+006  if $al.Settings
+007   $PageID = $al.Settings[1]
+008   $dynamic = $al.Settings[9][0]
+009   $is.On = $al.Settings[10][0]
+010  else
+011   return null
+012  end
+013  
+014  
+015  * Main Menu Array--
+016  $main.menu.Master.Array = = array alloc: size=0
+017  * Global Ref for Main Menu Array
+018  $pointer = = read text: page=$PageID id=5000
+019  set global variable: name=$pointer value=$main.menu.Master.Array
+020  * Sector that will be added Main Menu Array
+021  $main.menu.Sector.Array = = array alloc: size=0
+022  
+023  * Build Main Menu and global refs--
+024  * Call Sector Array
+025  $sector.Array = [THIS] -> call script plugin.LI.FDN.Sector.Array : sector=null
+026  $ss = size of array $sector.Array
+027  while $ss > 0
+028   dec $ss =
+029   
+030   $main.menu.Sector.Array = = array alloc: size=6
+031   $sector = $sector.Array[$ss]
+032   $main.menu.Sector.Array[0] = $sector
+033   * Call FDN details for sector
+034   $return.Array = [THIS] -> call script plugin.LI.FDN.Node.Array : sector=$sector
+035   
+036   * Call subs to build FDN details for sector
+037   gosub Build.Global.Refs.Sub:
+038   
+039   * Add Sector Array to main menu Array
+040   append $main.menu.Sector.Array to array $main.menu.Master.Array
+041  end
+042  
+043  
+044  
+045  * Compile dynamic Menu--
+046  while [TRUE]
+047   
+048   
+049   * Update Main Memnu based on Array
+050   $sm = size of array $main.menu.Master.Array
+051   while $sm > 0
+052    dec $sm =
+053    $gbl.Sector.Array = $main.menu.Master.Array[$sm]
+054    
+055    gosub Update.Global.Refs.Sub:
+056   end
+057   
+058   * wait one second
+059    = wait 1000 ms
+060   * Check
+061   
+062   skip if $al.Settings[0]
+063    return null
+064   
+065   $dynamic = $al.Settings[9][0]
+066   skip if $dynamic == [TRUE]
+067    return null
+068   
+069   $is.On = $al.Settings[10][0]
+070   skip if $is.On == [TRUE]
+071    return null
+072  end
+073  
+074  return null
+075  
+076  
+077  * Build FDN Node details and Global Ref for host Sector
+078  Build.Global.Refs.Sub:
+079  $sec.node.Array = $return.Array[0]
+080  $s = size of array $sec.node.Array
+081  $menu.sector.Node.Array = = array alloc: size=0
+082  
+083  while $s > 0
+084   dec $s =
+085   $node = $sec.node.Array[$s]
+086   append $node to array $menu.sector.Node.Array
+087   $id = $node  ->  get ID code
+088   $sec = $node  ->  get sector
+089   
+090   $a = = array alloc: size=6
+091   $a[0] = 1
+092   $a[2] = 400
+093   $a[4] = -1
+094   
+095   $return.value = = create new array, arguments='rn.', $node, null, null, null
+096   $a.Node = = create new array, arguments=$a, $return.value, null, null, null
+097   
+098   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+099   set global variable: name=$pointer value=$a.Node
+100   
+101  end
+102  $main.menu.Sector.Array[1] = $menu.sector.Node.Array
+103  
+104  
+105  * Build Sub Node details and Global Ref for host Sector
+106  $sub.node.Array = $return.Array[1]
+107  $s = size of array $sub.node.Array
+108  $sub.menu.Node.Array = = array alloc: size=0
+109  
+110  while $s > 0
+111   dec $s =
+112   $sub.node = $sub.node.Array[$s]
+113   append $sub.node to array $sub.menu.Node.Array
+114   $id = $sub.node  ->  get ID code
+115   $sec = $sub.node  ->  get sector
+116   
+117   $a = = array alloc: size=6
+118   $a[0] = 1
+119   $a[2] = 400
+120   $a[4] = -1
+121   
+122   $return.value = = create new array, arguments='rn.', $sub.node, null, null, null
+123   $a.Node = = create new array, arguments=$a, $return.value, null, null, null
+124   
+125   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+126   set global variable: name=$pointer value=$a.Node
+127   
+128  end
+129  $main.menu.Sector.Array[3] = $sub.menu.Node.Array
+130  
+131  * Build Sub Dock details and Global Ref for host Sector
+132  $sub.dock.Array = $return.Array[2]
+133  $s = size of array $sub.dock.Array
+134  $sub.menu.Dock.Array = = array alloc: size=0
+135  
+136  while $s > 0
+137   dec $s =
+138   $sub.dock = $sub.dock.Array[$s]
+139   append $sub.dock to array $sub.menu.Dock.Array
+140   $id = $sub.dock  ->  get ID code
+141   $sec = $sub.dock  ->  get sector
+142   
+143   $a = = array alloc: size=6
+144   $a[0] = 1
+145   $a[2] = 400
+146   $a[4] = -1
+147   
+148   $return.value = = create new array, arguments='rn.', $sub.dock, null, null, null
+149   $a.dock = = create new array, arguments=$a, $return.value, null, null, null
+150   
+151   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+152   set global variable: name=$pointer value=$a.dock
+153   
+154  end
+155  $main.menu.Sector.Array[4] = $sub.menu.Dock.Array
+156  
+157  * Create Sub Relay details and Global Ref for host Sector
+158  $sub.relay.Array = $return.Array[3]
+159  $s = size of array $sub.relay.Array
+160  $sub.menu.Relay.Array = = array alloc: size=0
+161  
+162  while $s > 0
+163   dec $s =
+164   $sub.relay = $sub.relay.Array[$s]
+165   append $sub.relay to array $sub.menu.Relay.Array
+166   $id = $sub.relay  ->  get ID code
+167   $sec = $sub.relay  ->  get sector
+168   
+169   $a = = array alloc: size=6
+170   $a[0] = 1
+171   $a[2] = 400
+172   $a[4] = -1
+173   
+174   $return.value = = create new array, arguments='rr.', $sub.relay, null, null, null
+175   $a.relay = = create new array, arguments=$a, $return.value, null, null, null
+176   
+177   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+178   set global variable: name=$pointer value=$a.relay
+179   
+180  end
+181  $main.menu.Sector.Array[5] = $sub.menu.Relay.Array
+182  
+183  * Build Sub Sector details and Global Ref for host Sector
+184  $sub.sec.Array = [THIS] -> call script plugin.LI.FDN.Sector.Array : sector=$sector
+185  $s = size of array $sub.sec.Array
+186  $sub.menu.Sector.Array = = array alloc: size=0
+187  
+188  while $s > 0
+189   dec $s =
+190   $sec = $sub.sec.Array[$s]
+191   $x = $sec  ->  get universe x index
+192   $y = $sec  ->  get universe y index
+193   append $sec to array $sub.menu.Sector.Array
+194   
+195   $a = = array alloc: size=6
+196   $a[0] = 1
+197   $a[2] = 100
+198   $a[4] = 400
+199   
+200   $return.value = = create new array, arguments='rs.', $sec, null, null, null
+201   $a.Sector = = create new array, arguments=$a, $return.value, null, null, null
+202   
+203   $pointer = = sprintf: pageid=$PageID textid=5002, $sec, $sector, $x, $y, null
+204   set global variable: name=$pointer value=$a.Sector
+205   
+206  end
+207  $main.menu.Sector.Array[2] = $sub.menu.Sector.Array
+208  endsub
+209  
+210  
+211  
+212  * Update Node details to Global Ref for host Sector
+213  Update.Global.Refs.Sub:
+214  $sector = $gbl.Sector.Array[0]
+215  $sector.Node.Array = $gbl.Sector.Array[1]
+216  $sub.Sector.Array = $gbl.Sector.Array[2]
+217  $sub.Node.Array = $gbl.Sector.Array[3]
+218  $sub.Dock.Array = $gbl.Sector.Array[4]
+219  $sub.Relay.Array = $gbl.Sector.Array[5]
+220  
+221  $s = size of array $sector.Node.Array
+222  while $s > 0
+223   dec $s =
+224   $node = $sector.Node.Array[$s]
+225   $id = $node  ->  get ID code
+226   $sec = $node  ->  get sector
+227   $name = $node  ->  get name
+228   
+229   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+230   $a.Node = get global variable: name=$pointer
+231   
+232   $pointer = = read text: page=$PageID id=4000
+233   $details.Array = $node  ->  get local variable: name=$pointer
+234   if $details.Array[0]
+235    $txt = = sprintf: pageid=$PageID textid=9000, $name, null, null, null, null
+236   else
+237    $txt = $name
+238   end
+239   $a.Node[0][1] = $txt
+240   
+241   * Storage
+242   $curr = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Current'
+243   $max = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Max'
+244   $storage = '[ ' + $curr + ' / ' + $max + ' ]'
+245   $a.Node[0][3] = $storage
+246   
+247   * Money
+248   $money = $node  ->  get money
+249   $money = = convert number $money to string
+250   $money = $money + ' Cr'
+251   $a.Node[0][5] = $money
+252  end
+253  
+254  
+255  $s = size of array $sub.Sector.Array
+256  while $s > 0
+257   dec $s =
+258   $sub.Sec = $sub.Sector.Array[$s]
+259   
+260   $x = $sub.Sec  ->  get universe x index
+261   $y = $sub.Sec  ->  get universe y index
+262   
+263   $pointer = = sprintf: pageid=$PageID textid=5002, $sub.Sec, $sector, $x, $y, null
+264   $a.Sector = get global variable: name=$pointer
+265   
+266   $station.Array = = $sub.Sec  ->  get player owned station array from sector
+267   $sa = size of array $station.Array
+268   $fdn.enabled = 0
+269   $fdn.diabled = 0
+270   while $sa > 0
+271    dec $sa =
+272    $station = $station.Array[$sa]
+273    
+274    if $station  ->  is of class Factory 2006
+275     $detectable = $station  ->  is detectable
+276     if $detectable == 0
+277      $pointer = = read text: page=$PageID id=4001
+278      $details.Array = $station  ->  get local variable: name=$pointer
+279      $status = $details.Array[0]
+280      if $status
+281       inc $fdn.enabled =
+282      else
+283       inc $fdn.diabled =
+284      end
+285     end
+286    end
+287   end
+288   
+289   $jump = get jumps from sector $sector to sector $sub.Sec
+290   $jump.txt = = sprintf: pageid=$PageID textid=9002, $jump, null, null, null, null
+291   $jump.txt = '[' + $jump.txt + '] ' + $sub.Sec
+292   
+293   $txt = = sprintf: pageid=$PageID textid=110, $fdn.enabled, $fdn.diabled, null, null, null
+294   
+295   $a.Sector[0][1] = ' '
+296   $a.Sector[0][3] = $jump.txt
+297   $a.Sector[0][5] = $txt
+298  end
+299  
+300  
+301  $s = size of array $sub.Node.Array
+302  while $s > 0
+303   dec $s =
+304   $node = $sub.Node.Array[$s]
+305   $id = $node  ->  get ID code
+306   $sec = $node  ->  get sector
+307   
+308   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+309   $a.Node = get global variable: name=$pointer
+310   
+311   $pointer = = read text: page=$PageID id=4000
+312   $details.Array = $node  ->  get local variable: name=$pointer
+313   $jump = get jumps from sector $sector to sector $sec
+314   if $details.Array[0]
+315    $txt = = sprintf: pageid=$PageID textid=9000, $node, null, null, null, null
+316   else
+317    $txt = $node
+318   end
+319   $jump.txt = = sprintf: pageid=$PageID textid=9002, $jump, null, null, null, null
+320   $jump.txt = '[' + $jump.txt + '] ' + $txt
+321   $a.Node[0][1] = $jump.txt
+322   
+323   * Storage
+324   $curr = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Current'
+325   $max = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Max'
+326   $storage = '[ ' + $curr + ' / ' + $max + ' ]'
+327   $a.Node[0][3] = $storage
+328   
+329   * Money
+330   $money = $node  ->  get money
+331   $money = = convert number $money to string
+332   $money = $money + ' Cr'
+333   $a.Node[0][5] = $money
+334  end
+335  
+336  
+337  $s = size of array $sub.Dock.Array
+338  while $s > 0
+339   dec $s =
+340   $node = $sub.Dock.Array[$s]
+341   $id = $node  ->  get ID code
+342   $sec = $node  ->  get sector
+343   
+344   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+345   $a.Node = get global variable: name=$pointer
+346   
+347   $pointer = = read text: page=$PageID id=4000
+348   $details.Array = $node  ->  get local variable: name=$pointer
+349   $jump = get jumps from sector $sector to sector $sec
+350   if $details.Array[0]
+351    $txt = = sprintf: pageid=$PageID textid=9000, $node, null, null, null, null
+352   else
+353    $txt = $node
+354   end
+355   $jump.txt = = sprintf: pageid=$PageID textid=9002, $jump, null, null, null, null
+356   $jump.txt = '[' + $jump.txt + '] ' + $txt
+357   $a.Node[0][1] = $jump.txt
+358   
+359   * Storage
+360   $curr = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Current'
+361   $max = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Max'
+362   $storage = '[ ' + $curr + ' / ' + $max + ' ]'
+363   $a.Node[0][3] = $storage
+364   
+365   * Money
+366   $money = $node  ->  get money
+367   $money = = convert number $money to string
+368   $money = $money + ' Cr'
+369   $a.Node[0][5] = $money
+370  end
+371  
+372  
+373  $s = size of array $sub.Relay.Array
+374  while $s > 0
+375   dec $s =
+376   $relay = $sub.Relay.Array[$s]
+377   $id = $relay  ->  get ID code
+378   $sec = $relay  ->  get sector
+379   
+380   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+381   $a.Relay = get global variable: name=$pointer
+382   
+383   $pointer = = read text: page=$PageID id=4002
+384   $details.Array = $relay  ->  get local variable: name=$pointer
+385   $jump = get jumps from sector $sector to sector $sec
+386   
+387   if $details.Array[0]
+388    $txt = = sprintf: pageid=$PageID textid=9000, $relay, null, null, null, null
+389   else
+390    $txt = $relay
+391   end
+392   
+393   $jump = get jumps from sector $sector to sector $sec
+394   $jump.txt = = sprintf: pageid=$PageID textid=9002, $jump, null, null, null, null
+395   $jump.txt = '[' + $jump.txt + '] ' + $txt
+396   $a.Relay[0][1] = $jump.txt
+397   
+398   $a.Relay[0][3] = ' '
+399   $a.Relay[0][5] = ' '
+400  end
+401  endsub
+402  
+403  Ware.Summary.Sub:
+404  
+405  if not $ware.Details.Array[0]
+406   $txt1 = = read text: page=$PageID id=130
+407  else
+408   $txt1 = = read text: page=$PageID id=133
+409  end
+410  if not $ware.Details.Array[1]
+411   $txt2 = = read text: page=$PageID id=131
+412  else
+413   $txt2 = = read text: page=$PageID id=134
+414  end
+415  if not $ware.Details.Array[2]
+416   $txt3 = = read text: page=$PageID id=132
+417  else
+418   $txt3 = = read text: page=$PageID id=135
+419  end
+420  $pre = $txt1 + '|' + $txt2 + '|' + $txt3 + ' '
+421  
+422  endsub
+423  
+424  
+425  return null
+426  
+427  
+428  
+429  
+430  
+431  

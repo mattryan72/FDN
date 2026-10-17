@@ -1,0 +1,224 @@
+* Script: plugin.LI.FDN.Node.Array  (v7, engine 44)
+* Desc: 
+* Arg 0: sector (Var/Sector) 'sector'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  
+005  * Search for Main Menu which returns node dock and relay
+006  $al.Settings = get global variable: name='al.LI.FDN.event'
+007  if $al.Settings
+008   $node.Array = $al.Settings[2]
+009   $relay.Array = $al.Settings[4]
+010  else
+011   return null
+012  end
+013  
+014  $return.Array = = array alloc: size=0
+015  
+016  if $sector
+017   
+018   $temp.Node.Array = = array alloc: size=0
+019   $dock.Array = = $sector  ->  get dock array from sector
+020   $s = size of array $dock.Array
+021   while $s > 0
+022    dec $s =
+023    $dock = $dock.Array[$s]
+024    $sub = = $dock  ->  get subtype
+025    $race = $dock  ->  get owner race
+026    if $race == Player
+027     if find $sub in array: $node.Array
+028      skip if find $dock in array: $temp.Node.Array
+029       append $dock to array $temp.Node.Array
+030     end
+031    end
+032   end
+033   append $temp.Node.Array to array $return.Array
+034   gosub Sub.In.Range.Sub:
+035   
+036  else
+037   
+038   $dock.Array = = get station array: of race Player class/type=Dock 2007
+039   if $dock.Array
+040    $s = size of array $dock.Array
+041    while $s > 0
+042     dec $s =
+043     $dock = $dock.Array[$s]
+044     $sub = = $dock  ->  get subtype
+045     if find $sub in array: $node.Array
+046      skip if find $dock in array: $return.Array
+047       append $dock to array $return.Array
+048     end
+049    end
+050   end
+051   
+052  end
+053  
+054  $s = size of array $return.Array
+055  if $s > 0
+056   return $return.Array
+057  else
+058   goto label Exit:
+059  end
+060  
+061  
+062  Sub.In.Range.Sub:
+063  $Node.In.Range.Array = = array alloc: size=0
+064  $Dock.In.Range.Array = = array alloc: size=0
+065  $Relay.In.Range.Array = = array alloc: size=0
+066  
+067  $dock.Array = = get station array: of race Player class/type=Dock 2007
+068  $node.sector.Array = $sector  ->  find all sectors within 8 jumps: Only known sectors=[TRUE]
+069  $dock.sector.Array = $sector  ->  find all sectors within 5 jumps: Only known sectors=[TRUE]
+070  
+071  $s = size of array $dock.Array
+072  while $s > 0
+073   dec $s =
+074   $dock = $dock.Array[$s]
+075   $sec = $dock  ->  get sector
+076   * if not $sec == $sector
+077   $adv.Sat = find ship: sector=$sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+078   if $adv.Sat
+079    
+080    $sub = = $dock  ->  get subtype
+081    if find $sub in array: $node.Array
+082     if find $sec in array: $node.sector.Array
+083      if not find $dock in array: $Node.In.Range.Array
+084       $check = $return.Array[0]
+085       if not find $dock in array: $check
+086        append $dock to array $Node.In.Range.Array
+087        gosub INN.Search:
+088       end
+089      end
+090     end
+091    else
+092     if find $sec in array: $dock.sector.Array
+093      if find $sub in array: $relay.Array
+094       skip if find $dock in array: $Relay.In.Range.Array
+095        append $dock to array $Relay.In.Range.Array
+096      else
+097       skip if find $dock in array: $Dock.In.Range.Array
+098        append $dock to array $Dock.In.Range.Array
+099      end
+100     end
+101    end
+102   end
+103  end
+104  
+105  
+106  * Sort Node in range by Jump Distance
+107  $s = size of array $Node.In.Range.Array
+108  $Node.In.Range.Array = = sort array $Node.In.Range.Array
+109  $sort.Array = = array alloc: size=$s
+110  $temp.Array = = array alloc: size=0
+111  $cnt = 0
+112  while $cnt < $s
+113   $node = $Node.In.Range.Array[$cnt]
+114   $node.Sec = $node  ->  get sector
+115   $jump = get jumps from sector $node.Sec to sector $sector
+116   $sort.Array[$cnt] = $jump
+117   inc $cnt =
+118  end
+119  
+120  $temp.Array = = sort array: data=$Node.In.Range.Array sort values=$sort.Array
+121  append $temp.Array to array $return.Array
+122  
+123  
+124  * Sort Dock in range by Jump Distance
+125  $s = size of array $Dock.In.Range.Array
+126  $Dock.In.Range.Array = = sort array $Dock.In.Range.Array
+127  $Dock.In.Range.Array = reverse array $Dock.In.Range.Array
+128  $temp.Array = = array alloc: size=0
+129  $sort.Array = = array alloc: size=$s
+130  $cnt = 0
+131  while $cnt < $s
+132   $dock = $Dock.In.Range.Array[$cnt]
+133   $dock.Sec = $dock  ->  get sector
+134   $jump = get jumps from sector $dock.Sec to sector $sector
+135   $sort.Array[$cnt] = $jump
+136   inc $cnt =
+137  end
+138  $temp.Array = = sort array: data=$Dock.In.Range.Array sort values=$sort.Array
+139  append $temp.Array to array $return.Array
+140  
+141  
+142  * Sort Relay in range by Jump Distance
+143  $s = size of array $Relay.In.Range.Array
+144  $Relay.In.Range.Array = = sort array $Relay.In.Range.Array
+145  $Relay.In.Range.Array = reverse array $Relay.In.Range.Array
+146  $sort.Array = = array alloc: size=$s
+147  $temp.Array = = array alloc: size=0
+148  $cnt = 0
+149  while $cnt < $s
+150   $relay = $Relay.In.Range.Array[$cnt]
+151   $relay.Sec = $relay  ->  get sector
+152   $jump = get jumps from sector $relay.Sec to sector $sector
+153   $sort.Array[$cnt] = $jump
+154   inc $cnt =
+155  end
+156  $temp.Array = = sort array: data=$Relay.In.Range.Array sort values=$sort.Array
+157  append $temp.Array to array $return.Array
+158  
+159  endsub
+160  
+161  
+162  INN.Search:
+163  $node.inn.sec.Array = $sec  ->  find all sectors within 8 jumps: Only known sectors=[TRUE]
+164  $dock.inn.sec.Array = $sec  ->  find all sectors within 5 jumps: Only known sectors=[TRUE]
+165  $ss = size of array $dock.Array
+166  while $ss > 0
+167   dec $ss =
+168   $dock.2 = $dock.Array[$ss]
+169   $sec.2 = $dock.2  ->  get sector
+170   * if not $sec.2 == $sector
+171   $adv.Sat = find ship: sector=$sec.2 class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+172   if $adv.Sat
+173    
+174    $sub = = $dock.2  ->  get subtype
+175    if find $sub in array: $node.Array
+176     if find $sec.2 in array: $node.inn.sec.Array
+177      if not find $dock.2 in array: $Node.In.Range.Array
+178       $check = $return.Array[0]
+179       if not find $dock.2 in array: $check
+180        append $dock.2 to array $Node.In.Range.Array
+181       end
+182      end
+183     end
+184    else
+185     if find $sec.2 in array: $dock.inn.sec.Array
+186      if find $sub in array: $relay.Array
+187       skip if find $dock.2 in array: $Relay.In.Range.Array
+188        append $dock.2 to array $Relay.In.Range.Array
+189      else
+190       skip if find $dock.2 in array: $Dock.In.Range.Array
+191        append $dock.2 to array $Dock.In.Range.Array
+192      end
+193     end
+194    end
+195    * end
+196   end
+197  end
+198  
+199  endsub
+200  
+201  Exit:
+202  return null
+203  
+204  
+205  
+206  
+207  
+208  
+209  
+210  
+211  
+212  
+213  
+214  
+215  
+216  
+217  
+218  
+219  
+220  

@@ -1,0 +1,260 @@
+* Script: plugin.LI.FDN.Supply.Dock  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $PageID = $al.Settings[1]
+006   $debug = $al.Settings[5][1]
+007   $DebugID = 0 + $PageID
+008  end
+009  
+010  if $debug == [TRUE]
+011   $script = = get script name
+012   $id = [THIS]  ->  get ID code
+013   $sector = [THIS]  ->  get sector
+014  end
+015  
+016  $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Supply.Node :
+017  skip if $node.Array
+018   return null
+019  
+020  * ----
+021  if $debug == [TRUE]
+022   $txt.debug = '[' + $id + ']' + [THIS] + ';Node Array = ' + $node.Array
+023   gosub Debug.Sub:
+024  end
+025  * ----
+026  
+027  $ware.Array = [THIS]  ->  get tradeable ware array from station
+028  $sw = size of array $ware.Array
+029  while $sw > 0
+030   dec $sw =
+031   $ware = $ware.Array[$sw]
+032   $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+033   $ware.settings = [THIS]  ->  get local variable: name=$w.pointer
+034   
+035   if $ware.settings
+036    
+037    $ware.cap = $ware.settings[3]
+038    $current = [THIS]  ->  get amount of ware $ware in cargo bay
+039    $free = [THIS]  ->  get free amount of ware $ware in cargo bay
+040    
+041    skip if $ware.cap > 0
+042     $ware.cap = 0
+043    
+044    if $current > $ware.cap
+045     $surplus = $current - $ware.cap
+046     if $surplus > 0
+047      * ----
+048      if $debug == [TRUE]
+049       $txt.debug = '[' + $id + ']' + [THIS] + ';Pass ' + $surplus + ' of ' + $ware + ' to FDN'
+050       gosub Debug.Sub:
+051      end
+052      * ----
+053      gosub Supply.Node:
+054     end
+055     
+056    else
+057     $required = $ware.cap - $current
+058     skip if $free > $required
+059      $required = $free
+060     if $required > 0
+061      * ----
+062      if $debug == [TRUE]
+063       $txt.debug = '[' + $id + ']' + [THIS] + ';Requires ' + $required + ' of ' + $ware
+064       gosub Debug.Sub:
+065      end
+066      * ----
+067      gosub Supply.Dock:
+068     end
+069    end
+070    
+071   end
+072   
+073   
+074   skip if not $sw == ( $sw / 5 ) * 5
+075     = wait 100 ms
+076  end
+077  
+078  return null
+079  
+080  
+081  Supply.Dock:
+082  $sn = size of array $node.Array
+083  while $sn > 0
+084   dec $sn =
+085   $node = $node.Array[$sn]
+086   
+087   
+088   if $debug == [TRUE]
+089    $n.id = $node  ->  get ID code
+090    $n.sector = $node  ->  get sector
+091    $jump = get jumps from sector $n.sector to sector $sector
+092   end
+093   
+094   * ----
+095   if $debug == [TRUE]
+096    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Array Position = ' + $sn
+097    gosub Debug.Sub:
+098   end
+099   * ----
+100   
+101   $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+102   $n.ware.settings = $node  ->  get local variable: name=$w.pointer
+103   if $n.ware.settings[0]
+104    
+105    $n.ware.cap = $n.ware.settings[4]
+106    skip if $n.ware.cap > 0
+107     $n.ware.cap = 0
+108    
+109    $n.current = $node  ->  get amount of ware $ware in cargo bay
+110    $n.avail = $n.current - $n.ware.cap
+111    
+112    * ----
+113    if $debug == [TRUE]
+114     $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';' + $n.avail + ' of ' + $ware + ' is available'
+115     gosub Debug.Sub:
+116    end
+117    * ----
+118    
+119    if $n.avail > 0
+120     if $n.avail > $required
+121       = [THIS]  ->  add $required units of $ware
+122      $rem = - $required
+123       = $node  ->  add $rem units of $ware
+124      endsub
+125      
+126      * ----
+127      if $debug == [TRUE]
+128       $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Removed ' + $rem + ' of ' + $ware
+129       gosub Debug.Sub:
+130       $txt.debug = '[' + $id + ']' + [THIS] + ';Received ' + $required + ' of ' + $ware
+131       gosub Debug.Sub:
+132      end
+133      * ----
+134      
+135     else
+136       = [THIS]  ->  add $n.avail units of $ware
+137      $rem = - $n.avail
+138       = $node  ->  add $rem units of $ware
+139      $required = $required - $n.avail
+140      
+141      * ----
+142      if $debug == [TRUE]
+143       $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Removed ' + $rem + ' of ' + $ware
+144       gosub Debug.Sub:
+145       $txt.debug = '[' + $id + ']' + [THIS] + ';Received ' + $n.avail + ' of ' + $ware
+146       gosub Debug.Sub:
+147      end
+148      * ----
+149      
+150     end
+151    end
+152   end
+153   skip if not $sn == ( $sn / 5 ) * 5
+154     = wait 100 ms
+155  end
+156  endsub
+157  
+158  
+159  Supply.Node:
+160  $sn = size of array $node.Array
+161  while $sn > 0
+162   dec $sn =
+163   $node = $node.Array[$sn]
+164   
+165   
+166   if $debug == [TRUE]
+167    $n.id = $node  ->  get ID code
+168    $n.sector = $node  ->  get sector
+169    $jump = get jumps from sector $n.sector to sector $sector
+170   end
+171   
+172   * ----
+173   if $debug == [TRUE]
+174    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Array Position = ' + $sn
+175    gosub Debug.Sub:
+176   end
+177   * ----
+178   
+179   $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+180   if not $node  ->  trades with ware $ware
+181     = $node  ->  add 1 units of $ware
+182     = $node  ->  add -1 units of $ware
+183    $ware.Settings = = array alloc: size=6
+184    $temp = = array alloc: size=2
+185    append $temp to array $ware.Settings
+186    $node  ->  set local variable: name=$w.pointer value=$ware.Settings
+187   end
+188   $ware.Settings = $node  ->  get local variable: name=$w.pointer
+189   
+190   $node.curr = $node  ->  get amount of ware $ware in cargo bay
+191   
+192   if $ware.Settings[3]
+193    $cap = $ware.Settings[3]
+194    skip if $cap > 0
+195     $cap = 0
+196    $free = $cap - $node.curr
+197   else
+198    $free = $node  ->  get free amount of ware $ware in cargo bay
+199   end
+200   
+201   * ----
+202   if $debug == [TRUE]
+203    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';' + $free + ' of ' + $ware + ' is available'
+204    gosub Debug.Sub:
+205   end
+206   * ----
+207   
+208   if $free > 0
+209    if $free >= $surplus
+210      = $node  ->  add $surplus units of $ware
+211     $remove = - $surplus
+212      = [THIS]  ->  add $remove units of $ware
+213     
+214     * ----
+215     if $debug == [TRUE]
+216      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Recieved ' + $surplus + ' of ' + $ware
+217      gosub Debug.Sub:
+218      $txt.debug = '[' + $id + ']' + [THIS] + ';Removed ' + $remove + ' of ' + $ware
+219      gosub Debug.Sub:
+220     end
+221     * ----
+222     
+223     endsub
+224    else
+225      = $node  ->  add $free units of $ware
+226     $remove = - $free
+227      = [THIS]  ->  add $remove units of $ware
+228     $surplus = $surplus - $free
+229     
+230     * ----
+231     if $debug == [TRUE]
+232      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Recieved ' + $free + ' of ' + $ware
+233      gosub Debug.Sub:
+234      $txt.debug = '[' + $id + ']' + [THIS] + ';Removed ' + $remove + ' of ' + $ware
+235      gosub Debug.Sub:
+236     end
+237     * ----
+238     
+239    end
+240   end
+241   skip if not $sn == ( $sn / 5 ) * 5
+242     = wait 100 ms
+243  end
+244  endsub
+245  
+246  
+247  Debug.Sub:
+248  $d.time = = playing time
+249  $d.time = = format time: $d.time
+250  $txt = $d.time + ';' + $script + ';' + $txt.debug
+251  write to log file $DebugID  append=[TRUE]  value=$txt
+252  endsub
+253  
+254  
+255  return null
+256  
+257  

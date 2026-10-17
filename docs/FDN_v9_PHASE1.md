@@ -1,0 +1,23 @@
+# Phase 1: Bug fixes in place (no refactor yet)
+
+**Paste with:** MASTER_PROMPT, REFERENCE, ANALYSIS §4 (bug table), `NOTES_semantics.md` from Phase 0, and **only** the one script for the current step.
+**Branch:** `v9/phase1-bugfix`. One commit per script: `fix(B1): Supply.Start real run-lock`.
+**Rules:** minimal diffs. Keep script names and arguments. No new library scripts yet; small inline helpers are OK and get replaced in Phase 2. Mark every change `* v9.01 B#`.
+
+Work in this order (each line is one AI answer):
+1. `plugin.LI.FDN.Supply.Start`: **B1** set `$al.Settings[12] = playing time` (not a local flag), and treat it as stale after 120 s. **B3** validate the DC each tick (`exists`, `get owner race == Player`, `is of class Dock 2007`). If invalid: set `[2]` = null, send one player message, return. **P1 (quick)** only START `Sector.Array` if `playing time - [16] >= 300` and store `[16]`.
+2. `plugin.LI.FDN.Supply.Factory.Check`: **B1** move the reverse toggle to `[13]`. Release `[12]` at the end **and** on early returns. **B13** iterate forward/backward by index instead of `reverse array` (or per the Phase 0 result). **B3** owner check: drop non-player factories from the array. Hoist `read text 4001` (**P7**).
+3. `plugin.LI.FDN.Supply.Factory`: **B3** re-check the DC before moving product. Only remove from the factory the amount that `Update.Ware` reports as added. Null-check the ware record before reading `[3]`. **B11** skip `Buy.Ware` if `FDN.Settings[3]` (busy-until) is greater than now. Set it to now + 120 when starting Buy.
+4. `plugin.LI.FDN.Update.Ware`: **B2** build `$pointer` before the `create` gosub (line 33). Return the actual added amount on every path. New records get `[7] = null` **only if Matt approved B5**, otherwise keep −1 and add a TODO.
+5. `plugin.LI.FDN.Supply.Dock`: **B4** in Sell.Ware.Sub, require a non-null record and `$sell >= 0` as an INT. **B12** re-check `$dock -> exists` and the owner after each wait. Add a wait every 10 wares (**P8**).
+6. `plugin.LI.FDN.Supply.Dock.Check`: **B3** owner check and drop non-player docks. Use the DC check result from Supply.Start.
+7. `plugin.LI.FDN.Sell.Ware` and `plugin.LI.FDN.Buy.Ware` (two answers): **B4** guard against null records. **B12** re-validate the dock/factory/DC each loop. **B15 (minimal, inline; replaced by `lib.LI.FDN.Trade` in Phase 2)**: keep the drone. After `create ship`, skip the trade if `$drone` is null or not `exists` (log it). Name it "FDN Trade Drone" and set the `FDN.Trade.Drone` tag before trading. Nothing waits between create and destruct. Treat a null buy/sell return as 0. Buy.Ware: clamp to the drone's `get max amount … cargo bay` and only add what was actually bought. Destruct on every path behind `if $drone -> exists`. Use the cached sector list `[15]` if present instead of calling Sector.Array (**P2**).
+8. `al.LI.FDN.event`: **B14** use `START` for Supply.Start (no synchronous call). **B16** add `[14]` schema version and call `plugin.LI.FDN.Upgrade` on init/reinit (create the stub now: it only sets `[14]=901` if empty; Phase 4 completes it).
+9. `plugin.LI.FDN.Main.Menu`: **B8** START `*_D` only when entering view 1/5 (not on every redraw); keep a `[20]` token. **B18/B19** null-check `$ware` and the record (get-or-create). **B26** ask for confirmation before Remove Ware (it deletes the record and any virtual stock). Delete dead view-3 code (**B24**).
+10. `plugin.LI.FDN.Menu.Dock.Details_D`: **B7** read `is.dynamic[2]`. `Menu.DC.Details_D`: fix **B8(b)** (the view reads FDND globals before the updater writes them). Both exit when `[20]` changes.
+11. `plugin.LI.FDN.Reset`: **B9** regex `'^FDN\.'`, exists checks, set `[0]` FALSE first, sweep all player docks/factories, clear `[12]`–`[20]`.
+12. `plugin.LI.FDN.Setup`: **B6** only call `plugin.config.addscript` if available (VERIFY: is there an "is script available" style command? If not, document the dependency and add the hotkey in Phase 4).
+13. Small fixes, batched in one answer: `Move.Ware` B20, `Menu.Ware.Details` B21, `Menu.Factory.Details` B22, `Config.Menu` B23, `Sort.Wares` B17 ("Other" group, new text 300).
+
+**Test after each compile (baseline sandbox):** load the save; the log must show no script errors; supply must still run (products reach the DC, resources reach factories). Specific tests: destroy or sell a factory → it is dropped; destroy the DC (cheat) → FDN pauses with a message and no wares vanish; after a buy/sell cycle no "FDN Trade Drone" remains (property list); open and close the DC menu 20 times → only one updater task (log counter).
+**Done when:** B1–B16 are fixed or explicitly deferred, the baseline behaviour is unchanged otherwise, and CHANGELOG is updated. Tag `v9-phase1`.

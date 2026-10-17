@@ -1,0 +1,19 @@
+* Script: plugin.LI.FDN.Main.Menu.Call  (v7, engine 44)
+* Desc: 
+
+001  * AL settings--
+002  $al.Settings = get global variable: name='al.LI.FDN.event'
+003  if $al.Settings
+004   $al.Settings[10][0] = [TRUE]
+005  else
+006   return null
+007  end
+008  
+009   = [THIS] -> call script plugin.LI.Dock.Check :
+010  
+011  START  = [THIS] -> call script plugin.LI.FDN.Main.Menu.D :
+012   = [THIS] -> call script plugin.LI.FDN.Main.Menu :
+013  return null
+014  
+015  
+016  

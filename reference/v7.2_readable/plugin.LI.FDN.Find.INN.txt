@@ -1,0 +1,72 @@
+* Script: plugin.LI.FDN.Find.INN  (v7, engine 44)
+* Desc: 
+* Arg 0: sector (Var/Sector) 'sector'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * This script finds and returns all FDN Nodes in INN range from the caller.
+005  * It is used by scripts fro the main menu
+006  * Unlike the suppy version this does not check Node status.
+007  
+008  * Used by scripts:
+009  * plugin.LI.FDN.Sector.Array
+010  * plugin.LI.FDN.Node.Array
+011  
+012  
+013  * Al Settings
+014  $al.Settings = get global variable: name='al.LI.FDN.event'
+015  if $al.Settings
+016   $node.Array = $al.Settings[2]
+017  end
+018  
+019  
+020  * Find all Nodes in range
+021  $flags = [Find.Multiple]
+022  $dock.Array = find station in galaxy: startsector=$sector class or type=Dock 2007 race=Player flags=$flags refobj=null serial=null max.jumps=8 num=100
+023  $s = size of array $dock.Array
+024  $temp.Array = = array alloc: size=0
+025  
+026  
+027  while $s > 0
+028   dec $s =
+029   $dock = $dock.Array[$s]
+030   $dock.sec = $dock  ->  get sector
+031   * Check if in Adv Sat coverage
+032   $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+033   if $adv.Sat
+034    $sub = = $dock  ->  get subtype
+035    skip if not find $sub in array: $node.Array
+036     append $dock to array $temp.Array
+037   end
+038  end
+039  
+040  
+041  * Find All Nodes within Range of first search
+042  
+043  $return.Array = = array alloc: size=0
+044  $s = size of array $temp.Array
+045  while $s > 0
+046   dec $s =
+047   $node = $temp.Array[$s]
+048   $nodes.in.range.Array = $node -> call script plugin.LI.FDN.Find.Node :
+049   $sr = size of array $nodes.in.range.Array
+050   while $sr > 0
+051    dec $sr =
+052    $node.in.range = $nodes.in.range.Array[$sr]
+053    skip if find $node.in.range in array: $return.Array
+054     append $node.in.range to array $return.Array
+055   end
+056  end
+057  
+058  
+059  $s = size of array $return.Array
+060  if $s > 0
+061   return $return.Array
+062  else
+063   return null
+064  end
+065  
+066  return null
+067  
+068  

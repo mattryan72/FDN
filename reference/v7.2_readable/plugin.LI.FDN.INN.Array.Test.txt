@@ -1,0 +1,79 @@
+* Script: plugin.LI.FDN.INN.Array.Test  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * Test script that groups Node into INN
+005  
+006  
+007  $al.Settings = get global variable: name='al.LI.FDN.event'
+008  if $al.Settings
+009   $node.Array = $al.Settings[2]
+010  end
+011  
+012  * Step Build Node Array
+013  $node.inn.Array = = array alloc: size=0
+014  $temp.Array = = array alloc: size=0
+015  $dock.Array = = get station array: of race Player class/type=Dock 2007
+016  $s = size of array $dock.Array
+017  while $s > 0
+018   dec $s =
+019   $dock = $dock.Array[$s]
+020   $dock.sec = $dock -> get sector
+021   $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+022   if $adv.Sat
+023    $sub = = $dock -> get subtype
+024    if find $sub in array: $node.Array
+025     skip if find $dock in array: $temp.Array
+026      append $dock to array $temp.Array
+027    end
+028   end
+029  end
+030  
+031  $temp.inn.Array = = array alloc: size=0
+032  $s = size of array $temp.Array
+033  while $s > 0
+034   dec $s =
+035   $dock = $temp.Array[$s]
+036   
+037   append $dock to array $temp.inn.Array
+038   $inn.Array = $dock -> call script plugin.LI.FDN.Find.Node :
+039   
+040   $ss = size of array $inn.Array
+041   while $ss > 0
+042    dec $ss =
+043    $node = $inn.Array[$ss]
+044    skip if find $node in array: $temp.inn.Array
+045     append $node to array $temp.inn.Array
+046   end
+047   
+048   append $temp.inn.Array to array $node.inn.Array
+049  end
+050  
+051  write to log file 09918  append=[TRUE]  value=$node.inn.Array
+052  $s = size of array $node.inn.Array
+053  write to log file 09918  append=[TRUE]  value=$s
+054  while $s > 0
+055   dec $s =
+056   $inn.Array = $node.inn.Array[$s]
+057   gosub INN.Array:
+058  end
+059  
+060  return null
+061  
+062  
+063  INN.Array:
+064  write to log file 09918  append=[TRUE]  value=$inn.Array
+065  $ss = size of array $inn.Array
+066  write to log file 09918  append=[TRUE]  value=$ss
+067  while $ss > 0
+068   dec $ss =
+069   $node = $inn.Array[$ss]
+070   write to log file 09918  append=[TRUE]  value=$node
+071  end
+072  endsub
+073  
+074  return null
+075  
+076  

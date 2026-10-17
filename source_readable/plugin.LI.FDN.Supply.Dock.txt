@@ -1,0 +1,177 @@
+* Script: plugin.LI.FDN.Supply.Dock  (v1.0, engine 50)
+* Desc: FDNv8 - Supply Dock
+* Arg 0: dock (Value) 'dock'
+* Arg 1: flag (Value) 'flag'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script is called by LI.FDN.Menu.Supply.Dock.Check
+004  * It is used to handle suppy between the factrry and DC
+005  
+006  * Expected values:
+007  * - dock
+008  
+009  * Returns values:
+010  * - N/A
+011  
+012  * To Do - N/A
+013  
+014  * Version: 1.0
+015  * Date: 23/05/2012
+016  * Tested: 23/05/2012
+017  * -----------------------------------------------------------------------------------
+018  
+019  * Fetch values saved in the AL Plugin global variable:
+020  * - DC
+021  $script = = get script name
+022  $al.Settings = get global variable: name='al.LI.FDN.event'
+023  if $al.Settings
+024   $PageID = $al.Settings[1]
+025   $DebugID = 0 + $PageID
+026   $dc = $al.Settings[2]
+027  else
+028   return null
+029  end
+030  * -----------------------------------------------------------------------------------
+031  
+032  * this loops the wares at the DC for sale
+033  if $flag == 1
+034   if $dc  ->  exists
+035    $ware.array = $dock  ->  get tradeable ware array from station
+036    $s = size of array $ware.array
+037    while $s > 0
+038     dec $s =
+039     $ware = $ware.array[$s]
+040     * this calls the sell sub
+041     gosub Sell.Ware.Sub:
+042     * -----------------------------------------------------------------------------------
+043     
+044      = wait randomly from 500 to 1000 ms
+045    end
+046    return null
+047   end
+048  end
+049  * -----------------------------------------------------------------------------------
+050  
+051  * this loops the wares at the dock for supply from the DC and for sale
+052  if not $flag
+053   if not $dock == $dc
+054    $ware.array = $dock  ->  get tradeable ware array from station
+055    $s = size of array $ware.array
+056    while $s > 0
+057     dec $s =
+058     $ware = $ware.array[$s]
+059     
+060     * check that the ware transport class is not station
+061     $transport.class = = get transport class of ware $ware
+062     * -----------------------------------------------------------------------------------
+063     
+064     if not $transport.class == ST
+065      * this calls the sell sub
+066      gosub Sell.Ware.Sub:
+067      * -----------------------------------------------------------------------------------
+068      
+069      * calculate the stock levels
+070      $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+071      $ware.settings = $dock  ->  get local variable: name=$pointer
+072      $virtual.stock = $ware.settings[0]
+073      $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
+074      $stock = $virtual.stock + $physical.stock
+075      * -----------------------------------------------------------------------------------
+076      
+077      * get maintain amount
+078      $maintain.level = $ware.settings[2]
+079      if not $maintain.level > 0
+080       $maintain.level = 0
+081      end
+082      * calculate required
+083      $required.at.dock = $maintain.level - $stock
+084      if not $required.at.dock > 0
+085       if $ware.settings[7]
+086        $surplus = $stock - $maintain.level
+087        if $surplus > 0
+088          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dc  action='add'
+089          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dock  action='remove'
+090        end
+091       end
+092      end
+093      * -----------------------------------------------------------------------------------
+094      
+095      * if required greater than 0
+096      if $required.at.dock > 0
+097       
+098       $dc.ware.settings = $dc  ->  get local variable: name=$pointer
+099       if not $dc.ware.settings
+100         = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=null  station=$dc  action='create'
+101        $dc.ware.settings = $dc  ->  get local variable: name=$pointer
+102       end
+103       
+104       * calculate dc stock
+105       $dc.virtual.stock = $dc.ware.settings[0]
+106       $dc.physical.stock = $dc  ->  get amount of ware $ware in cargo bay
+107       $dc.stock = $dc.virtual.stock + $dc.physical.stock
+108       * -----------------------------------------------------------------------------------
+109       
+110       * get remote access level at dc
+111       $dc.remote.level = $dc.ware.settings[1]
+112       * -----------------------------------------------------------------------------------
+113       
+114       * if dc remote access in on, greater than 0
+115       if $dc.remote.level > 0
+116        * available is the stock - remote access level
+117        $dc.avialable = $dc.stock - $dc.remote.level
+118        * if avialable is greater tha 0
+119        if $dc.avialable > 0
+120         * if the available is less than what is requested set requested to available
+121         if $dc.avialable < $required.at.dock
+122          $required.at.dock = $dc.avialable
+123         end
+124         
+125         * call the script to add the wares to the dock
+126          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dock  action='add'
+127         * -----------------------------------------------------------------------------------
+128         
+129         * call the script to removes the wares from the dc
+130          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dc  action='remove'
+131         * -----------------------------------------------------------------------------------
+132        end
+133       end
+134      end
+135      
+136     end
+137    end
+138     = wait randomly from 500 to 1000 ms
+139   end
+140  end
+141  return null
+142  * -----------------------------------------------------------------------------------
+143  
+144  * sell ware Sub, checks if the ware can be sold and if so call the sell ware script
+145  Sell.Ware.Sub:
+146  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+147  $ware.settings = $dock  ->  get local variable: name=$pointer
+148  $sell = $ware.settings[5]
+149  if $sell >= 0
+150   $virtual.stock = $ware.settings[0]
+151   $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
+152   $stock = $virtual.stock + $physical.stock
+153   if $stock > $sell
+154    $amount = $stock - $sell
+155    START  = null -> call script plugin.LI.FDN.Sell.Ware : dock=$dock  ware=$ware  amount=$amount
+156   end
+157  end
+158  endsub
+159  * -----------------------------------------------------------------------------------
+160  
+161  * Debug Massage handling
+162  Debug.Sub:
+163  $d.time = = playing time
+164  $d.time = = format time: $d.time
+165  $txt = $d.time + ';' + $script + ';' + $dock + ';' + $txt.debug
+166  write to log file $DebugID  append=[TRUE]  value=$txt
+167  endsub
+168  * -----------------------------------------------------------------------------------
+169  return null
+170  
+171  
+172  

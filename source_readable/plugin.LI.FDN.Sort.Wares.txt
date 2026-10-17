@@ -1,0 +1,133 @@
+* Script: plugin.LI.FDN.Sort.Wares  (v1.0, engine 50)
+* Desc: FDNv8 - Sort wares by main type
+* Arg 0: station (Value) 'station'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script sorts wares into their main type
+004  * Called by:
+005  * - plugin.LI.FDN.Main.DC.Details
+006  * - plugin.LI.FDN.Main.Dock.Details
+007  * - plugin.LI.FDN.Main.Dock.List
+008  
+009  * Expected values:
+010  * - station
+011  
+012  * Return values:
+013  * - return.array[Array[MainType][Array[sorted ware for main type]]]]
+014  
+015  * ToDo:
+016  * - ?
+017  
+018  * Version: 1.0
+019  * Date: 22/05/2012
+020  * Tested: 22/05/2012
+021  * -----------------------------------------------------------------------------------
+022  
+023  * Get the ware array for the DC or dock
+024  $ware.Array = $station  ->  get tradeable ware array from station
+025  * -----------------------------------------------------------------------------------
+026  
+027  * Create temp arrays to hold the wares
+028  $tlaser.Array = = array alloc: size=0
+029  $tshield.Array = = array alloc: size=0
+030  $tmissile.Array = = array alloc: size=0
+031  $tenergy.Array = = array alloc: size=0
+032  $tnatural.Array = = array alloc: size=0
+033  $tbio.Array = = array alloc: size=0
+034  $tfood.Array = = array alloc: size=0
+035  $tmineral.Array = = array alloc: size=0
+036  $ttech.Array = = array alloc: size=0
+037  $tequip.Array = = array alloc: size=0
+038  * -----------------------------------------------------------------------------------
+039  
+040  * Create array to hold the results
+041  $main.ware.Array = = array alloc: size=0
+042  * -----------------------------------------------------------------------------------
+043  
+044  * Loop the wares and add to the appropriate temp array
+045  $s = size of array $ware.Array
+046  while $s > 0
+047   dec $s =
+048   $ware = $ware.Array[$s]
+049   if is datatyp[ $ware ] == DATATYPE_WARE
+050    $main.t = = get maintype of ware $ware
+051    if $main.t == [SSTYPE_LASER]
+052     append $ware to array $tlaser.Array
+053    else if $main.t == [SSTYPE_SHIELD]
+054     append $ware to array $tshield.Array
+055    else if $main.t == [SSTYPE_MISSILE]
+056     append $ware to array $tmissile.Array
+057    else if $main.t == [SSTYPE_W_ENERGY]
+058     append $ware to array $tenergy.Array
+059    else if $main.t == [SSTYPE_W_NATURAL]
+060     append $ware to array $tnatural.Array
+061    else if $main.t == [SSTYPE_W_BIO]
+062     append $ware to array $tbio.Array
+063    else if $main.t == [SSTYPE_W_FOOD]
+064     append $ware to array $tfood.Array
+065    else if $main.t == [SSTYPE_W_MINERALS]
+066     append $ware to array $tmineral.Array
+067    else if $main.t == [SSTYPE_W_TECH]
+068     if not is equipment: ware=$ware
+069      append $ware to array $ttech.Array
+070     else
+071      append $ware to array $tequip.Array
+072     end
+073    end
+074   end
+075  end
+076  * -----------------------------------------------------------------------------------
+077  
+078  * sort the tenp arrays
+079  $tequip.Array = = sort array $tequip.Array
+080  $tequip.Array = reverse array $tequip.Array
+081  $ttech.Array = = sort array $ttech.Array
+082  $ttech.Array = reverse array $ttech.Array
+083  $tmineral.Array = = sort array $tmineral.Array
+084  $tmineral.Array = reverse array $tmineral.Array
+085  $tfood.Array = = sort array $tfood.Array
+086  $tfood.Array = reverse array $tfood.Array
+087  $tbio.Array = = sort array $tbio.Array
+088  $tbio.Array = reverse array $tbio.Array
+089  $tnatural.Array = = sort array $tnatural.Array
+090  $tnatural.Array = reverse array $tnatural.Array
+091  $tmissile.Array = = sort array $tmissile.Array
+092  $tmissile.Array = reverse array $tmissile.Array
+093  $tshield.Array = = sort array $tshield.Array
+094  $tshield.Array = reverse array $tshield.Array
+095  $tlaser.Array = = sort array $tlaser.Array
+096  $tlaser.Array = reverse array $tlaser.Array
+097  * -----------------------------------------------------------------------------------
+098  
+099  * create  an array[main type][ware array for the main type]
+100  $laser.Array = = create new array, arguments=8, $tlaser.Array, null, null, null
+101  $shield.Array = = create new array, arguments=9, $tshield.Array, null, null, null
+102  $missile.Array = = create new array, arguments=10, $tmissile.Array, null, null, null
+103  $energy.Array = = create new array, arguments=11, $tenergy.Array, null, null, null
+104  $natural.Array = = create new array, arguments=12, $tnatural.Array, null, null, null
+105  $bio.Array = = create new array, arguments=13, $tbio.Array, null, null, null
+106  $food.Array = = create new array, arguments=14, $tfood.Array, null, null, null
+107  $mineral.Array = = create new array, arguments=15, $tmineral.Array, null, null, null
+108  $tech.Array = = create new array, arguments=16, $ttech.Array, null, null, null
+109  $equip.Array = = create new array, arguments=17, $tequip.Array, null, null, null
+110  * -----------------------------------------------------------------------------------
+111  
+112  * Add the created array to the main.ware.array
+113  append $equip.Array to array $main.ware.Array
+114  append $tech.Array to array $main.ware.Array
+115  append $mineral.Array to array $main.ware.Array
+116  append $food.Array to array $main.ware.Array
+117  append $bio.Array to array $main.ware.Array
+118  append $natural.Array to array $main.ware.Array
+119  append $energy.Array to array $main.ware.Array
+120  append $missile.Array to array $main.ware.Array
+121  append $shield.Array to array $main.ware.Array
+122  append $laser.Array to array $main.ware.Array
+123  * -----------------------------------------------------------------------------------
+124  
+125  * return the main.ware.array
+126  return $main.ware.Array
+127  
+128  
+129  

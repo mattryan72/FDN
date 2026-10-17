@@ -1,0 +1,12 @@
+* Script: al.plugin.LI.FDN.register  (v8, engine 50)
+* Desc: v4 AL Plugin registration script
+
+001  $PageID = 9910
+002  load text: id=$PageID
+003  
+004  al engine: register script=al.LI.FDN.event
+005  
+006  return null
+007  
+008  
+009  

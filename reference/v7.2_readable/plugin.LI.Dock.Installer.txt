@@ -1,0 +1,203 @@
+* Script: plugin.LI.Dock.Installer  (v1, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  
+004  if not get global variable: name='LI.Shipyards'
+005   $array.Shipyard = = array alloc: size=12
+006   set global variable: name='LI.Shipyards' value=$array.Shipyard
+007  end
+008  
+009  $array.Shipyard = get global variable: name='LI.Shipyards'
+010  
+011  * ---Dummy Ref from Page 17
+012  $ref.Array = = array alloc: size=0
+013  $temp.Array = = array alloc: size=0
+014  * ---Call sub to build ref array
+015  gosub Build.Ref.Array:
+016  
+017  $s = size of array $array.Shipyard
+018  while $s > 0
+019   dec $s =
+020   $shipyard = $array.Shipyard[$s]
+021   if is datatyp[ $shipyard ] == DATATYP_NULL
+022    gosub Build.Shipyard:
+023   else if not $shipyard  ->  exists
+024    gosub Build.Shipyard:
+025   end
+026   
+027  end
+028  
+029  set global variable: name='LI.Shipyards' value=$array.Shipyard
+030  return null
+031  
+032  
+033  Get.Shipyard.Ref:
+034  if $s == 0
+035   $race = Argon
+036   $sector = Ringo Moon
+037   $type = Argon Federal Argon Shipyard 6_0
+038   $x = 28000
+039   $y = 16000
+040   $z = 18000
+041  else if $s == 1
+042   $race = Argon
+043   $sector = Treasure Chest
+044   $type = Argon Federal Argon Shipyard 6_0
+045   $x = 28000
+046   $y = 16000
+047   $z = 18000
+048  else if $s == 2
+049   $race = Boron
+050   $sector = Rolk's Drift
+051   $type = Boron Royal Boron Shipyard 6_3
+052   $x = 28000
+053   $y = 16000
+054   $z = 18000
+055  else if $s == 3
+056   $race = Boron
+057   $sector = Hollow Infinity
+058   $type = Boron Royal Boron Shipyard 6_3
+059   $x = 28000
+060   $y = 16000
+061   $z = 18000
+062  else if $s == 4
+063   $race = Paranid
+064   $sector = Emperor Mines
+065   $type = Paranid Paranid Shipyard 6_2
+066   $x = 28000
+067   $y = 16000
+068   $z = 18000
+069  else if $s == 5
+070   $race = Paranid
+071   $sector = Priest Refuge
+072   $type = Paranid Paranid Shipyard 6_2
+073   $x = -25000
+074   $y = 16000
+075   $z = 25000
+076  else if $s == 6
+077   $race = Split
+078   $sector = Thuruk's Pride
+079   $type = Split Split Shipyard 6_1
+080   $x = 28000
+081   $y = -16000
+082   $z = 18000
+083  else if $s == 7
+084   $race = Split
+085   $sector = Njy's Deception
+086   $type = Split Split Shipyard 6_1
+087   $x = 28000
+088   $y = 16000
+089   $z = 18000
+090  else if $s == 8
+091   $race = Teladi
+092   $sector = Greater Profit
+093   $type = Teladi Teladi Shipyard 6_4
+094   $x = 28000
+095   $y = 16000
+096   $z = 18000
+097  else if $s == 9
+098   $race = Teladi
+099   $sector = New Income
+100   $type = Teladi Teladi Shipyard 6_4
+101   $x = 10000
+102   $y = 27000
+103   $z = 18000
+104  else if $s == 10
+105   $race = Terran
+106   $sector = Saturn 3
+107   $type = Terran Shipyard 16041
+108   $x = 34000
+109   $y = 34000
+110   $z = 37000
+111  else if $s == 11
+112   $race = Terran
+113   $sector = Neptune
+114   $type = Terran Shipyard 16041
+115   $x = 38000
+116   $y = 38000
+117   $z = 36000
+118  end
+119  endsub
+120  
+121  
+122  * ---This sub adds and finds all LI docks refs
+123  Build.Ref.Array:
+124  * ---Dummy Ref from Page 17
+125  $ref = = read text: page=17 id=300038
+126  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+127  append $ref to array $temp.Array
+128  $ref = = read text: page=17 id=300040
+129  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+130  append $ref to array $temp.Array
+131  $ref = = read text: page=17 id=300042
+132  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+133  append $ref to array $temp.Array
+134  $ref = = read text: page=17 id=300044
+135  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+136  append $ref to array $temp.Array
+137  $ref = = read text: page=17 id=300046
+138  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+139  append $ref to array $temp.Array
+140  $ref = = read text: page=17 id=300048
+141  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+142  append $ref to array $temp.Array
+143  $ref = = read text: page=17 id=300050
+144  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+145  append $ref to array $temp.Array
+146  $ref = = read text: page=17 id=300052
+147  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+148  append $ref to array $temp.Array
+149  $ref = = read text: page=17 id=300054
+150  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+151  append $ref to array $temp.Array
+152  
+153  $sub = = get number of subtypes of maintype 5
+154  while $sub
+155   dec $sub =
+156   $ref = = get ware from maintype 5 and subtype $sub
+157   $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+158   if find $ref in array: $temp.Array
+159    skip if find $sub in array: $ref.Array
+160     append $sub to array $ref.Array
+161   end
+162  end
+163  endsub
+164  
+165  
+166  Build.Shipyard:
+167  gosub Get.Shipyard.Ref:
+168  $shipyard = = create station: type=$type owner=$race addto=$sector x=$x y=$y z=$z
+169  if $shipyard  ->  exists
+170   $shipyard  ->  add default wares to station/dock
+171   $shipyard  ->  station trade and production tasks: on=[TRUE]
+172   $shipyard  ->  factory production task: on=[TRUE]
+173   $shield = $shipyard  ->  get maximum shield strength
+174   $shipyard  ->  set current shield strength to $shield
+175   gosub Install:
+176   $array.Shipyard[$s] = $shipyard
+177  end
+178  
+179  endsub
+180  
+181  
+182  Install:
+183  $ss = size of array $ref.Array
+184  while $ss > 0
+185   dec $ss =
+186   $sub = $ref.Array[$ss]
+187   $type = = get ware from maintype 5 and subtype $sub
+188   
+189   $shipyard  ->  add product to factory or dock: $type
+190    = $shipyard  ->  add 1 units of $type
+191   
+192  end
+193  
+194  endsub
+195  
+196  return null
+197  
+198  
+199  
+200  

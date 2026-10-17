@@ -1,0 +1,150 @@
+* Script: plugin.LI.FDN.Menu.AP.Dock.Details  (v1.0, engine 50)
+* Desc: FDNv8 - Dock Detail Menu for AP
+* Arg 0: menu (Value) 'menu'
+* Arg 1: value (Value) 'value'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script builds the Dock Details Menu and retuns the array back to the Main Menu
+004  * Called by plugin.LI.FDN.Main.Menu
+005  
+006  * Expected values:
+007  * - menu - This is the menu array from the Main Menu
+008  * -
+009  
+010  * Return values:
+011  
+012  
+013  * Version: 1.0 - AP
+014  * Date: 22/05/2012
+015  * Tested: 22/05/2012
+016  * -----------------------------------------------------------------------------------
+017  
+018  * Fetch values saved in the AL Plugin global variable:
+019  $al.Settings = get global variable: name='al.LI.FDN.event'
+020  if $al.Settings
+021   $PageID = $al.Settings[1]
+022  end
+023  * -----------------------------------------------------------------------------------
+024  
+025  * The ID code of the DC is used as a reference in naming the global variable
+026  $id = $value  ->  get ID code
+027  * -----------------------------------------------------------------------------------
+028  
+029  * Calls script to format name
+030  $txt = null -> call script plugin.LI.FDN.Format.Name : object=$value
+031  $temp.array = = array alloc: size=4
+032  $temp.array[0] = 1
+033  $temp.array[1] = $txt
+034  $temp.array[2] = -1
+035  $txt = $value  ->  get sector
+036  $temp.array[3] = $txt
+037  add custom menu info line to array $menu: text=$temp.array
+038  * -----------------------------------------------------------------------------------
+039  
+040  $pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null
+041  $array = get global variable: name=$pointer
+042  add custom menu heading to array $menu: title=$array
+043  * -----------------------------------------------------------------------------------
+044  
+045  * all group options
+046  $show.all = = create menu return value: command Open All Groups
+047  $txt = = read text: page=$PageID id=198
+048  add custom menu item to array $menu: text=$txt returnvalue=$show.all
+049  $hide.all = = create menu return value: command Close All Groups
+050  $txt = = read text: page=$PageID id=199
+051  add custom menu item to array $menu: text=$txt returnvalue=$hide.all
+052  add section to custom menu: $menu
+053  * -----------------------------------------------------------------------------------
+054  
+055  * This call the plugin.LI.FDN.Sort.Wares which returns a wares arrays sorted by type
+056  * $sorted.ware.array[x] is the Main Type
+057  * $sorted.ware.array[x][x] is the sorted Ware Array for the Main Type
+058  $sorted.ware.array = null -> call script plugin.LI.FDN.Sort.Wares : station=$value
+059  $sm = size of array $sorted.ware.array
+060  * -----------------------------------------------------------------------------------
+061  
+062  * Create and size show type array
+063  $show.type.array = = array alloc: size=$sm
+064  * -----------------------------------------------------------------------------------
+065  
+066  while $sm > 0
+067   dec $sm =
+068   * Fetch main.type and ware.array from sorted.ware.array
+069   $main.type = $sorted.ware.array[$sm][0]
+070   $ware.array = $sorted.ware.array[$sm][1]
+071   * -----------------------------------------------------------------------------------
+072   
+073   if not $show.type.array[$sm]
+074    $show.type.array[$sm] = 1
+075   end
+076   $check = $show.type.array[$sm]
+077   * -----------------------------------------------------------------------------------
+078   
+079   * ware section
+080   $sw = size of array $ware.array
+081   * -----------------------------------------------------------------------------------
+082   
+083   * only show arws if there are some to diplay for the main type
+084   if $sw > 0
+085    * -----------------------------------------------------------------------------------
+086    
+087    * add grouping and ware header line
+088    $txt = = read text: page=$PageID id=$main.type
+089    add new grouping to menu: $menu, text=$txt, open=$check
+090    gosub Get.Ware.Header.Sub:
+091    * -----------------------------------------------------------------------------------
+092    
+093    while $sw > 0
+094     dec $sw =
+095     $ware = $ware.array[$sw]
+096     
+097     * Calls the global variable for the dynamic menu created by plugin.LI.FDN.Menu.Dock.Details_D
+098     * DC ID code and Ware are used to call the unique global variable
+099     $pointer = = sprintf: pageid=$PageID textid=5000, $id, $ware, null, null, null
+100     $summary = get global variable: name=$pointer
+101     append $summary to array $menu
+102     * -----------------------------------------------------------------------------------
+103    end
+104    add end grouping to menu: $menu
+105   end
+106  end
+107  * -----------------------------------------------------------------------------------
+108  
+109  * add ware
+110  $txt = = read text: page=$PageID id=195
+111  add custom menu heading to array $menu: title=$txt
+112  $return.array = = array alloc: size=2
+113  $return.array[0] = 'add.ware'
+114  $return.array[1] = $value
+115  $txt = = read text: page=$PageID id=196
+116  add custom menu item to array $menu: text=$txt returnvalue=$return.array
+117  * -----------------------------------------------------------------------------------
+118  
+119  return $menu
+120  * -----------------------------------------------------------------------------------
+121  
+122  * This Sub is used to create the wares header by main type
+123  Get.Ware.Header.Sub:
+124  $temp.array = = array alloc: size=10
+125  $temp.array[0] = 1
+126  $txt = = read text: page=$PageID id=201
+127  $temp.array[1] = $txt
+128  $temp.array[2] = -380
+129  $txt = = read text: page=$PageID id=147
+130  $temp.array[3] = $txt
+131  $temp.array[4] = -290
+132  $txt = = read text: page=$PageID id=143
+133  $temp.array[5] = $txt
+134  $temp.array[6] = -200
+135  $txt = = read text: page=$PageID id=145
+136  $temp.array[7] = $txt
+137  $temp.array[8] = -1
+138  $txt = = read text: page=$PageID id=140
+139  $temp.array[9] = $txt
+140  add non selectable menu item: $menu, text=$temp.array
+141  endsub
+142  * -----------------------------------------------------------------------------------
+143  return null
+144  
+145  

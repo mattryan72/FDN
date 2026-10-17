@@ -1,0 +1,152 @@
+* Script: plugin.LI.FDN.Relay.Menu  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007  else
+008   return null
+009  end
+010  
+011  $pointer = = read text: page=$PageID id=4002
+012  
+013  while [TRUE]
+014   $text = = read text: page=$PageID id=106
+015   $menu = = create custom menu array: heading=$text
+016   
+017   gosub Build.Menu.Sub:
+018   
+019   $text = = read text: page=$PageID id=106
+020   $desc = = sprintf: pageid=$PageID textid=9000, [THIS], null, null, null, null
+021   $return = open custom menu: title=$text description=$desc option array=$menu
+022   
+023   * Start of return
+024   if $return == -1
+025     = [THIS] -> call script plugin.LI.FDN.Main.Menu.Call :
+026    return null
+027   else
+028    $update.Array = [THIS]  ->  get local variable: name=$pointer
+029    if $return == 'status'
+030     gosub Enable.Relay.Sub:
+031    else
+032     gosub Update.Sub:
+033    end
+034   end
+035  end
+036  
+037  return null
+038  
+039  
+040  * Update Sub
+041  Update.Sub:
+042  if $return == 'eng'
+043   $c = 1
+044  else if $return == 'miss'
+045   $c = 2
+046  else if $return == 'ammo'
+047   $c = 3
+048  end
+049  if $update.Array[$c]
+050   $update.Array[$c] = null
+051  else
+052   $update.Array[$c] = [TRUE]
+053  end
+054  endsub
+055  
+056  
+057  Enable.Relay.Sub:
+058  if not $update.Array[0]
+059   * On
+060   $update.Array[0] = [TRUE]
+061   if not $update.Array[4]
+062    $task = = [THIS]  ->  get next available task: starting=$PageID
+063    $update.Array[4] = $task
+064   else
+065    $task = $update.Array[4]
+066   end
+067   
+068   $check = [THIS]  ->  is script plugin.LI.FDN.Relay.Task on stack of task=$task
+069   if not $check
+070    [THIS]  ->  start task $task with script plugin.LI.FDN.Relay.Task and prio 100: arg1=null arg2=null arg3=null arg4=null arg5=null
+071   end
+072  else
+073   * Off
+074   $update.Array[0] = null
+075   $task = $update.Array[4]
+076   [THIS]  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+077  end
+078  endsub
+079  
+080  
+081  * Build Menu sub
+082  Build.Menu.Sub:
+083  * Settings Array
+084  if not [THIS]  ->  get local variable: name=$pointer
+085   $settings.Array = = array alloc: size=6
+086   [THIS]  ->  set local variable: name=$pointer value=$settings.Array
+087  end
+088  $settings.Array = [THIS]  ->  get local variable: name=$pointer
+089  
+090  * Status
+091  $txt1 = = read text: page=$PageID id=120
+092  $txt2 = = read text: page=$PageID id=9005
+093  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+094  add custom menu heading to array $menu: title=$array
+095  
+096  if $settings.Array[0]
+097   $onoff = = read text: page=$PageID id=9006
+098  else
+099   $onoff = = read text: page=$PageID id=9007
+100  end
+101  $txt = = read text: page=$PageID id=115
+102  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+103  $array = = create new array, arguments=$a, 'status', null, null, null
+104  append $array to array $menu
+105  
+106  $txt1 = = read text: page=$PageID id=121
+107  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+108  add custom menu heading to array $menu: title=$array
+109  
+110  * Energy
+111  if $settings.Array[1]
+112   $onoff = = read text: page=$PageID id=9006
+113  else
+114   $onoff = = read text: page=$PageID id=9007
+115  end
+116  $txt = = read text: page=$PageID id=122
+117  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+118  $array = = create new array, arguments=$a, 'eng', null, null, null
+119  append $array to array $menu
+120  add section to custom menu: $menu
+121  
+122  * Missile
+123  if $settings.Array[2]
+124   $onoff = = read text: page=$PageID id=9006
+125  else
+126   $onoff = = read text: page=$PageID id=9007
+127  end
+128  $txt = = read text: page=$PageID id=123
+129  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+130  $array = = create new array, arguments=$a, 'miss', null, null, null
+131  append $array to array $menu
+132  add section to custom menu: $menu
+133  
+134  * Ammo
+135  if $settings.Array[3]
+136   $onoff = = read text: page=$PageID id=9006
+137  else
+138   $onoff = = read text: page=$PageID id=9007
+139  end
+140  $txt = = read text: page=$PageID id=124
+141  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+142  $array = = create new array, arguments=$a, 'ammo', null, null, null
+143  append $array to array $menu
+144  
+145  endsub
+146  
+147  return null
+148  
+149  

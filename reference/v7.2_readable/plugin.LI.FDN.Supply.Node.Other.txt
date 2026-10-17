@@ -1,0 +1,165 @@
+* Script: plugin.LI.FDN.Supply.Node.Other  (v7, engine 44)
+* Desc: 
+* Arg 0: ware (Value) 'ware'
+* Arg 1: amount (Value) 'amount'
+* Arg 2: default.node (Var/Station) 'default.node'
+
+001  * Auther: Logain Abler
+002  
+003  * This script is used by none FDN scripts so people can pass wares to FDN with their own supply logic.
+004  
+005  * Requires 2 values:
+006  * Ware
+007  * Amount
+008  
+009  * Optional values:
+010  * Default node - PM uses this but not required
+011  
+012  $al.Settings = get global variable: name='al.LI.FDN.event'
+013  if $al.Settings
+014   $status = $al.Settings[0]
+015   $PageID = $al.Settings[1]
+016   $debug = $al.Settings[5][0]
+017   $DebugID = 0 + $PageID
+018  else
+019   return null
+020  end
+021  
+022  skip if $status
+023   return null
+024  
+025  if $debug == [TRUE]
+026   $script = = get script name
+027   $sector = [THIS]  ->  get sector
+028   $id = [THIS]  ->  get ID code
+029  end
+030  
+031  * ----
+032  if $debug == [TRUE]
+033   $txt.debug = '[' + $id + ']' + [THIS] + ';Values in are: Ware = ' + $ware + ' - Amount = ' + $amount + ' - Default Node = ' + $default.node
+034   gosub Debug.Sub:
+035  end
+036  * ----
+037  
+038  $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Supply.Node.Other : default.node=$default.node
+039  
+040  skip if $node.Array
+041   return null
+042  
+043  * ----
+044  if $debug == [TRUE]
+045   $txt.debug = '[' + $id + ']' + [THIS] + ';Node Array = ' + $node.Array
+046   gosub Debug.Sub:
+047  end
+048  * ----
+049  
+050  $sn = size of array $node.Array
+051  while $sn > 0
+052   dec $sn =
+053   $node = $node.Array[$sn]
+054   
+055   * Skip if Node is caller
+056   skip if not $node == [THIS]
+057    continue
+058   
+059   if $debug == [TRUE]
+060    $n.id = $node  ->  get ID code
+061    $n.sector = $node  ->  get sector
+062    $jump = get jumps from sector $n.sector to sector $sector
+063   end
+064   
+065   * ----
+066   if $debug == [TRUE]
+067    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Array Position = ' + $sn
+068    gosub Debug.Sub:
+069   end
+070   * ----
+071   
+072   $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+073   
+074   if not $node  ->  trades with ware $ware
+075     = $node  ->  add 1 units of $ware
+076     = $node  ->  add -1 units of $ware
+077    $ware.Settings = = array alloc: size=6
+078    $temp = = array alloc: size=2
+079    append $temp to array $ware.Settings
+080    $node  ->  set local variable: name=$w.pointer value=$ware.Settings
+081   end
+082   
+083   $ware.Settings = $node  ->  get local variable: name=$w.pointer
+084   $node.curr = $node  ->  get amount of ware $ware in cargo bay
+085   
+086   * ----
+087   if $debug == [TRUE]
+088    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';' + $node.curr + ' available of ' + $ware
+089    gosub Debug.Sub:
+090   end
+091   * ----
+092   
+093   if $ware.Settings[3]
+094    $cap = $ware.Settings[3]
+095    skip if $cap > 0
+096     $cap = 0
+097    $free = $cap - $node.curr
+098   else
+099    $free = $node  ->  get free amount of ware $ware in cargo bay
+100   end
+101   
+102   * ----
+103   if $debug == [TRUE]
+104    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';' + $free + ' space free for ' + $ware
+105    gosub Debug.Sub:
+106   end
+107   * ----
+108   
+109   if $free > 0
+110    if $free >= $amount
+111      = $node  ->  add $amount units of $ware
+112     $remove = - $amount
+113      = [THIS]  ->  add $remove units of $ware
+114     
+115     * ----
+116     if $debug == [TRUE]
+117      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Received ' + $amount + ' of ' + $ware
+118      gosub Debug.Sub:
+119      $txt.debug = '[' + $id + ']' + [THIS] + ';Removed ' + $remove + ' of ' + $ware
+120      gosub Debug.Sub:
+121     end
+122     * ----
+123     
+124     return null
+125     
+126    else
+127      = $node  ->  add $free units of $ware
+128     $remove = - $free
+129      = [THIS]  ->  add $remove units of $ware
+130     $amount = $amount - $free
+131    end
+132    
+133    * ----
+134    if $debug == [TRUE]
+135     $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Received ' + $free + ' of ' + $ware
+136     gosub Debug.Sub:
+137     $txt.debug = '[' + $id + ']' + [THIS] + ';Removed ' + $remove + ' of ' + $ware
+138     gosub Debug.Sub:
+139    end
+140    * ----
+141   end
+142   
+143   skip if not $sn == ( $sn / 5 ) * 5
+144     = wait 100 ms
+145  end
+146  
+147  return null
+148  
+149  
+150  Debug.Sub:
+151  $d.time = = playing time
+152  $d.time = = format time: $d.time
+153  $txt = $d.time + ';' + $script + ';' + $txt.debug
+154  write to log file $DebugID  append=[TRUE]  value=$txt
+155  endsub
+156  
+157  return null
+158  
+159  

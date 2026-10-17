@@ -1,0 +1,15 @@
+* Script: plugin.LI.FDN.Main.Ware.Call  (v7, engine 44)
+* Desc: 
+
+001  * AL settings--
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $al.Settings[10][2] = [TRUE]
+006  end
+007  
+008  START  = [THIS] -> call script plugin.LI.FDN.Main.Ware.D :
+009   = [THIS] -> call script plugin.LI.FDN.Main.Ware :
+010  return null
+011  
+012  

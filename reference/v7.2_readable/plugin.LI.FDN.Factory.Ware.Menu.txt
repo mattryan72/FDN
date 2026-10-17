@@ -1,0 +1,164 @@
+* Script: plugin.LI.FDN.Factory.Ware.Menu  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007  end
+008  
+009  while [TRUE]
+010   $txt = = read text: page=$PageID id=196
+011   $menu = = create custom menu array: heading=$txt
+012   
+013   gosub Build.Menu.Sub:
+014   
+015   $desc = = sprintf: pageid=$PageID textid=9000, [THIS], null, null, null, null
+016   $return = open custom menu: title=$txt description=$desc option array=$menu
+017   
+018   * Start of return
+019   if $return == -1
+020    return null
+021   else
+022    if is datatyp[ $return ] == DATATYP_WARE
+023     $max = [THIS]  ->  get max amount of ware $return that can be stored in cargo bay
+024     $max.txt = = convert number $max to string
+025     
+026     $txt = = sprintf: pageid=$PageID textid=202, $return, $max.txt, null, null, null
+027     $amt = [THIS]  ->  get user input: type=Var/Number, title=$txt
+028     if not is datatyp[ $amt ] == DATATYP_NULL
+029      if $amt > 0
+030       if $amt <= $max
+031        $pointer = = sprintf: pageid=$PageID textid=4003, $return, null, null, null, null
+032        [THIS]  ->  set local variable: name=$pointer value=$amt
+033       else
+034        $pointer = = sprintf: pageid=$PageID textid=4003, $return, null, null, null, null
+035        [THIS]  ->  set local variable: name=$pointer value=$max
+036       end
+037       
+038      end
+039     end
+040    end
+041    
+042   end
+043  end
+044  return null
+045  
+046  Split.Wares.Sub:
+047  $product.Array = = array alloc: size=0
+048  $primary.Array = = array alloc: size=0
+049  $secondary.Array = = array alloc: size=0
+050  $ware.Array = [THIS]  ->  get tradeable ware array from station
+051  $s = size of array $ware.Array
+052  while $s > 0
+053   dec $s =
+054   $ware = $ware.Array[$s]
+055   if [THIS]  ->  uses ware $ware as product
+056    skip if find $ware in array: $product.Array
+057     append $ware to array $product.Array
+058   else if [THIS]  ->  uses ware $ware as primary resource
+059    skip if find $ware in array: $primary.Array
+060     append $ware to array $primary.Array
+061   else if [THIS]  ->  uses ware $ware as secondary resource
+062    skip if find $ware in array: $secondary.Array
+063     append $ware to array $secondary.Array
+064   end
+065  end
+066  endsub
+067  
+068  
+069  Build.Menu.Sub:
+070  gosub Split.Wares.Sub:
+071  * Products
+072  $txt1 = = read text: page=$PageID id=197
+073  $txt2 = = read text: page=$PageID id=200
+074  $txt3 = = read text: page=$PageID id=201
+075  $array = = create new array, arguments=1, $txt1, -90, $txt2, -1
+076  append $txt3 to array $array
+077  add custom menu heading to array $menu: title=$array
+078  
+079  $s = size of array $product.Array
+080  while $s > 0
+081   dec $s =
+082   $ware = $product.Array[$s]
+083   
+084   $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+085   $ware.cap = [THIS]  ->  get local variable: name=$pointer
+086   if not $ware.cap > 0
+087    $cap.txt = = read text: page=$PageID id=136
+088   else
+089    $cap.txt = = convert number $ware.cap to string
+090   end
+091   $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+092   $stock.txt = = convert number $stock to string
+093   $a = = create new array, arguments=1, $ware, -90, $stock.txt, -1
+094   append $cap.txt to array $a
+095   $array = = create new array, arguments=$a, $ware, null, null, null
+096   append $array to array $menu
+097  end
+098  
+099  
+100  * Secondary
+101  $txt1 = = read text: page=$PageID id=199
+102  $txt2 = = read text: page=$PageID id=200
+103  $txt3 = = read text: page=$PageID id=201
+104  $array = = create new array, arguments=1, $txt1, -90, $txt2, -1
+105  append $txt3 to array $array
+106  add custom menu heading to array $menu: title=$array
+107  
+108  $s = size of array $secondary.Array
+109  while $s > 0
+110   dec $s =
+111   $ware = $secondary.Array[$s]
+112   
+113   $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+114   $ware.cap = [THIS]  ->  get local variable: name=$pointer
+115   if not $ware.cap > 0
+116    $cap.txt = = read text: page=$PageID id=136
+117   else
+118    $cap.txt = = convert number $ware.cap to string
+119   end
+120   $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+121   $stock.txt = = convert number $stock to string
+122   $a = = create new array, arguments=1, $ware, -90, $stock.txt, -1
+123   append $cap.txt to array $a
+124   $array = = create new array, arguments=$a, $ware, null, null, null
+125   append $array to array $menu
+126  end
+127  
+128  
+129  * Primary
+130  $txt1 = = read text: page=$PageID id=198
+131  $txt2 = = read text: page=$PageID id=200
+132  $txt3 = = read text: page=$PageID id=201
+133  $array = = create new array, arguments=1, $txt1, -90, $txt2, -1
+134  append $txt3 to array $array
+135  add custom menu heading to array $menu: title=$array
+136  
+137  $s = size of array $primary.Array
+138  while $s > 0
+139   dec $s =
+140   $ware = $primary.Array[$s]
+141   
+142   $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+143   $ware.cap = [THIS]  ->  get local variable: name=$pointer
+144   if not $ware.cap > 0
+145    $cap.txt = = read text: page=$PageID id=136
+146   else
+147    $cap.txt = = convert number $ware.cap to string
+148   end
+149   $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+150   $stock.txt = = convert number $stock to string
+151   $a = = create new array, arguments=1, $ware, -90, $stock.txt, -1
+152   append $cap.txt to array $a
+153   $array = = create new array, arguments=$a, $ware, null, null, null
+154   append $array to array $menu
+155  end
+156  
+157  endsub
+158  
+159  return null
+160  
+161  

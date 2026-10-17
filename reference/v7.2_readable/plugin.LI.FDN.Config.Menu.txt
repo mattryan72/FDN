@@ -1,0 +1,438 @@
+* Script: plugin.LI.FDN.Config.Menu  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007   $node.Array = $al.Settings[2]
+008   $trade.Array = $al.Settings[3]
+009   $relay.Array = $al.Settings[4]
+010  else
+011   return null
+012  end
+013  
+014   = [THIS] -> call script plugin.LI.Dock.Check :
+015  $select.Array = = create new array, arguments=0, 0, 0, 0, 0
+016  
+017  while [TRUE]
+018   
+019   $is.node.Array = = array alloc: size=0
+020   $is.trade.Array = = array alloc: size=0
+021   $is.relay.Array = = array alloc: size=0
+022   $is.dock.Array = = array alloc: size=0
+023   
+024   gosub Build.FDN.Array:
+025   
+026   $text = = read text: page=$PageID id=109
+027   $menu = = create custom menu array: heading=$text
+028   
+029   $select.Dock = $select.Array[0]
+030   $select.Phq = $select.Array[1]
+031   
+032   
+033   if $select.Dock
+034    gosub Build.Dock.Array:
+035    gosub Build.Sub.Menu.Sub:
+036   else
+037    gosub Build.Main.Menu.Sub:
+038   end
+039   
+040   $text = = read text: page=$PageID id=109
+041   $return = open custom menu: title=$text description=$text option array=$menu
+042   
+043   * Start of return
+044   if $return == -1
+045    $select.Dock = $select.Array[0]
+046    $select.Phq = $select.Array[1]
+047    
+048    skip if $select.Dock == [TRUE] OR $select.Phq == [TRUE]
+049     return null
+050    
+051    skip if not $select.Dock == [TRUE]
+052     $select.Array[0] = [FALSE]
+053    skip if not $select.Phq == [TRUE]
+054     $select.Array[1] = [FALSE]
+055    
+056   else
+057    if is datatyp[ $return ] == DATATYP_ARRAY
+058     $cmd = $return[0]
+059     $val = $return[1]
+060     
+061     if $cmd == 'add.node'
+062      skip if find $val in array: $node.Array
+063       append $val to array $node.Array
+064      $select.Array[0] = [FALSE]
+065      
+066      
+067     else if $cmd == 'add.trade'
+068      skip if find $val in array: $trade.Array
+069       append $val to array $trade.Array
+070      $select.Array[0] = [FALSE]
+071      
+072      
+073     else if $cmd == 'add.relay'
+074      skip if find $val in array: $relay.Array
+075       append $val to array $relay.Array
+076      $select.Array[0] = [FALSE]
+077      
+078     else if $cmd == 'remove.node' OR $cmd == 'remove.trade' OR $cmd == 'remove.relay'
+079      $txt = = read text: page=$PageID id=174
+080      $check = [THIS]  ->  get user input: type=Var/Boolean, title=$txt
+081      if $check == [TRUE]
+082       gosub Update.FDN.Array:
+083      end
+084      
+085     else if $cmd == 'debug'
+086      if not $al.Settings[5][$val]
+087       $al.Settings[5][$val] = [TRUE]
+088      else
+089       $al.Settings[5][$val] = null
+090      end
+091      
+092     else if $cmd == 'menu.update'
+093      if not $al.Settings[9][$val]
+094       $al.Settings[9][$val] = [TRUE]
+095      else
+096       $al.Settings[9][$val] = null
+097      end
+098     end
+099    else
+100     
+101     $select.Dock = $select.Array[0]
+102     if not $select.Dock
+103      if $return == 'add.node' OR $return == 'add.trade' OR $return == 'add.relay'
+104       $select.Array[0] = [TRUE]
+105      end
+106      
+107     else if $return == 'reset'
+108      $txt = = read text: page=$PageID id=173
+109      $check = [THIS]  ->  get user input: type=Var/Boolean, title=$txt
+110      if $check == [TRUE]
+111        = [THIS] -> call script plugin.LI.FDN.Reset :
+112      end
+113      
+114     else if $return == 'exit.sub'
+115      $select.Array[1] = [FALSE]
+116      
+117      
+118     end
+119    end
+120   end
+121  end
+122  
+123  
+124  return null
+125  
+126  
+127  Update.FDN.Array:
+128  if $cmd == 'remove.node'
+129   $s = size of array $node.Array
+130   while $s > 0
+131    dec $s =
+132    $sub = $node.Array[$s]
+133    skip if not $sub == $val
+134     remove element from array $node.Array at index $s
+135   end
+136   
+137  else if $cmd == 'remove.trade'
+138   $s = size of array $trade.Array
+139   while $s > 0
+140    dec $s =
+141    $sub = $trade.Array[$s]
+142    skip if not $sub == $val
+143     remove element from array $trade.Array at index $s
+144   end
+145   
+146  else if $cmd == 'remove.relay'
+147   $s = size of array $relay.Array
+148   while $s > 0
+149    dec $s =
+150    $sub = $relay.Array[$s]
+151    skip if not $sub == $val
+152     remove element from array $relay.Array at index $s
+153   end
+154  end
+155  
+156  $dock.Array = = get station array: of race Player class/type=Dock 2007
+157  if $dock.Array
+158   $s = size of array $dock.Array
+159   while $s > 0
+160    dec $s =
+161    $dock = $dock.Array[$s]
+162    $sub.check = = $dock  ->  get subtype
+163    if $sub.check == $val
+164     if $cmd == 'remove.node'
+165      $pointer = = read text: page=$PageID id=4000
+166      $settings.Array = $dock  ->  get local variable: name=$pointer
+167      
+168      $task = $settings.Array[4]
+169      if $dock  ->  is script plugin.LI.FDN.Sell.Task on stack of task=$task
+170       $dock  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+171      end
+172      
+173     else if $cmd == 'remove.trade'
+174      $pointer = = read text: page=$PageID id=4000
+175      $settings.Array = $dock  ->  get local variable: name=$pointer
+176      
+177      $task = $settings.Array[3]
+178      if $dock  ->  is script plugin.LI.FDN.Dock.Task on stack of task=$task
+179       $dock  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+180      end
+181      $task = $settings.Array[4]
+182      if $dock  ->  is script plugin.LI.FDN.Sell.Task on stack of task=$task
+183       $dock  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+184      end
+185      
+186     else if $cmd == 'remove.relay'
+187      $pointer = = read text: page=$PageID id=4002
+188      $settings.Array = $dock  ->  get local variable: name=$pointer
+189      
+190      $task = $settings.Array[4]
+191      if $dock  ->  is script plugin.LI.FDN.Relay.Task on stack of task=$task
+192       $dock  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+193      end
+194     end
+195     $dock  ->  set local variable: name=$pointer value=null
+196    end
+197   end
+198  end
+199  endsub
+200  
+201  
+202  Build.Main.Menu.Sub:
+203  * Nodes
+204  $txt1 = = read text: page=$PageID id=165
+205  $txt2 = = read text: page=$PageID id=168
+206  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+207  add custom menu heading to array $menu: title=$array
+208  
+209  $s = size of array $is.node.Array
+210  while $s > 0
+211   dec $s =
+212   $node = $is.node.Array[$s]
+213   $sub = = get subtype of ware $node
+214   $sub.txt = = convert number $sub to string
+215   $a = = create new array, arguments=1, $node, -1, $sub.txt, null
+216   $ret = = create new array, arguments='remove.node', $sub, null, null, null
+217   $array = = create new array, arguments=$a, $ret, null, null, null
+218   append $array to array $menu
+219  end
+220  add section to custom menu: $menu
+221  $txt = = read text: page=$PageID id=170
+222  add custom menu item to array $menu: text=$txt returnvalue='add.node'
+223  
+224  * Trade Posts
+225  $txt1 = = read text: page=$PageID id=166
+226  $txt2 = = read text: page=$PageID id=168
+227  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+228  add custom menu heading to array $menu: title=$array
+229  
+230  $s = size of array $is.trade.Array
+231  while $s > 0
+232   dec $s =
+233   $node = $is.trade.Array[$s]
+234   $sub = = get subtype of ware $node
+235   $sub.txt = = convert number $sub to string
+236   $a = = create new array, arguments=1, $node, -1, $sub.txt, null
+237   $ret = = create new array, arguments='remove.trade', $sub, null, null, null
+238   $array = = create new array, arguments=$a, $ret, null, null, null
+239   append $array to array $menu
+240  end
+241  add section to custom menu: $menu
+242  $txt = = read text: page=$PageID id=170
+243  add custom menu item to array $menu: text=$txt returnvalue='add.trade'
+244  
+245  * Relays
+246  $txt1 = = read text: page=$PageID id=167
+247  $txt2 = = read text: page=$PageID id=168
+248  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+249  add custom menu heading to array $menu: title=$array
+250  
+251  $s = size of array $is.relay.Array
+252  while $s > 0
+253   dec $s =
+254   $node = $is.relay.Array[$s]
+255   $sub = = get subtype of ware $node
+256   $sub.txt = = convert number $sub to string
+257   $a = = create new array, arguments=1, $node, -1, $sub.txt, null
+258   $ret = = create new array, arguments='remove.relay', $sub, null, null, null
+259   $array = = create new array, arguments=$a, $ret, null, null, null
+260   append $array to array $menu
+261  end
+262  add section to custom menu: $menu
+263  $txt = = read text: page=$PageID id=170
+264  add custom menu item to array $menu: text=$txt returnvalue='add.relay'
+265  
+266  * Menu Updates
+267  $txt1 = = read text: page=$PageID id=192
+268  $txt2 = = read text: page=$PageID id=9005
+269  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+270  add custom menu heading to array $menu: title=$array
+271  
+272  if $al.Settings[9][0]
+273   $onoff = = read text: page=$PageID id=9006
+274  else
+275   $onoff = = read text: page=$PageID id=9007
+276  end
+277  $txt = = read text: page=$PageID id=193
+278  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+279  $ret = = create new array, arguments='menu.update', 0, null, null, null
+280  $array = = create new array, arguments=$a, $ret, null, null, null
+281  append $array to array $menu
+282  
+283  if $al.Settings[9][1]
+284   $onoff = = read text: page=$PageID id=9006
+285  else
+286   $onoff = = read text: page=$PageID id=9007
+287  end
+288  $txt = = read text: page=$PageID id=194
+289  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+290  $ret = = create new array, arguments='menu.update', 1, null, null, null
+291  $array = = create new array, arguments=$a, $ret, null, null, null
+292  append $array to array $menu
+293  
+294  * For new Gare Menu
+295  $dynamic = $al.Settings[9]
+296  $s = size of array $dynamic
+297  if $s < 3
+298   append [TRUE] to array $dynamic
+299  end
+300  
+301  if $al.Settings[9][2]
+302   $onoff = = read text: page=$PageID id=9006
+303  else
+304   $onoff = = read text: page=$PageID id=9007
+305  end
+306  $txt = = read text: page=$PageID id=225
+307  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+308  $ret = = create new array, arguments='menu.update', 2, null, null, null
+309  $array = = create new array, arguments=$a, $ret, null, null, null
+310  append $array to array $menu
+311  
+312  * Reset
+313  $txt = = read text: page=$PageID id=171
+314  add custom menu heading to array $menu: title=$txt
+315  $txt = = read text: page=$PageID id=172
+316  add custom menu item to array $menu: text=$txt returnvalue='reset'
+317  
+318  * Debug Option
+319  $txt1 = = read text: page=$PageID id=175
+320  $txt2 = = read text: page=$PageID id=9005
+321  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+322  add custom menu heading to array $menu: title=$array
+323  
+324  if $al.Settings[5][0]
+325   $onoff = = read text: page=$PageID id=9006
+326  else
+327   $onoff = = read text: page=$PageID id=9007
+328  end
+329  $txt = = read text: page=$PageID id=176
+330  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+331  $ret = = create new array, arguments='debug', 0, null, null, null
+332  $array = = create new array, arguments=$a, $ret, null, null, null
+333  append $array to array $menu
+334  
+335  if $al.Settings[5][1]
+336   $onoff = = read text: page=$PageID id=9006
+337  else
+338   $onoff = = read text: page=$PageID id=9007
+339  end
+340  $txt = = read text: page=$PageID id=177
+341  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+342  $ret = = create new array, arguments='debug', 1, null, null, null
+343  $array = = create new array, arguments=$a, $ret, null, null, null
+344  append $array to array $menu
+345  
+346  if $al.Settings[5][2]
+347   $onoff = = read text: page=$PageID id=9006
+348  else
+349   $onoff = = read text: page=$PageID id=9007
+350  end
+351  $txt = = read text: page=$PageID id=178
+352  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+353  $ret = = create new array, arguments='debug', 2, null, null, null
+354  $array = = create new array, arguments=$a, $ret, null, null, null
+355  append $array to array $menu
+356  
+357  if $al.Settings[5][3]
+358   $onoff = = read text: page=$PageID id=9006
+359  else
+360   $onoff = = read text: page=$PageID id=9007
+361  end
+362  $txt = = read text: page=$PageID id=179
+363  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+364  $ret = = create new array, arguments='debug', 3, null, null, null
+365  $array = = create new array, arguments=$a, $ret, null, null, null
+366  append $array to array $menu
+367  
+368  
+369  
+370  endsub
+371  
+372  Build.Sub.Menu.Sub:
+373  * Docks
+374  $txt1 = = read text: page=$PageID id=169
+375  $txt2 = = read text: page=$PageID id=168
+376  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+377  add custom menu heading to array $menu: title=$array
+378  
+379  $s = size of array $is.dock.Array
+380  while $s > 0
+381   dec $s =
+382   $dock = $is.dock.Array[$s]
+383   $sub = = get subtype of ware $dock
+384   $sub.txt = = convert number $sub to string
+385   $a = = create new array, arguments=1, $dock, -1, $sub.txt, null
+386   $ret = = create new array, arguments=$return, $sub, null, null, null
+387   $array = = create new array, arguments=$a, $ret, null, null, null
+388   append $array to array $menu
+389  end
+390  
+391  endsub
+392  
+393  
+394  Build.FDN.Array:
+395  $sub = = get number of subtypes of maintype 5
+396  while $sub
+397   dec $sub =
+398   $dock = = get ware from maintype 5 and subtype $sub
+399   if find $sub in array: $node.Array
+400    skip if find $dock in array: $is.node.Array
+401     append $dock to array $is.node.Array
+402    
+403   else if find $sub in array: $trade.Array
+404    skip if find $dock in array: $is.trade.Array
+405     append $dock to array $is.trade.Array
+406    
+407   else if find $sub in array: $relay.Array
+408    skip if find $dock in array: $is.relay.Array
+409     append $dock to array $is.relay.Array
+410    
+411   end
+412  end
+413  endsub
+414  
+415  Build.Dock.Array:
+416  $sub = = get number of subtypes of maintype 5
+417  while $sub
+418   dec $sub =
+419   $dock = = get ware from maintype 5 and subtype $sub
+420   if not find $sub in array: $node.Array
+421    if not find $sub in array: $trade.Array
+422     if not find $sub in array: $relay.Array
+423      skip if find $dock in array: $is.dock.Array
+424       append $dock to array $is.dock.Array
+425     end
+426    end
+427    
+428   end
+429  end
+430  endsub
+431  
+432  
+433  return null
+434  
+435  

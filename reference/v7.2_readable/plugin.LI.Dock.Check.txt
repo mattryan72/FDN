@@ -1,0 +1,97 @@
+* Script: plugin.LI.Dock.Check  (v1, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  * Checks all Docks against t file refs to find dummy LI docks for replacement
+004  * This will be called by FDN, PM and SSDN Main Menus and Config Menus
+005  
+006  
+007  * ---Dummy Ref from Page 17
+008  $ref.Array = = array alloc: size=0
+009  $sub.Array = = array alloc: size=0
+010  
+011  
+012  * ---Call sub to build ref array
+013  gosub Build.Ref.Array:
+014  
+015  
+016  * ---Check ref Array
+017  $s.check = size of array $ref.Array
+018  skip if $s.check > 0
+019   return null
+020  
+021  
+022  * --Fetch sub types of dummy docks if mod installed
+023  $sub = = get number of subtypes of maintype 5
+024  while $sub
+025   dec $sub =
+026   $stn.ref = = get ware from maintype 5 and subtype $sub
+027   $stn.ref = = sprintf: fmt='%s', $stn.ref, null, null, null, null
+028   if find $stn.ref in array: $ref.Array
+029    append $sub to array $sub.Array
+030   end
+031  end
+032  
+033  
+034  * ---Check sub  Array
+035  $s.check = size of array $sub.Array
+036  skip if $s.check > 0
+037   return null
+038  
+039  
+040  * --Search for and replace dummy docks if found
+041  $dock.Array = = get station array: of race Player class/type=Dock 2007
+042  $s = size of array $dock.Array
+043  while $s > 0
+044   dec $s =
+045   $dock = $dock.Array[$s]
+046   $sub = = $dock  ->  get subtype
+047   
+048   if find $sub in array: $sub.Array
+049     = [THIS] -> call script plugin.LI.Dock.Replace : stn=$dock
+050   end
+051   
+052   
+053  end
+054  
+055  
+056  return null
+057  
+058  * ---This sub adds and finds all LI docks refs
+059  Build.Ref.Array:
+060  * ---Dummy Ref from Page 17
+061  $ref = = read text: page=17 id=300038
+062  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+063  append $ref to array $ref.Array
+064  $ref = = read text: page=17 id=300040
+065  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+066  append $ref to array $ref.Array
+067  $ref = = read text: page=17 id=300042
+068  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+069  append $ref to array $ref.Array
+070  $ref = = read text: page=17 id=300044
+071  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+072  append $ref to array $ref.Array
+073  $ref = = read text: page=17 id=300046
+074  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+075  append $ref to array $ref.Array
+076  $ref = = read text: page=17 id=300048
+077  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+078  append $ref to array $ref.Array
+079  $ref = = read text: page=17 id=300050
+080  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+081  append $ref to array $ref.Array
+082  $ref = = read text: page=17 id=300052
+083  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+084  append $ref to array $ref.Array
+085  $ref = = read text: page=17 id=300054
+086  $ref = = sprintf: fmt='%s', $ref, null, null, null, null
+087  append $ref to array $ref.Array
+088  endsub
+089  
+090  return null
+091  
+092  
+093  
+094  

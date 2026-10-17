@@ -1,0 +1,83 @@
+* Script: plugin.LI.FDN.Setup  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  * Get save values from AL
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $status = $al.Settings[0]
+007   $PageID = $al.Settings[1]
+008   $al.Hotkey = $al.Settings[11]
+009   $DebugID = 0 + $PageID
+010  else
+011   return null
+012  end
+013  
+014  $txt = 'Game Time;Script;Element;Action'
+015  write to log file $DebugID  append=[FALSE]  value=$txt
+016  
+017  
+018  * Hotkey Setup-----------
+019  if $status == [TRUE]
+020   
+021   $txt = = read text: page=$PageID id=102
+022   $section = = read text: page=$PageID id=101
+023   $check = [THIS] -> call script plugin.config.addscript : Plugin Name=$txt  Author=null  Script Name='plugin.LI.FDN.Main.Menu.Call'  Display author=[FALSE]  Add to section=$section
+024   if $check
+025    $section = = read text: page=$PageID id=207
+026    $txt = = read text: page=$PageID id=105
+027     = [THIS] -> call script plugin.config.addscript : Plugin Name=$txt  Author=null  Script Name='plugin.LI.FDN.Config.Menu'  Display author=[FALSE]  Add to section=$section
+028   else
+029    if  = [THIS] -> call script plugin.hotkeymanager.add : Hotkey Name ID=$txt  Display Text=$txt  Hotkey Script='plugin.LI.FDN.Main.Menu.Call'
+030     gosub RemoveHT.Sub:
+031    else
+032     $fdn.key = get global variable: name=$al.Hotkey
+033     if not $fdn.key
+034      $fdn.key = = register hotkey $txt to call script plugin.LI.FDN.Main.Menu.Call
+035      set global variable: name=$al.Hotkey value=$fdn.key
+036     end
+037    end
+038    gosub RemoveHT.Sub:
+039   end
+040   
+041  else
+042   
+043   gosub RemoveHT.Sub:
+044    = [THIS] -> call script plugin.hotkeymanager.purge :
+045  end
+046  
+047  return null
+048  
+049  RemoveHT.Sub:
+050  $fdn.key = get global variable: name=$al.Hotkey
+051  if $fdn.key
+052   unregister hotkey $fdn.key
+053   set global variable: name=$al.Hotkey value=null
+054  end
+055  
+056  $config.Array = get global variable: name='config.scripts'
+057  if $config.Array
+058   $s = size of array $config.Array
+059   while $s > 0
+060    dec $s =
+061    $script.Array = $config.Array[$s]
+062    $script = $script.Array[0]
+063    
+064    $menu1 = = read text: page=$PageID id=102
+065    $menu2 = = read text: page=$PageID id=105
+066    
+067    if $script == $menu1 OR $script == $menu2
+068     remove element from array $config.Array at index $s
+069    end
+070    
+071   end
+072  end
+073  
+074  endsub
+075  
+076  
+077  return null
+078  
+079  
+080  

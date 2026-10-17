@@ -1,0 +1,66 @@
+* Script: plugin.LI.FDN.Find.Node  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $node.Array = $al.Settings[2]
+007  else
+008   return null
+009  end
+010  
+011  $sector = [THIS]  ->  get sector
+012  $sub = = [THIS]  ->  get subtype
+013  
+014  if find $sub in array: $node.Array
+015   $distance = 8
+016  else
+017   $distance = 5
+018  end
+019  
+020  $flags = [Find.Multiple]
+021  $dock.Array = find station in galaxy: startsector=$sector class or type=Dock 2007 race=Player flags=$flags refobj=null serial=null max.jumps=$distance num=100
+022  $s = size of array $dock.Array
+023  $temp.Array = = array alloc: size=0
+024  
+025  while $s > 0
+026   dec $s =
+027   $dock = $dock.Array[$s]
+028   $dock.sec = $dock  ->  get sector
+029   $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+030   if $adv.Sat
+031    $dock.sub = = $dock  ->  get subtype
+032    if find $dock.sub in array: $node.Array
+033     append $dock to array $temp.Array
+034    end
+035   end
+036  end
+037  
+038  $s = size of array $temp.Array
+039  $sort.Array = = array alloc: size=$s
+040  $cnt = 0
+041  while $cnt < $s
+042   $node = $temp.Array[$cnt]
+043   $node.Sec = $node  ->  get sector
+044   $jump = get jumps from sector $node.Sec to sector $sector
+045   $sort.Array[$cnt] = $jump
+046   inc $cnt =
+047  end
+048  
+049  $array.Return = = sort array: data=$temp.Array sort values=$sort.Array
+050  $array.Return = reverse array $array.Return
+051  
+052  $s = size of array $array.Return
+053  if $s > 0
+054   return $array.Return
+055  else
+056   return null
+057  end
+058  
+059  
+060  return null
+061  
+062  
+063  

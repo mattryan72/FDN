@@ -1,0 +1,103 @@
+* Script: plugin.LI.FDN.Station.Task  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $status = $al.Settings[0]
+006   $PageID = $al.Settings[1]
+007  else
+008   return null
+009  end
+010  
+011  $is.on = [TRUE]
+012  
+013  * While is On
+014  while $is.on == [TRUE]
+015   skip if $status == [TRUE]
+016    return null
+017   
+018   
+019   $pointer = = read text: page=$PageID id=4001
+020   $settings.Array = [THIS]  ->  get local variable: name=$pointer
+021   
+022   
+023   $is.on = $settings.Array[0]
+024   skip if $is.on == [TRUE]
+025    return null
+026   
+027   
+028   * Restart script check
+029   if is a new script version available
+030    $task = = [THIS]  ->  get next available task: starting=$PageID
+031    $settings.Array[5] = $task
+032    [THIS]  ->  start task $task with script plugin.LI.FDN.Station.Task and prio 10: arg1=null arg2=null arg3=null arg4=null arg5=null
+033    return null
+034   end
+035   
+036   
+037   * Production Cycle Timer v2
+038   $time = = [THIS]  ->  get remaining production cycle time
+039   $current.Time = = playing time
+040   $end.Time = $current.Time + $time
+041   while $current.Time < $end.Time
+042    $wait = ( ( $end.Time - $current.Time ) * 1000 ) - 3000
+043    if $wait > 300000
+044     $wait = 300000
+045    end
+046     = wait $wait ms
+047    $current.Time = = playing time
+048   end
+049   
+050   
+051    = wait randomly from 6000 to 8000 ms
+052   
+053   * Check Adv Sat exit if no Adv Sat detected
+054   $sector = [THIS]  ->  get sector
+055   $adv.Sat = find ship: sector=$sector class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+056   if not $adv.Sat
+057    gosub Network.Exit.Sub:
+058   end
+059   
+060   * Check Node in Range
+061   $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Node :
+062   if not $node.Array
+063    gosub Network.Exit.Sub:
+064   end
+065   
+066   * Pass product to Node
+067   $supply = $settings.Array[1]
+068   if $supply == [TRUE]
+069    START  = [THIS] -> call script plugin.LI.FDN.Supply.Node :
+070   end
+071   
+072   
+073   * Loop until resupply
+074   $check = [FALSE]
+075   while $check == [FALSE]
+076    * Call Script to supply Station
+077    $check = [THIS] -> call script plugin.LI.FDN.Supply.Station :
+078     = wait randomly from 10000 to 15000 ms
+079   end
+080   
+081   
+082   $is.on = $settings.Array[0]
+083  end
+084  
+085  
+086  return null
+087  
+088  Network.Exit.Sub:
+089  $settings.Array[0] = null
+090  $txt = = sprintf: pageid=$PageID textid=3001, [THIS], null, null, null, null
+091  send incoming message $txt to player: display it=[FALSE]
+092  [THIS]  ->  set local variable: name=$pointer value=null
+093  [THIS]  ->  station trade and production tasks: on=[TRUE]
+094  return null
+095  endsub
+096  
+097  
+098  return null
+099  
+100  

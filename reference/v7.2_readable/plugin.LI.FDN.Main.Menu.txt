@@ -1,0 +1,276 @@
+* Script: plugin.LI.FDN.Main.Menu  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * Get AL settings
+005  $script = = get script name
+006  $al.Settings = get global variable: name='al.LI.FDN.event'
+007  if $al.Settings
+008   $PageID = $al.Settings[1]
+009  else
+010   return null
+011  end
+012  
+013  
+014  * Start Menu
+015  while [TRUE]
+016   $txt = = read text: page=$PageID id=102
+017   $menu = = create custom menu array: heading=$txt
+018   
+019   $txt = = read text: page=$PageID id=112
+020   add custom menu heading to array $menu: title=$txt
+021   $txt = = read text: page=$PageID id=223
+022   add custom menu item to array $menu: text=$txt returnvalue='switch'
+023   
+024   
+025   * Get Main Menu Gloab Array
+026   $pointer = = read text: page=$PageID id=5000
+027   $main.menu.Master.Array = get global variable: name=$pointer
+028   $main.menu.Master.Array = = sort array $main.menu.Master.Array
+029   $main.menu.Master.Array = reverse array $main.menu.Master.Array
+030   
+031   $sm = size of array $main.menu.Master.Array
+032   if $sm > 0
+033    while $sm > 0
+034     dec $sm =
+035     $gbl.Sector.Array = $main.menu.Master.Array[$sm]
+036     gosub Build.Menu.Sub:
+037    end
+038   else
+039    $txt = = read text: page=$PageID id=111
+040    add custom menu item to array $menu: text=$txt returnvalue=-1
+041   end
+042   
+043   $txt = = read text: page=$PageID id=221
+044   $desc = = sprintf: pageid=$PageID textid=9000, $txt, null, null, null, null
+045   $return = open custom info menu: title=$txt description=$desc option array=$menu maxoptions=2
+046   
+047   * Start of return
+048   if $return == -1
+049    goto label Exit:
+050   else
+051    if is datatyp[ $return ] == DATATYP_ARRAY
+052     
+053     $cmd = $return[0]
+054     $val = $return[1]
+055     
+056     if $cmd == 'rn.'
+057      * Main Off
+058      $al.Settings[10][0] = [FALSE]
+059      * Node On
+060      $al.Settings[10][1] = [TRUE]
+061      
+062      START  = $val -> call script plugin.LI.FDN.Node.Menu.D :
+063       = $val -> call script plugin.LI.FDN.Node.Menu : main.caller.script=$script
+064      return null
+065     else if $cmd == 'rr.'
+066       = $val -> call script plugin.LI.FDN.Relay.Menu :
+067      goto label Exit:
+068     else if $cmd == 'rs.'
+069       = [THIS] -> call script plugin.LI.FDN.Sector.Menu : sector=$val
+070      goto label Exit:
+071      
+072     else
+073      
+074      $show.Array = $val  ->  get local variable: name='FDN.Node.Show.Menus'
+075      if $cmd == 's.Sector'
+076       if not $show.Array[0]
+077        $show.Array[0] = [TRUE]
+078       else
+079        $show.Array[0] = null
+080       end
+081      else if $cmd == 's.Node'
+082       if not $show.Array[1]
+083        $show.Array[1] = [TRUE]
+084       else
+085        $show.Array[1] = null
+086       end
+087      else if $cmd == 's.Dock'
+088       if not $show.Array[2]
+089        $show.Array[2] = [TRUE]
+090       else
+091        $show.Array[2] = null
+092       end
+093      else if $cmd == 's.Relay'
+094       if not $show.Array[3]
+095        $show.Array[3] = [TRUE]
+096       else
+097        $show.Array[3] = null
+098       end
+099      end
+100     end
+101    else
+102     if $return == 'switch'
+103      * Main Off
+104      $al.Settings[10][0] = [FALSE]
+105      
+106      * Ware On Check
+107      $is.On = $al.Settings[10]
+108      $s = size of array $is.On
+109      if $s < 3
+110       append [TRUE] to array $is.On
+111      end
+112      $al.Settings[10][2] = [TRUE]
+113      
+114      START  = $val -> call script plugin.LI.FDN.Main.Ware.D :
+115       = $val -> call script plugin.LI.FDN.Main.Ware :
+116      return null
+117     end
+118    end
+119   end
+120  end
+121  
+122  return null
+123  
+124  * This Sub builds the menu based on the Global array built by the Dynamic menu script
+125  Build.Menu.Sub:
+126  * Get Sector
+127  $sector = $gbl.Sector.Array[0]
+128  * Add Sector to Menu
+129  add custom menu heading to array $menu: title=$sector
+130  
+131  * Get the FDN elemets fro the sector from Array
+132  $sector.Node.Array = $gbl.Sector.Array[1]
+133  $sub.Sector.Array = $gbl.Sector.Array[2]
+134  $sub.Node.Array = $gbl.Sector.Array[3]
+135  $sub.Dock.Array = $gbl.Sector.Array[4]
+136  $sub.Relay.Array = $gbl.Sector.Array[5]
+137  
+138  * If no show menu settings on first Node add
+139  $first.Node = $sector.Node.Array[0]
+140  if not $first.Node  ->  get local variable: name='FDN.Node.Show.Menus'
+141   $show.Array = = create new array, arguments=1, 1, 1, 1, null
+142   $first.Node  ->  set local variable: name='FDN.Node.Show.Menus' value=$show.Array
+143  end
+144  $show.Array = $first.Node  ->  get local variable: name='FDN.Node.Show.Menus'
+145  
+146  * Add Nodes in seector
+147  $sector.Node.Array = = sort array $sector.Node.Array
+148  $sector.Node.Array = reverse array $sector.Node.Array
+149  $sna = size of array $sector.Node.Array
+150  while $sna > 0
+151   dec $sna =
+152   $node = $sector.Node.Array[$sna]
+153   $id = $node  ->  get ID code
+154   $sec = $node  ->  get sector
+155   
+156   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+157   $summary = get global variable: name=$pointer
+158   append $summary to array $menu
+159  end
+160  add section to custom menu: $menu
+161  
+162  * Add sectors with stations in range of Node
+163  $sub.Sector.Array = = sort array $sub.Sector.Array
+164  $sub.Sector.Array = reverse array $sub.Sector.Array
+165  $ssa = size of array $sub.Sector.Array
+166  if $ssa > 0
+167   $return.Array = = create new array, arguments='s.Sector', $first.Node, null, null, null
+168   if $show.Array[0]
+169    $txt = = sprintf: pageid=$PageID textid=1000, $ssa, null, null, null, null
+170    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+171    
+172    while $ssa > 0
+173     dec $ssa =
+174     $sub.Sec = $sub.Sector.Array[$ssa]
+175     $x = $sub.Sec  ->  get universe x index
+176     $y = $sub.Sec  ->  get universe y index
+177     
+178     $pointer = = sprintf: pageid=$PageID textid=5002, $sub.Sec, $sector, $x, $y, null
+179     $summary = get global variable: name=$pointer
+180     append $summary to array $menu
+181    end
+182   else
+183    $txt = = sprintf: pageid=$PageID textid=1001, $ssa, null, null, null, null
+184    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+185   end
+186  end
+187  add section to custom menu: $menu
+188  
+189  * Add list of Nodes within range of sector
+190  $sna = size of array $sub.Node.Array
+191  if $sna > 0
+192   $return.Array = = create new array, arguments='s.Node', $first.Node, null, null, null
+193   if $show.Array[1]
+194    $txt = = sprintf: pageid=$PageID textid=1002, $sna, null, null, null, null
+195    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+196    
+197    while $sna > 0
+198     dec $sna =
+199     $node = $sub.Node.Array[$sna]
+200     $id = $node  ->  get ID code
+201     $sec = $node  ->  get sector
+202     
+203     $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+204     $summary = get global variable: name=$pointer
+205     append $summary to array $menu
+206    end
+207   else
+208    $txt = = sprintf: pageid=$PageID textid=1003, $sna, null, null, null, null
+209    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+210   end
+211  end
+212  add section to custom menu: $menu
+213  
+214  * Add a list of Docks within Range of sector
+215  $sda = size of array $sub.Dock.Array
+216  if $sda > 0
+217   $return.Array = = create new array, arguments='s.Dock', $first.Node, null, null, null
+218   if $show.Array[2]
+219    $txt = = sprintf: pageid=$PageID textid=1004, $sda, null, null, null, null
+220    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+221    
+222    while $sda > 0
+223     dec $sda =
+224     $dock = $sub.Dock.Array[$sda]
+225     $id = $dock  ->  get ID code
+226     $sec = $dock  ->  get sector
+227     
+228     $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+229     $summary = get global variable: name=$pointer
+230     append $summary to array $menu
+231    end
+232   else
+233    $txt = = sprintf: pageid=$PageID textid=1005, $sda, null, null, null, null
+234    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+235   end
+236  end
+237  add section to custom menu: $menu
+238  
+239  * Add a list of Relays within Range of sector
+240  $sra = size of array $sub.Relay.Array
+241  if $sra > 0
+242   $return.Array = = create new array, arguments='s.Relay', $first.Node, null, null, null
+243   if $show.Array[3]
+244    $txt = = sprintf: pageid=$PageID textid=1006, $sra, null, null, null, null
+245    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+246    
+247    while $sra > 0
+248     dec $sra =
+249     $relay = $sub.Relay.Array[$sra]
+250     $id = $relay  ->  get ID code
+251     $sec = $relay  ->  get sector
+252     
+253     $pointer = = sprintf: pageid=$PageID textid=5001, $id, $sector, $sec, null, null
+254     $summary = get global variable: name=$pointer
+255     append $summary to array $menu
+256    end
+257   else
+258    $txt = = sprintf: pageid=$PageID textid=1007, $sra, null, null, null, null
+259    add custom menu item to array $menu: text=$txt returnvalue=$return.Array
+260   end
+261  end
+262  
+263  endsub
+264  
+265  
+266  Exit:
+267  $al.Settings[10][0] = [FALSE]
+268  START  = null -> call script plugin.LI.FDN.Cleanup :
+269  return null
+270  
+271  
+272  
+273  

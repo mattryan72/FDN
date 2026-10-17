@@ -1,0 +1,85 @@
+* Script: plugin.LI.FDN.Complex.Check  (v7, engine 44)
+* Desc: 
+* Arg 0: ware (Var/Ware) 'ware'
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  $script = = get script name
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007   $debug = $al.Settings[5][0]
+008   $DebugID = 0 + $PageID
+009  end
+010  
+011  
+012  $pointer = = read text: page=$PageID id=4001
+013  $settings.Array = [THIS]  ->  get local variable: name=$pointer
+014  $complex = $settings.Array[4]
+015  
+016  $factory.Array = = $complex  ->  get factory array from sector
+017  $s = size of array $factory.Array
+018  $max = 0
+019  
+020  while $s > 0
+021   dec $s =
+022   $factory = $factory.Array[$s]
+023   
+024   $f.id = $factory  ->  get ID code
+025   $settings.Array = $factory  ->  get local variable: name=$pointer
+026   $settings.Array[4] = $complex
+027   
+028   * New Section to deal with local factory cap
+029   $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+030   $ware.cap = $complex  ->  get local variable: name=$pointer
+031   * debug-
+032   if $debug == [TRUE]
+033    $txt.debug = '[' + $f.id + ']' + $complex + ';Ware = ' + $ware + ' Cap = ' + $ware.cap
+034    gosub Debug.Sub:
+035   end
+036   * -
+037   if not $ware.cap > 0
+038    
+039    if $factory  ->  uses ware $ware as primary resource
+040     $cyc.Amt = = $factory  ->  get number of resources per cycle for ware $ware
+041     * debug-
+042     if $debug == [TRUE]
+043      $txt.debug = '[' + $f.id + ']' + $factory + ';Uses as Primary = ' + $ware + ' Required = ' + $cyc.Amt
+044      gosub Debug.Sub:
+045     end
+046     * -
+047     skip if $cyc.Amt <= $max
+048      $max = $cyc.Amt
+049    end
+050    
+051   end
+052  end
+053  
+054  if not $ware.cap > 0
+055   $max = $max * 2
+056  else
+057   $max = $ware.cap
+058  end
+059  
+060  * debug-
+061  if $debug == [TRUE]
+062   $c.id = $factory  ->  get ID code
+063   $txt.debug = '[' + $c.id + ']' + $complex + ';Uses as Primary = ' + $ware + ' To Keep = ' + $max
+064   gosub Debug.Sub:
+065  end
+066  * -
+067  
+068  return $max
+069  
+070  
+071  Debug.Sub:
+072  $d.time = = playing time
+073  $d.time = = format time: $d.time
+074  $txt = $d.time + ';' + $script + ';' + $txt.debug
+075  write to log file $DebugID  append=[TRUE]  value=$txt
+076  endsub
+077  
+078  
+079  return null
+080  
+081  

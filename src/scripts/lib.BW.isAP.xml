@@ -1,0 +1,30 @@
+<?xml version="1.0" standalone="yes"?>
+<?xml-stylesheet href="x2script.xsl" type="text/xsl"?>
+<!--Produced externally by the Exscriptor-->
+<script>
+   <name>lib.BW.isAP</name>
+   <version>0</version>
+   <engineversion>50</engineversion>
+   <description>isAP Tests whether the current script enginer version is from AP or TC</description>
+   <arguments />
+   <sourcetext>
+      <line linenr="001" indent=""><comment>* BW: ===============================</comment></line>
+      <line linenr="002" indent=""><comment>* Test for AP.</comment></line>
+      <line linenr="003" indent=""><comment>* BW: ===============================</comment></line>
+      <line linenr="004" indent=""><text></text><var>$scriptEngineVersion =</var><text> = script engine version</text></line>
+      <line linenr="005" indent=""><comment>* TC 3.2 = 44</comment></line>
+      <line linenr="006" indent=""><comment>* AP 2.0 = 52</comment></line>
+      <line linenr="007" indent=""><var>if </var><text></text><var>$scriptEngineVersion &gt;= 50 </var><text></text></line>
+      <line linenr="008" indent="&#160;"><var>$RetVal = </var><text></text><var>[TRUE] </var><text></text></line>
+      <line linenr="009" indent=""><text>else</text></line>
+      <line linenr="010" indent="&#160;"><var>$RetVal = </var><text></text><var>[FALSE] </var><text></text></line>
+      <line linenr="011" indent=""><text>end</text></line>
+      <line linenr="012" indent=""> </line>
+      <line linenr="013" indent=""><text>return </text><var>$RetVal</var><text></text></line>
+      <line linenr="014" indent=""> </line>
+      <line linenr="015" indent=""> </line>
+      <line linenr="016" indent=""> </line>
+   </sourcetext>
+   <codearray><sval type="array" size="10"><sval type="string" val="lib.BW.isAP" /><sval type="int" val="50" /><sval type="string" val="isAP Tests whether the current script enginer version is from AP or TC" /><sval type="int" val="0" /><sval type="int" val="0" /><sval type="array" size="2"><sval type="string" val="scriptEngineVersion" /><sval type="string" val="RetVal" /></sval><sval type="array" size="6"><sval type="array" size="2"><sval type="int" val="152" /><sval type="int" val="0" /></sval><sval type="array" size="13"><sval type="int" val="104" /><sval type="int" val="-1610611709" /><sval type="int" val="3" /><sval type="int" val="131074" /><sval type="int" val="0" /><sval type="int" val="4" /><sval type="int" val="50" /><sval type="int" val="15" /><sval type="int" val="4" /><sval type="int" val="3" /><sval type="int" val="-1" /><sval type="int" val="4" /><sval type="int" val="-2" /></sval><sval type="array" size="7"><sval type="int" val="104" /><sval type="int" val="1" /><sval type="int" val="1" /><sval type="int" val="131075" /><sval type="int" val="10" /><sval type="int" val="1" /><sval type="int" val="-1" /></sval><sval type="array" size="2"><sval type="int" val="112" /><sval type="int" val="5" /></sval><sval type="array" size="7"><sval type="int" val="104" /><sval type="int" val="1" /><sval type="int" val="1" /><sval type="int" val="131075" /><sval type="int" val="9" /><sval type="int" val="1" /><sval type="int" val="-1" /></sval><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="131074" /><sval type="int" val="1" /></sval></sval><sval type="int" val="0" /><sval type="array" size="11"><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="BW: ===============================" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Test for AP." /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="BW: ===============================" /></sval><sval type="array" size="3"><sval type="int" val="1" /><sval type="int" val="1" /><sval type="string" val="TC 3.2 = 44" /></sval><sval type="array" size="3"><sval type="int" val="1" /><sval type="int" val="1" /><sval type="string" val="AP 2.0 = 52" /></sval><sval type="array" size="2"><sval type="int" val="4" /><sval type="int" val="5" /></sval><sval type="array" size="2"><sval type="int" val="5" /><sval type="int" val="4" /></sval><sval type="array" size="2"><sval type="int" val="5" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="6" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="6" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="6" /><sval type="int" val="2" /></sval></sval><sval type="int" val="0" /></sval>
+   </codearray>
+</script>

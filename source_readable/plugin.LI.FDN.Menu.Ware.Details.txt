@@ -1,0 +1,319 @@
+* Script: plugin.LI.FDN.Menu.Ware.Details  (v1.0, engine 50)
+* Desc: FDNv8 - Ware details menu
+* Arg 0: menu (Value) 'menu'
+* Arg 1: value (Value) 'value'
+* Arg 2: ware (Value) 'ware'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This is the script for the ware details menu and magament of all ware related
+004  * settings
+005  
+006  * Expected values:
+007  * - menu - this will be added to and passed back to the main menu
+008  * - value - this is the calling DC or Dock
+009  
+010  * Returns values:
+011  * - N/A
+012  
+013  * Version: 1.0
+014  * Date: 24/05/2012
+015  * Tested: 24/05/2012
+016  * -----------------------------------------------------------------------------------
+017  * -----------------------------------------------------------------------------------
+018  * Start
+019  * -----------------------------------------------------------------------------------
+020  * Fetch values saved in the AL Plugin global variable:
+021  
+022  $al.Settings = get global variable: name='al.LI.FDN.event'
+023  if $al.Settings
+024   $PageID = $al.Settings[1]
+025   $dc = $al.Settings[2]
+026  end
+027  
+028  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+029  $ware.settings = $value  ->  get local variable: name=$pointer
+030  
+031  * Calls script to format name
+032  $txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$value
+033  * -----------------------------------------------------------------------------------
+034  $temp.array = = array alloc: size=4
+035  $temp.array[0] = 1
+036  $temp.array[1] = $txt
+037  $temp.array[2] = -1
+038  $txt = $dc  ->  get sector
+039  $temp.array[3] = $txt
+040  add custom menu info line to array $menu: text=$temp.array
+041  add custom menu info line to array $menu: text=' '
+042  
+043  $amount = $value  ->  get amount of ware $ware in cargo bay
+044  $amount = = convert number $amount to string
+045  $virtual = $ware.settings[0]
+046  $virtual = = convert number $virtual to string
+047  $virtual = = sprintf: pageid=$PageID textid=9004, $virtual, null, null, null, null
+048  $storage = $amount + '/' + $virtual
+049  
+050  $temp.array = = array alloc: size=4
+051  $temp.array[0] = 1
+052  $txt = = sprintf: pageid=$PageID textid=9000, $ware, null, null, null, null
+053  $txt = $ware + ':'
+054  $temp.array[1] = $txt
+055  $temp.array[2] = -1
+056  $temp.array[3] = $storage
+057  add custom menu info line to array $menu: text=$temp.array
+058  
+059  $txt = = read text: page=$PageID id=187
+060  add custom menu heading to array $menu: title=$txt
+061  
+062  if $value == $dc
+063   gosub Build.DC.Ware.Menu.Sub:
+064  else
+065   gosub Build.Dock.Ware.Menu.Sub:
+066  end
+067  
+068  $txt = = read text: page=$PageID id=188
+069  add custom menu heading to array $menu: title=$txt
+070  
+071  $virtual.avialable = $ware.settings[0]
+072  $physical.avialable = $value  ->  get amount of ware $ware in cargo bay
+073  $stock.avialable = $virtual.avialable + $physical.avialable
+074  if $stock.avialable > 0
+075   $txt = = read text: page=$PageID id=177
+076   $ret.array = = array alloc: size=3
+077   $ret.array[0] = 'move.ware'
+078   $ret.array[1] = $value
+079   $ret.array[2] = $ware
+080   add custom menu item to array $menu: text=$txt returnvalue=$ret.array
+081   add section to custom menu: $menu
+082  end
+083  
+084  if $stock.avialable > 0
+085   $txt = = read text: page=$PageID id=189
+086   $ret.array = = array alloc: size=3
+087   $ret.array[0] = 'to.physical'
+088   $ret.array[1] = $value
+089   $ret.array[2] = $ware
+090   add custom menu item to array $menu: text=$txt returnvalue=$ret.array
+091   
+092   $txt = = read text: page=$PageID id=190
+093   $ret.array = = array alloc: size=3
+094   $ret.array[0] = 'to.virtual'
+095   $ret.array[1] = $value
+096   $ret.array[2] = $ware
+097   add custom menu item to array $menu: text=$txt returnvalue=$ret.array
+098  end
+099  
+100  if $stock.avialable == 0
+101   if not $value == $dc
+102    add section to custom menu: $menu
+103    $txt = = read text: page=$PageID id=191
+104    $ret.array = = array alloc: size=3
+105    $ret.array[0] = 'remove.ware'
+106    $ret.array[1] = $value
+107    $ret.array[2] = $ware
+108    add custom menu item to array $menu: text=$txt returnvalue=$ret.array
+109   else
+110    if not $ware.settings[3]
+111     add section to custom menu: $menu
+112     $txt = = read text: page=$PageID id=191
+113     $ret.array = = array alloc: size=3
+114     $ret.array[0] = 'remove.ware'
+115     $ret.array[1] = $value
+116     $ret.array[2] = $ware
+117     add custom menu item to array $menu: text=$txt returnvalue=$ret.array
+118    end
+119   end
+120  end
+121  * -----------------------------------------------------------------------------------
+122  * -----------------------------------------------------------------------------------
+123  return $menu
+124  * -----------------------------------------------------------------------------------
+125  * -----------------------------------------------------------------------------------
+126  * SUB Section
+127  * -----------------------------------------------------------------------------------
+128  * -----------------------------------------------------------------------------------
+129  * This Sub build the ware menu for the DC
+130  Build.DC.Ware.Menu.Sub:
+131  
+132  $remote.cap = $ware.settings[1]
+133  if $remote.cap >= 0
+134   $remote.txt = = convert number $remote.cap to string
+135  else
+136   $remote.txt = ' - '
+137  end
+138  $temp.array = = array alloc: size=4
+139  $temp.array[0] = 1
+140  $txt = = read text: page=$PageID id=170
+141  $temp.array[1] = $txt
+142  $temp.array[2] = -1
+143  $temp.array[3] = $remote.txt
+144  $ret.array = = array alloc: size=3
+145  $ret.array[0] = 'remote.cap'
+146  $ret.array[1] = $value
+147  $ret.array[2] = $ware
+148  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+149  append $format to array $menu
+150  add section to custom menu: $menu
+151  
+152  
+153  if $ware.settings[3]
+154   $onoff.txt = = read text: page=$PageID id=148
+155  else
+156   $onoff.txt = = read text: page=$PageID id=149
+157  end
+158  $temp.array = = array alloc: size=4
+159  $temp.array[0] = 1
+160  $txt = = read text: page=$PageID id=172
+161  $temp.array[1] = $txt
+162  $temp.array[2] = -1
+163  $temp.array[3] = $onoff.txt
+164  $ret.array = = array alloc: size=3
+165  $ret.array[0] = 'can.buy'
+166  $ret.array[1] = $value
+167  $ret.array[2] = $ware
+168  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+169  append $format to array $menu
+170  add section to custom menu: $menu
+171  
+172  
+173  $buy.at = $ware.settings[4]
+174  $buy.txt = = convert number $buy.at to string
+175  $temp.array = = array alloc: size=4
+176  $temp.array[0] = 1
+177  $txt = = read text: page=$PageID id=173
+178  $temp.array[1] = $txt
+179  $temp.array[2] = -1
+180  $temp.array[3] = $buy.txt
+181  $ret.array = = array alloc: size=3
+182  $ret.array[0] = 'buy.at'
+183  $ret.array[1] = $value
+184  $ret.array[2] = $ware
+185  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+186  append $format to array $menu
+187  add section to custom menu: $menu
+188  
+189  
+190  $sell.cap = $ware.settings[5]
+191  if $sell.cap >= 0
+192   $sell.txt = = convert number $sell.cap to string
+193  else
+194   $sell.txt = ' - '
+195  end
+196  $temp.array = = array alloc: size=4
+197  $temp.array[0] = 1
+198  $txt = = read text: page=$PageID id=174
+199  $temp.array[1] = $txt
+200  $temp.array[2] = -1
+201  $temp.array[3] = $sell.txt
+202  $ret.array = = array alloc: size=3
+203  $ret.array[0] = 'sell.cap'
+204  $ret.array[1] = $value
+205  $ret.array[2] = $ware
+206  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+207  append $format to array $menu
+208  add section to custom menu: $menu
+209  
+210  
+211  $sell.at = $ware.settings[6]
+212  $sell.txt = = convert number $sell.at to string
+213  $temp.array = = array alloc: size=4
+214  $temp.array[0] = 1
+215  $txt = = read text: page=$PageID id=175
+216  $temp.array[1] = $txt
+217  $temp.array[2] = -1
+218  $temp.array[3] = $sell.txt
+219  $ret.array = = array alloc: size=3
+220  $ret.array[0] = 'sell.at'
+221  $ret.array[1] = $value
+222  $ret.array[2] = $ware
+223  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+224  append $format to array $menu
+225  
+226  endsub
+227  * -----------------------------------------------------------------------------------
+228  * -----------------------------------------------------------------------------------
+229  * This Sub build the ware menu for the Doks
+230  Build.Dock.Ware.Menu.Sub:
+231  
+232  $maintain.cap = $ware.settings[2]
+233  if $maintain.cap >= 0
+234   $maintain.txt = = convert number $maintain.cap to string
+235  else
+236   $maintain.txt = ' - '
+237  end
+238  $temp.array = = array alloc: size=4
+239  $temp.array[0] = 1
+240  $txt = = read text: page=$PageID id=171
+241  $temp.array[1] = $txt
+242  $temp.array[2] = -1
+243  $temp.array[3] = $maintain.txt
+244  $ret.array = = array alloc: size=3
+245  $ret.array[0] = 'maintain.cap'
+246  $ret.array[1] = $value
+247  $ret.array[2] = $ware
+248  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+249  append $format to array $menu
+250  add section to custom menu: $menu
+251  
+252  
+253  if $ware.settings[7]
+254   $onoff.txt = = read text: page=$PageID id=148
+255  else
+256   $onoff.txt = = read text: page=$PageID id=149
+257  end
+258  $temp.array = = array alloc: size=4
+259  $temp.array[0] = 1
+260  $txt = = read text: page=$PageID id=185
+261  $temp.array[1] = $txt
+262  $temp.array[2] = -1
+263  $temp.array[3] = $onoff.txt
+264  $ret.array = = array alloc: size=3
+265  $ret.array[0] = 'surplus'
+266  $ret.array[1] = $value
+267  $ret.array[2] = $ware
+268  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+269  append $format to array $menu
+270  add section to custom menu: $menu
+271  
+272  
+273  $sell.cap = $ware.settings[5]
+274  if $sell.cap >= 0
+275   $sell.txt = = convert number $sell.cap to string
+276  else
+277   $sell.txt = ' - '
+278  end
+279  $temp.array = = array alloc: size=4
+280  $temp.array[0] = 1
+281  $txt = = read text: page=$PageID id=174
+282  $temp.array[1] = $txt
+283  $temp.array[2] = -1
+284  $temp.array[3] = $sell.txt
+285  $ret.array = = array alloc: size=3
+286  $ret.array[0] = 'sell.cap'
+287  $ret.array[1] = $value
+288  $ret.array[2] = $ware
+289  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+290  append $format to array $menu
+291  add section to custom menu: $menu
+292  
+293  
+294  $sell.at = $ware.settings[6]
+295  $sell.txt = = convert number $sell.at to string
+296  $temp.array = = array alloc: size=4
+297  $temp.array[0] = 1
+298  $txt = = read text: page=$PageID id=175
+299  $temp.array[1] = $txt
+300  $temp.array[2] = -1
+301  $temp.array[3] = $sell.txt
+302  $ret.array = = array alloc: size=3
+303  $ret.array[0] = 'sell.at'
+304  $ret.array[1] = $value
+305  $ret.array[2] = $ware
+306  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+307  append $format to array $menu
+308  
+309  endsub
+310  
+311  return null
+312  
+313  

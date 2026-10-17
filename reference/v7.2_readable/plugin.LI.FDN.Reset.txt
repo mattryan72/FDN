@@ -1,0 +1,101 @@
+* Script: plugin.LI.FDN.Reset  (v7, engine 44)
+* Desc: 
+
+001  * Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $PageID = $al.Settings[1]
+006   $node.Array = $al.Settings[2]
+007   $trade.Array = $al.Settings[2]
+008   $relay.Array = $al.Settings[4]
+009  end
+010  
+011  * Clear local FDN config
+012  $x = = get max sectors in x direction
+013  while $x
+014   $y = = get max sectors in y direction
+015   dec $x =
+016   while $y
+017    dec $y =
+018    $sector = get sector from universe index: x=$x, y=$y
+019    $station.Array = = $sector  ->  get station array from sector
+020    $s = size of array $station.Array
+021    while $s
+022     dec $s =
+023     $station = $station.Array[$s]
+024     * Kill task on dock
+025     gosub Kill.FDN.Task:
+026     
+027     $array = $station  ->  get local variables: regular expression='FDN*'
+028     $sl = size of array $array
+029     while $sl > 0
+030      dec $sl =
+031      $var = $array[$sl]
+032      $station  ->  set local variable: name=$var value=null
+033     end
+034     
+035    end
+036   end
+037  end
+038  
+039  return null
+040  
+041  
+042  Kill.FDN.Task:
+043  $sub = = $station  ->  get subtype
+044  $class = $station  ->  get object class
+045  
+046  if $station  ->  is of class Dock 2007
+047   gosub Node.Task:
+048  else if $class == Factory 2006
+049   
+050   * -Tweak 16/08/2010 - Ensure production and trade task is on
+051   * ----------------------------------------------------------
+052   $station  ->  station trade and production tasks: on=[TRUE]
+053   
+054   $pointer = = read text: page=$PageID id=4001
+055   $settings.Array = $station  ->  get local variable: name=$pointer
+056   $task = $settings.Array[5]
+057   skip if not $station  ->  is script plugin.LI.FDN.Station.Task on stack of task=$task
+058    $station  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+059  end
+060  endsub
+061  
+062  
+063  Node.Task:
+064  if find $sub in array: $relay.Array
+065   $pointer = = read text: page=$PageID id=4002
+066   $settings.Array = $station  ->  get local variable: name=$pointer
+067   $task = $settings.Array[4]
+068   if $station  ->  is script plugin.LI.FDN.Relay.Task on stack of task=$task
+069    $station  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+070   end
+071  else
+072   $pointer = = read text: page=$PageID id=4000
+073   $settings.Array = $station  ->  get local variable: name=$pointer
+074   if find $sub in array: $node.Array
+075    $task = $settings.Array[4]
+076    skip if not $station  ->  is script plugin.LI.FDN.Sell.Task on stack of task=$task
+077     $station  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+078    
+079   else
+080    $task = $settings.Array[3]
+081    skip if not $station  ->  is script plugin.LI.FDN.Dock.Task on stack of task=$task
+082     $station  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+083    $task = $settings.Array[4]
+084    
+085    if find $sub in array: $trade.Array
+086     skip if not $station  ->  is script plugin.LI.FDN.Sell.Task on stack of task=$task
+087      $station  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+088     
+089    end
+090   end
+091  end
+092  endsub
+093  
+094  
+095  return null
+096  
+097  
+098  

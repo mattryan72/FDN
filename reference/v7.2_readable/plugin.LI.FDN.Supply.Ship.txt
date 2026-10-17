@@ -1,0 +1,285 @@
+* Script: plugin.LI.FDN.Supply.Ship  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $PageID = $al.Settings[1]
+006   $debug = $al.Settings[5][2]
+007   $DebugID = 0 + $PageID
+008  end
+009  
+010  if $debug == [TRUE]
+011   $script = = get script name
+012   $id = [THIS]  ->  get ID code
+013  end
+014  
+015  $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Supply.Node :
+016  skip if $node.Array
+017   return null
+018  
+019  * ----
+020  if $debug == [TRUE]
+021   $txt.debug = '[' + $id + ']' + [THIS] + ';Node Array = ' + $node.Array
+022   gosub Debug.Sub:
+023  end
+024  * ----
+025  
+026  $pointer = = read text: page=$PageID id=4002
+027  $settings.Array = [THIS]  ->  get local variable: name=$pointer
+028  
+029  * ----
+030  if $debug == [TRUE]
+031   $txt.debug = '[' + $id + ']' + [THIS] + ';Settings Array = ' + $settings.Array
+032   gosub Debug.Sub:
+033  end
+034  * ----
+035  
+036  $eng.on = $settings.Array[1]
+037  $miss.on = $settings.Array[2]
+038  $ammo.on = $settings.Array[3]
+039  
+040  $sector = [THIS]  ->  get sector
+041  
+042  skip if $eng.on == [TRUE] OR $miss.on == [TRUE] OR $ammo.on == [TRUE]
+043   return null
+044  
+045  $ship.Array = = array alloc: size=0
+046  
+047  gosub Build.Ship.Array:
+048  
+049  $s = size of array $ship.Array
+050  while $s > 0
+051   dec $s =
+052   $ship = $ship.Array[$s]
+053   
+054   $required.Array = = array alloc: size=0
+055   
+056   if $eng.on
+057    if $ship  ->  get resupply fuel required
+058     $amt = $ship  ->  get resupply fuel required
+059     
+060     $ware = Energy Cells
+061     
+062     gosub Get.Ammount.Sub:
+063     
+064     if $amt > 0
+065      $temp = = array alloc: size=2
+066      $temp[0] = $ware
+067      $temp[1] = $amt
+068      append $temp to array $required.Array
+069     end
+070    end
+071   end
+072   
+073   if $miss.on
+074    $sm = = get number of subtypes of maintype [SSTYPE_MISSILE]
+075    while $sm
+076     dec $sm =
+077     $ware = = get ware from maintype [SSTYPE_MISSILE] and subtype $sm
+078     if $ship  ->  get missile resupply: missile=$ware
+079      $amt = $ship  ->  get missile resupply: missile=$ware
+080      
+081      gosub Get.Ammount.Sub:
+082      
+083      if $amt > 0
+084       $temp = = array alloc: size=2
+085       $temp[0] = $ware
+086       $temp[1] = $amt
+087       append $temp to array $required.Array
+088      end
+089     end
+090    end
+091   end
+092   
+093   if $ammo.on
+094    $ammo.Array = = create new array, arguments=Mass Driver Ammunition, Gauss Cannon Ammunition, Energy Bolt Chaingun Ammunition, Matter/Anti-Matter Mine, Matter/Anti-matter Warhead
+095    $sa = size of array $ammo.Array
+096    while $sa
+097     dec $sa =
+098     $ware = $ammo.Array[$sa]
+099     if $ship  ->  get ammo resupply: ammo=$ware
+100      $amt = $ship  ->  get ammo resupply: ammo=$ware
+101      
+102      gosub Get.Ammount.Sub:
+103      
+104      if $amt > 0
+105       $temp = = array alloc: size=2
+106       $temp[0] = $ware
+107       $temp[1] = $amt
+108       append $temp to array $required.Array
+109      end
+110     end
+111    end
+112   end
+113   
+114   $sr = size of array $required.Array
+115   if $sr > 0
+116    while $sr > 0
+117     dec $sr =
+118     $ware = $required.Array[$sr][0]
+119     $amt = $required.Array[$sr][1]
+120     gosub Node.Search:
+121    end
+122   end
+123   skip if not $s == ( $s / 5 ) * 5
+124     = wait 100 ms
+125  end
+126  
+127  
+128  return null
+129  
+130  
+131  Node.Search:
+132  $sn = size of array $node.Array
+133  while $sn > 0
+134   dec $sn =
+135   $node = $node.Array[$sn]
+136   
+137   if $debug == [TRUE]
+138    $n.id = $node  ->  get ID code
+139    $n.sector = $node  ->  get sector
+140    $jump = get jumps from sector $n.sector to sector $sector
+141   end
+142   
+143   * ----
+144   if $debug == [TRUE]
+145    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Array Position = ' + $sn
+146    gosub Debug.Sub:
+147   end
+148   * ----
+149   
+150   $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+151   $ware.settings = $node  ->  get local variable: name=$w.pointer
+152   if $ware.settings[0]
+153    
+154    $cap = $ware.settings[4]
+155    skip if $cap > 0
+156     $cap = 0
+157    
+158    $curr = $node  ->  get amount of ware $ware in cargo bay
+159    $avail = $curr - $cap
+160    
+161    * ----
+162    if $debug == [TRUE]
+163     $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';' + $avail + ' of ' + $ware + ' is available'
+164     gosub Debug.Sub:
+165    end
+166    * ----
+167    
+168    if $avail > $amt
+169      = $ship  ->  add $amt units of $ware
+170     $rem = - $amt
+171      = $node  ->  add $rem units of $ware
+172     
+173     * ----
+174     if $debug == [TRUE]
+175      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Removed ' + $rem + ' of ' + $ware
+176      gosub Debug.Sub:
+177      $txt.debug = '[' + $id + ']' + [THIS] + ';Received ' + $amt + ' of ' + $ware
+178      gosub Debug.Sub:
+179     end
+180     * ----
+181     
+182     endsub
+183    else
+184      = $ship  ->  add $avail units of $ware
+185     $rem = - $avail
+186      = $node  ->  add $rem units of $ware
+187     $amt = $amt - $avail
+188     
+189     * ----
+190     if $debug == [TRUE]
+191      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Removed ' + $rem + ' of ' + $ware
+192      gosub Debug.Sub:
+193      $txt.debug = '[' + $id + ']' + [THIS] + ';Received ' + $amt + ' of ' + $ware
+194      gosub Debug.Sub:
+195     end
+196     * ----
+197     
+198    end
+199    
+200   end
+201   skip if not $sn == ( $sn / 5 ) * 5
+202     = wait 100 ms
+203  end
+204  endsub
+205  
+206  
+207  Get.Ammount.Sub:
+208  $curr = $ship  ->  get amount of ware $ware in cargo bay
+209  if not $ware == Energy Cells
+210   if $curr > $amt
+211    $amt = 0
+212   else
+213    $amt = $amt - $curr
+214   end
+215  end
+216  if $amt > 0
+217   $free = $ship  ->  get free amount of ware $ware in cargo bay
+218   skip if $free > $amt
+219    $amt = $free
+220  else
+221   $amt = 0
+222  end
+223  
+224  * ----
+225  if $debug == [TRUE]
+226   $txt.debug = '[' + $id + ']' + [THIS] + ';Ware = ' + $ware + ';Required ' + $amt + ' Current = ' + $curr
+227   gosub Debug.Sub:
+228  end
+229  * ----
+230  
+231  endsub
+232  
+233  
+234  Build.Ship.Array:
+235  * Build array of ships with supply software
+236  $temp.Array = = $sector  ->  get player owned ship array from sector
+237  $s = size of array $temp.Array
+238  while $s > 0
+239   dec $s =
+240   $ship = $temp.Array[$s]
+241   if $ship  ->  get true amount of ware Supply Command Software in cargo bay
+242    append $ship to array $ship.Array
+243    if $ship  ->  get number of landed ships
+244     $docked.Array = = $ship  ->  get ship array from sector/ship/station
+245     $sd = size of array $docked.Array
+246     while $sd > 0
+247      dec $sd =
+248      $docked = $docked.Array[$sd]
+249      skip if not $docked  ->  get true amount of ware Supply Command Software in cargo bay
+250       append $docked to array $ship.Array
+251      skip if not $sd == ( $sd / 5 ) * 5
+252        = wait 100 ms
+253     end
+254    end
+255   end
+256   skip if not $s == ( $s / 5 ) * 5
+257     = wait 100 ms
+258  end
+259  
+260  * ----
+261  if $debug == [TRUE]
+262   $txt.debug = '[' + $id + ']' + [THIS] + ';Ship Array = ' + $ship.Array
+263   gosub Debug.Sub:
+264  end
+265  * ----
+266  
+267  endsub
+268  
+269  
+270  Debug.Sub:
+271  $d.time = = playing time
+272  $d.time = = format time: $d.time
+273  $txt = $d.time + ' ; ' + $script + ' ; ' + $txt.debug
+274  write to log file $DebugID  append=[TRUE]  value=$txt
+275  endsub
+276  
+277  
+278  return null
+279  
+280  
+281  
+282  

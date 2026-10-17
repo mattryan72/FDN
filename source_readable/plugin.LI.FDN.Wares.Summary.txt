@@ -1,0 +1,277 @@
+* Script: plugin.LI.FDN.Wares.Summary  (v1.0, engine 50)
+* Desc: FDNv8 -  Returnd ware summary for menu
+* Arg 0: station (Value) 'station'
+* Arg 1: ware (Value) 'ware'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This formats the warea fro the DC and Dock menus
+004  
+005  * Expected values:
+006  * - station
+007  * - ware
+008  * list.flag - this tells the script that the return is for the dosk list, not details
+009  
+010  * Returns values:
+011  * - N/A
+012  
+013  * To Do - N/A
+014  
+015  * Version: 1.0
+016  * Date: 23/05/2012
+017  * Tested: 23/05/2012
+018  * -----------------------------------------------------------------------------------
+019  
+020  * Fetch values saved in the AL Plugin global variable:
+021  * - DC
+022  $al.Settings = get global variable: name='al.LI.FDN.event'
+023  if $al.Settings
+024   $PageID = $al.Settings[1]
+025   $dc = $al.Settings[2]
+026  end
+027  * -----------------------------------------------------------------------------------
+028  
+029  $settings.array = null
+030  $price = $station  ->  get price of ware $ware
+031  * -----------------------------------------------------------------------------------
+032  
+033  if $station == $dc
+034   
+035   $temp.array = = array alloc: size=12
+036   $temp.array[0] = 1
+037   $temp.array[2] = -470
+038   $temp.array[4] = -380
+039   $temp.array[6] = -290
+040   $temp.array[8] = -200
+041   $temp.array[10] = -1
+042   gosub DC.Summary.Sub:
+043   * -----------------------------------------------------------------------------------
+044   
+045  else
+046   $temp.array = = array alloc: size=10
+047   $temp.array[0] = 1
+048   $temp.array[2] = -380
+049   $temp.array[4] = -290
+050   $temp.array[6] = -200
+051   $temp.array[8] = -1
+052   gosub Dock.Summary.Sub:
+053   * -----------------------------------------------------------------------------------
+054  end
+055  
+056  $return.value = = create new array, arguments='open.ware', $station, $ware, null, null
+057  $format.array = = create new array, arguments=$temp.array, $return.value, null, null, null
+058  return $format.array
+059  * -----------------------------------------------------------------------------------
+060  
+061  * Ware summary for the dc
+062  DC.Summary.Sub:
+063  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+064  $settings.array = $station  ->  get local variable: name=$pointer
+065  if not $settings.array
+066   gosub Build.Ware.Array.Sub:
+067   $settings.array = $station  ->  get local variable: name=$pointer
+068  end
+069  * -----------------------------------------------------------------------------------
+070  
+071  * Allow remote == [1]
+072  $remote.cap = $settings.array[1]
+073  if $remote.cap > 0
+074   $txt1 = = read text: page=$PageID id=151
+075  else
+076   $txt1 = = read text: page=$PageID id=150
+077  end
+078  * -----------------------------------------------------------------------------------
+079  
+080  * Allow Buy = [3]
+081  $buy = $settings.array[3]
+082  if $buy == 1
+083   $txt2 = = read text: page=$PageID id=153
+084  else
+085   $txt2 = = read text: page=$PageID id=152
+086  end
+087  * -----------------------------------------------------------------------------------
+088  
+089  * Allow Sell = [5]
+090  $sell.cap = $settings.array[5]
+091  if $sell.cap >= 0
+092   $txt3 = = read text: page=$PageID id=155
+093  else
+094   $txt3 = = read text: page=$PageID id=154
+095  end
+096  * -----------------------------------------------------------------------------------
+097  
+098  $pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+099  $ware.txt = $pre + $txt1 + '|' + $txt2 + '|' + $txt3 + ' ~ ' + $ware
+100  $temp.array[1] = $ware.txt
+101  * -----------------------------------------------------------------------------------
+102  
+103  * Remote
+104  $remote.cap = $settings.array[1]
+105  if $remote.cap >= 0
+106   $remote.cap = = convert number $remote.cap to string
+107   $remote.cap = = sprintf: pageid=$PageID textid=9000, $remote.cap, null, null, null, null
+108   $temp.array[3] = $remote.cap
+109  else
+110   $temp.array[3] = ' - '
+111  end
+112  * -----------------------------------------------------------------------------------
+113  
+114  * but at
+115  $buy.at = $settings.array[4]
+116  if not $buy.at > 0
+117   $settings.array[4] = $price
+118   $station  ->  set local variable: name=$pointer value=$settings.array
+119  end
+120  $buy.at = = convert number $buy.at to string
+121  if $buy == 1
+122   $buy.at = = sprintf: pageid=$PageID textid=9000, $buy.at, null, null, null, null
+123   $temp.array[5] = $buy.at
+124  else
+125   $temp.array[5] = $buy.at
+126  end
+127  * -----------------------------------------------------------------------------------
+128  
+129  * sell cap
+130  if $sell.cap >= 0
+131   $txt = = convert number $sell.cap to string
+132   $txt = = sprintf: pageid=$PageID textid=9000, $txt, null, null, null, null
+133   $temp.array[7] = $txt
+134  else
+135   $temp.array[7] = ' - '
+136  end
+137  * -----------------------------------------------------------------------------------
+138  
+139  * sell at
+140  $sell.at = $settings.array[6]
+141  if not $sell.at > 0
+142   $settings.array[6] = $price
+143   $station  ->  set local variable: name=$pointer value=$settings.array
+144  end
+145  $sell.at = = convert number $sell.at to string
+146  if $sell.cap >= 0
+147   $sell.at = = sprintf: pageid=$PageID textid=9000, $sell.at, null, null, null, null
+148   $temp.array[9] = $sell.at
+149  else
+150   $temp.array[9] = $sell.at
+151  end
+152  * -----------------------------------------------------------------------------------
+153  
+154  * storage physical and virtual
+155  $amount = $station  ->  get amount of ware $ware in cargo bay
+156  $amount = = convert number $amount to string
+157  $virtual = $settings.array[0]
+158  if not $virtual > 0
+159   $settings.array[0] = 0
+160   $virtual = $settings.array[0]
+161  end
+162  $virtual = = convert number $virtual to string
+163  $virtual = = sprintf: pageid=$PageID textid=9004, $virtual, null, null, null, null
+164  $storage = $amount + '/' + $virtual
+165  $temp.array[11] = $storage
+166  endsub
+167  * -----------------------------------------------------------------------------------
+168  
+169  * Ware summary for the dc
+170  Dock.Summary.Sub:
+171  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+172  $settings.array = $station  ->  get local variable: name=$pointer
+173  if not $settings.array
+174   gosub Build.Ware.Array.Sub:
+175   $settings.array = $station  ->  get local variable: name=$pointer
+176  end
+177  * -----------------------------------------------------------------------------------
+178  
+179  * sell ware
+180  $sell.cap = $settings.array[5]
+181  if $sell.cap >= 0
+182   $txt1 = = read text: page=$PageID id=155
+183  else
+184   $txt1 = = read text: page=$PageID id=154
+185  end
+186  
+187  if $settings.array[7]
+188   $txt2 = = read text: page=$PageID id=155
+189  else
+190   $txt2 = = read text: page=$PageID id=154
+191  end
+192  * -----------------------------------------------------------------------------------
+193  
+194  $pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+195  $ware.txt = $pre + $txt1 + '|' + $txt2 + ' ~ ' + $ware
+196  $temp.array[1] = $ware.txt
+197  * -----------------------------------------------------------------------------------
+198  
+199  * maintain
+200  $maintain.stock = $settings.array[2]
+201  if $maintain.stock >= 0
+202   $maintain.stock = = convert number $maintain.stock to string
+203   $maintain.stock = = sprintf: pageid=$PageID textid=9000, $maintain.stock, null, null, null, null
+204   $temp.array[3] = $maintain.stock
+205  else
+206   $temp.array[3] = ' - '
+207  end
+208  * -----------------------------------------------------------------------------------
+209  
+210  * sell at
+211  $sell.at = $settings.array[6]
+212  if not $sell.at > 0
+213   $settings.array[6] = $price
+214   $station  ->  set local variable: name=$pointer value=$settings.array
+215  end
+216  $sell.at = = convert number $sell.at to string
+217  if $sell.cap >= 0
+218   $sell.cap = = convert number $sell.cap to string
+219   $sell.cap = = sprintf: pageid=$PageID textid=9000, $sell.cap, null, null, null, null
+220   $temp.array[5] = $sell.cap
+221   $sell.at = = sprintf: pageid=$PageID textid=9000, $sell.at, null, null, null, null
+222   $temp.array[7] = $sell.at
+223  else
+224   $temp.array[5] = ' - '
+225   $temp.array[7] = $sell.at
+226  end
+227  * -----------------------------------------------------------------------------------
+228  
+229  * storage physical and virtual
+230  $amount = $station  ->  get amount of ware $ware in cargo bay
+231  $amount = = convert number $amount to string
+232  $virtual = $settings.array[0]
+233  if not $virtual > 0
+234   $settings.array[0] = 0
+235   $virtual = $settings.array[0]
+236  end
+237  $virtual = = convert number $virtual to string
+238  $virtual = = sprintf: pageid=$PageID textid=9004, $virtual, null, null, null, null
+239  $storage = $amount + '/' + $virtual
+240  $temp.array[9] = $storage
+241  endsub
+242  * -----------------------------------------------------------------------------------
+243  
+244  
+245  * -----------------------------------------------------------------------------------
+246  * add the virtula ref as none was found
+247  Build.Ware.Array.Sub:
+248  $price = $station  ->  get price of ware $ware
+249  $settings.array = = array alloc: size=12
+250  $settings.array[0] = 0
+251  $settings.array[1] = null
+252  $settings.array[2] = null
+253  $settings.array[3] = [FALSE]
+254  $settings.array[4] = $price
+255  $settings.array[5] = -1
+256  $settings.array[6] = $price
+257  $settings.array[7] = -1
+258  $settings.array[8] = null
+259  $settings.array[9] = null
+260  $settings.array[11] = null
+261  $station  ->  set local variable: name=$pointer value=$settings.array
+262  * if no physical wares found create and delete ware so it show no the dock
+263  $physical.check = $station  ->  get amount of ware $ware in cargo bay
+264  if not $physical.check > 0
+265    = $station  ->  add 1 units of $ware
+266    = $station  ->  add -1 units of $ware
+267  end
+268  endsub
+269  * -----------------------------------------------------------------------------------
+270  return null
+271  
+272  

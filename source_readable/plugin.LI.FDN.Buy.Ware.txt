@@ -1,0 +1,141 @@
+* Script: plugin.LI.FDN.Buy.Ware  (v1.0, engine 50)
+* Desc: FDN v8 - Supply Factory logic
+* Arg 0: factory (Value) 'factory'
+* Arg 1: ware (Value) 'ware'
+* Arg 2: amount (Value) 'amount'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script is called by LI.FDN.Supply.Factory
+004  * It is used to buy a ware needed for production
+005  
+006  * Expected values:
+007  * - Factory
+008  * - Ware
+009  * - Amount
+010  
+011  * Returns values:
+012  * - N/A
+013  
+014  * To Do - N/A
+015  
+016  * Version: 1.0
+017  * Date: 22/05/2012
+018  * Tested: 22/05/2012
+019  * -----------------------------------------------------------------------------------
+020  
+021  * Fetch values saved in the AL Plugin global variable:
+022  * - DC
+023  * - exclude arrya holds all player owned stations so they are excluded from the search
+024  $script = = get script name
+025  $al.Settings = get global variable: name='al.LI.FDN.event'
+026  if $al.Settings
+027   $PageID = $al.Settings[1]
+028   $DebugID = 0 + $PageID
+029   $dc = $al.Settings[2]
+030   $debug = $al.Settings[7]
+031   $exclude.array = $al.Settings[8]
+032  else
+033   return null
+034  end
+035  * -----------------------------------------------------------------------------------
+036  
+037  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+038  $ware.settings = $dc  ->  get local variable: name=$pointer
+039  * if can buy
+040  if $ware.settings[3]
+041   
+042   * This calls the script that returns a list of sectors that have a player owned stations
+043   * or Adv Sat deployed
+044   $sector.array = null -> call script plugin.LI.FDN.Sector.Array : search=3
+045   * Get buy at price
+046   $buy.at = $ware.settings[4]
+047   
+048   $s = size of array $sector.array
+049   while $s > 0
+050    dec $s =
+051    $sector = $sector.array[$s]
+052    * Find stations sellin the required ware
+053    $buy.Station = find station: product $ware with best price:  max.price=$buy.at, amount=$amount, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
+054    * check if station found
+055    if $buy.Station
+056     * Check relation to DC
+057     $relation = $dc  ->  get relation to object $buy.Station
+058     if not $relation == Foe
+059      * If not a foe try to buy ware
+060      * DEBUG Message Start----------------------------------------------------------------
+061      if $debug
+062       $txt.debug = $buy.Station + ' found in sector ' + $sector + ' selling ' + $ware
+063       gosub Debug.Sub:
+064      end
+065      * DEBUG Message End------------------------------------------------------------------
+066      $price = $buy.Station  ->  get price of ware $ware
+067      * DEBUG Message Start----------------------------------------------------------------
+068      if $debug
+069       $txt.debug = 'FDN buying ' + $ware + ' at ' + $price
+070       gosub Debug.Sub:
+071      end
+072      * DEBUG Message End------------------------------------------------------------------
+073      * Create drone at the station
+074      $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$buy.Station x=null y=null z=null
+075      * Set drone Homebase to DC
+076      $drone  ->  set homebase to $dc
+077      * Buy wares from station
+078      $bought = $drone  ->  buy $amount units of $ware
+079      * Remove drone
+080      $drone  ->  destruct: show no explosion=[TRUE]
+081      * DEBUG Message Start----------------------------------------------------------------
+082      if $debug
+083       $txt.debug = 'FDN has bought ' + $bought + ' of ' + $ware + ' at ' + $price
+084       gosub Debug.Sub:
+085      end
+086      * DEBUG Message End------------------------------------------------------------------
+087      * Check if wares were bought
+088      if $bought > 0
+089        = $factory  ->  add $bought units of $ware
+090       * DEBUG Message Start----------------------------------------------------------------
+091       if $debug
+092        $txt.debug = 'Add ' + $bought + ' of ' + $ware + ' to ' + $factory
+093        gosub Debug.Sub:
+094       end
+095       * DEBUG Message End------------------------------------------------------------------
+096       if $bought == $amount
+097        return null
+098       else
+099        $amount = $amount - $bought
+100        * DEBUG Message Start----------------------------------------------------------------
+101        if $debug
+102         $txt.debug = $factory + ' still requires ' + $amount + ' of wares'
+103         gosub Debug.Sub:
+104        end
+105        * DEBUG Message End------------------------------------------------------------------
+106       end
+107      end
+108     end
+109    end
+110     = wait randomly from 300 to 600 ms
+111   end
+112   
+113  else
+114   * debug
+115   if $debug
+116    $txt.debug = 'DC is not set to buy ' + $ware
+117    gosub Debug.Sub:
+118   end
+119  end
+120  
+121  return null
+122  * -----------------------------------------------------------------------------------
+123  * -----------------------------------------------------------------------------------
+124  * Debug Massage handling
+125  Debug.Sub:
+126  $d.time = = playing time
+127  $d.time = = format time: $d.time
+128  $txt = $d.time + ';' + $script + ';' + $txt.debug
+129  write to log file $DebugID  append=[TRUE]  value=$txt
+130  endsub
+131  * -----------------------------------------------------------------------------------
+132  * -----------------------------------------------------------------------------------
+133  return null
+134  
+135  

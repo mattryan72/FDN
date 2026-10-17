@@ -1,0 +1,171 @@
+* Script: plugin.LI.FDN.Node.Menu.D  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * AL settings--
+005  
+006  $al.Settings = get global variable: name='al.LI.FDN.event'
+007  if $al.Settings
+008   $PageID = $al.Settings[1]
+009   $node.Array = $al.Settings[2]
+010   $dynamic = $al.Settings[9][1]
+011   $is.On = $al.Settings[10][1]
+012  else
+013   return null
+014  end
+015  
+016  $id = [THIS]  ->  get ID code
+017  $sub = = [THIS]  ->  get subtype
+018  $trade.Sub = $al.Settings[3][0]
+019  
+020  * At start set Dynamic flag to true
+021  $active = [TRUE]
+022  
+023  
+024  gosub Build.Global.Refs.Sub:
+025  
+026  * Compile dynamic Menu--
+027  while $active == 1
+028   gosub Update.Global.Refs.Sub:
+029   
+030   * wait one second
+031    = wait 1000 ms
+032   
+033   skip if $al.Settings[0]
+034    return null
+035   * Check
+036   skip if $dynamic == [TRUE]
+037    return null
+038   skip if $is.On == [TRUE]
+039    return null
+040  end
+041  
+042  
+043  * Build FDN Node details and Global Ref for host Sector
+044  Build.Global.Refs.Sub:
+045  $a = = array alloc: size=4
+046  $a[0] = 1
+047  $txt = = read text: page=$PageID id=128
+048  $a[1] = $txt
+049  $a[2] = -1
+050  $pointer = = sprintf: pageid=$PageID textid=5003, $id, null, null, null, null
+051  set global variable: name=$pointer value=$a
+052  
+053  $ware.Array = [THIS]  ->  get tradeable ware array from station
+054  $s = size of array $ware.Array
+055  while $s > 0
+056   dec $s =
+057   $ware = $ware.Array[$s]
+058   $t.class = = get transport class of ware $ware
+059   if not $t.class == ST
+060    
+061    $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+062    $ware.Details.Array = [THIS]  ->  get local variable: name=$pointer
+063    if not $ware.Details.Array
+064     $ware.Details.Array = = array alloc: size=6
+065     $temp = = array alloc: size=2
+066     append $temp to array $ware.Details.Array
+067     [THIS]  ->  set local variable: name=$pointer value=$ware.Details.Array
+068    end
+069    
+070    $a = = array alloc: size=6
+071    $a[0] = 1
+072    $a[2] = -100
+073    $a[4] = -1
+074    $a.Ware = = create new array, arguments=$a, $ware, null, null, null
+075    $pointer = = sprintf: pageid=$PageID textid=5005, $id, $ware, null, null, null
+076    set global variable: name=$pointer value=$a.Ware
+077   end
+078  end
+079  endsub
+080  
+081  
+082  * Update Node details to Global Ref for host Sector
+083  Update.Global.Refs.Sub:
+084  $pointer = = sprintf: pageid=$PageID textid=5003, $id, null, null, null, null
+085  $a = get global variable: name=$pointer
+086  * Storage
+087  $curr = [THIS] -> call script plugin.LI.FDN.Storage : stn=[THIS]  act='Current'
+088  $max = [THIS] -> call script plugin.LI.FDN.Storage : stn=[THIS]  act='Max'
+089  $storage = '[ ' + $curr + ' / ' + $max + ' ]'
+090  $a[3] = $storage
+091  
+092  
+093  $ware.Array = [THIS]  ->  get tradeable ware array from station
+094  $s = size of array $ware.Array
+095  while $s > 0
+096   dec $s =
+097   $ware = $ware.Array[$s]
+098   $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+099   $ware.Details.Array = [THIS]  ->  get local variable: name=$pointer
+100   
+101   $pointer = = sprintf: pageid=$PageID textid=5005, $id, $ware, null, null, null
+102   $a.Ware = get global variable: name=$pointer
+103   
+104   gosub Ware.Summary.Sub:
+105   
+106   $txt = $pre + $ware
+107   $a.Ware[0][1] = $txt
+108   $amt = [THIS]  ->  get amount of ware $ware in cargo bay
+109   $amt = = convert number $amt to string
+110   $a.Ware[0][3] = $amt
+111   $a.Ware[0][5] = $cap
+112  end
+113  endsub
+114  
+115  
+116  Ware.Summary.Sub:
+117  if find $sub in array: $node.Array
+118   if not $ware.Details.Array[0]
+119    $txt1 = = read text: page=$PageID id=130
+120   else
+121    $txt1 = = read text: page=$PageID id=133
+122   end
+123   if not $ware.Details.Array[1]
+124    $txt2 = = read text: page=$PageID id=131
+125   else
+126    $txt2 = = read text: page=$PageID id=134
+127   end
+128   if not $ware.Details.Array[2]
+129    $txt3 = = read text: page=$PageID id=132
+130   else
+131    $txt3 = = read text: page=$PageID id=135
+132   end
+133   $pre = $txt1 + '|' + $txt2 + '|' + $txt3 + ' '
+134  else if $sub == $trade.Sub
+135   if not $ware.Details.Array[0]
+136    $txt1 = = read text: page=$PageID id=132
+137   else
+138    $txt1 = = read text: page=$PageID id=135
+139   end
+140   if not $ware.Details.Array[1]
+141    $txt2 = = read text: page=$PageID id=132
+142   else
+143    $txt2 = = read text: page=$PageID id=134
+144   end
+145   $pre = $txt1 + '|' + $txt2 + ' '
+146  else
+147   if not $ware.Details.Array[0]
+148    $txt1 = = read text: page=$PageID id=132
+149   else
+150    $txt1 = = read text: page=$PageID id=135
+151   end
+152   $pre = $txt1 + ' '
+153  end
+154  
+155  * -Tweak 13/08/2010 - Allow 0 for max
+156  * -----------------------------------
+157  $cap = $ware.Details.Array[3]
+158  if $cap >= 0
+159   $cap = = convert number $cap to string
+160  else
+161   $cap = = read text: page=$PageID id=136
+162  end
+163  endsub
+164  
+165  
+166  return null
+167  
+168  

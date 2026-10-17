@@ -1,0 +1,301 @@
+* Script: plugin.LI.FDN.Sell.Ware  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $PageID = $al.Settings[1]
+006   $node.List = $al.Settings[2]
+007   $debug = $al.Settings[5][3]
+008   $DebugID = 0 + $PageID
+009  else
+010   return null
+011  end
+012  
+013  if $debug == [TRUE]
+014   $this.id = [THIS]  ->  get ID code
+015   $script = = get script name
+016  end
+017  
+018  $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Supply.Node :
+019  skip if $node.Array
+020   return null
+021  
+022  $station.Array = = get station array: of race Player class/type=Station 2016
+023  
+024  $sector = [THIS]  ->  get sector
+025  $ware.Array = [THIS]  ->  get tradeable ware array from station
+026  $sector.sell.Array = = array alloc: size=0
+027  $this.sub = = [THIS]  ->  get subtype
+028  gosub Sell.Range.Sub:
+029  
+030  $s.Check = size of array $sector.sell.Array
+031  if $s.Check > 0
+032   
+033   * debug-
+034   if $debug == [TRUE]
+035    $txt.debug = '[' + $this.id + ']' + [THIS] + ';' + $ware.Array
+036    gosub Debug.Sub:
+037   end
+038   * -
+039   $s = size of array $ware.Array
+040   while $s > 0
+041    dec $s =
+042    $ware = $ware.Array[$s]
+043    
+044    $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+045    $ware.settings = [THIS]  ->  get local variable: name=$pointer
+046    * debug-
+047    if $debug == [TRUE]
+048     $txt.debug = '[' + $this.id + ']' + [THIS] + ';Ware = ' + $ware + ' - Settings = ' + $ware.settings
+049     gosub Debug.Sub:
+050    end
+051    * -
+052    
+053    if $ware.settings[2]
+054     $sell.cap = $ware.settings[5]
+055     $sell.at = $ware.settings[6][1]
+056     $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+057     
+058     if not $sell.cap > 0
+059      $sell.cap = 0
+060     end
+061     $avial = $stock - $sell.cap
+062     
+063     if $avial > 0
+064      gosub Sell.Search.Sub:
+065     end
+066    end
+067    skip if not $s == ( $s / 5 ) * 5
+068      = wait 100 ms
+069   end
+070  end
+071  
+072  return null
+073  
+074  
+075  Sell.Search.Sub:
+076  $station.Array = = get station array: of race Player class/type=Station 2016
+077  
+078  * debug-
+079  if $debug == [TRUE]
+080   $txt.debug = '[' + $this.id + ']' + [THIS] + ';Ware = ' + $ware + ' - Sell at = ' + $sell.at
+081   gosub Debug.Sub:
+082  end
+083  * -
+084  
+085  $ss = size of array $sector.sell.Array
+086  while $ss > 0
+087   dec $ss =
+088   $sec = $sector.sell.Array[$ss]
+089   * debug-
+090   if $debug == [TRUE]
+091    $txt.debug = '[' + $this.id + ']' + [THIS] + ';Sell Ware in = ' + $sec + ' - Array Postion = ' + $ss
+092    gosub Debug.Sub:
+093   end
+094   * -
+095   * debug-
+096   if $debug == [TRUE]
+097    $txt.debug = '[' + $this.id + ']' + [THIS] + ';Check = find station: resource (Factory)'
+098    gosub Debug.Sub:
+099   end
+100   * -
+101   
+102   $sell.Station = find station: resource $ware with best price: min.price=$sell.at, amount=null, max.jumps=0, startsector=$sec, trader=null, exclude array=$station.Array
+103   if $sell.Station
+104    $relation = [THIS]  ->  get relation to object $sell.Station
+105    if not $relation == Foe
+106     $id = $sell.Station  ->  get ID code
+107     
+108     append $sell.Station to array $station.Array
+109     $require = $sell.Station  ->  get free amount of ware $ware in cargo bay
+110     $price = $sell.Station  ->  get price of ware $ware
+111     
+112     * debug-
+113     if $debug == [TRUE]
+114      $txt.debug = '[' + $id + ']' + $sell.Station + ';Ware = ' + $ware + ' - Amount free = ' + $require + ' - Buying at = ' + $price
+115      gosub Debug.Sub:
+116     end
+117     * -
+118     
+119     $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+120     $avail = $stock - $sell.cap
+121     
+122     if $require > $avail
+123      $require = $avail
+124     end
+125     
+126     * debug-
+127     if $debug == [TRUE]
+128      $txt.debug = '[' + $this.id + ']' + [THIS] + ';Ware = ' + $ware + ' - Free for Sale = ' + $avail
+129      gosub Debug.Sub:
+130     end
+131     * -
+132     
+133     if $avail > 0 AND $require > 0
+134      
+135      $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$sell.Station x=null y=null z=null
+136      $drone  ->  set homebase to [THIS]
+137      $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+138      
+139      if $require > $drone.max
+140       $require = $drone.max
+141      end
+142      
+143       = $drone  ->  add $require units of $ware
+144      $rem = - $require
+145       = [THIS]  ->  add $rem units of $ware
+146      
+147      $check = $drone  ->  sell $require units of $ware
+148      * debug-
+149      if $debug == [TRUE]
+150       $txt.debug = '[' + $id + ']' + $sell.Station + ';Ware = ' + $ware + ' - Amount Sold = ' + $check + ' - Sold at = ' + $price
+151       gosub Debug.Sub:
+152      end
+153      * -
+154      
+155      if $check > 0
+156       $return = $require - $check
+157        = [THIS]  ->  add $return units of $ware
+158      end
+159      $drone  ->  destruct: show no explosion=[TRUE]
+160     end
+161    end
+162   end
+163   
+164   * debug-
+165   if $debug == [TRUE]
+166    $txt.debug = '[' + $this.id + ']' + [THIS] + ';Check = find station sells: resource (Dock)'
+167    gosub Debug.Sub:
+168   end
+169   * -
+170   $sell.Station = find station sells: resource $ware with best price: max.price=$sell.at, amount=null, max.jumps=0, startsector=$sec, trader=null, exclude array=$station.Array
+171   if $sell.Station
+172    $relation = [THIS]  ->  get relation to object $sell.Station
+173    if not $relation == Foe
+174     $id = $sell.Station  ->  get ID code
+175     
+176     append $sell.Station to array $station.Array
+177     $require = $sell.Station  ->  get free amount of ware $ware in cargo bay
+178     $price = $sell.Station  ->  get price of ware $ware
+179     
+180     * debug-
+181     if $debug == [TRUE]
+182      $txt.debug = '[' + $id + ']' + $sell.Station + ';Ware = ' + $ware + ' - Amount free = ' + $require + ' - Buying at = ' + $price
+183      gosub Debug.Sub:
+184     end
+185     * -
+186     
+187     $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+188     $avail = $stock - $sell.cap
+189     
+190     if $require > $avail
+191      $require = $avail
+192     end
+193     
+194     * debug-
+195     if $debug == [TRUE]
+196      $txt.debug = '[' + $this.id + ']' + [THIS] + ';Ware = ' + $ware + ' - Free for Sale = ' + $avail
+197      gosub Debug.Sub:
+198     end
+199     * -
+200     
+201     if $avail > 0 AND $require > 0
+202      
+203      $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$sell.Station x=null y=null z=null
+204      $drone  ->  set homebase to [THIS]
+205      $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+206      
+207      if $require > $drone.max
+208       $require = $drone.max
+209      end
+210      
+211       = $drone  ->  add $require units of $ware
+212      $rem = - $require
+213       = [THIS]  ->  add $rem units of $ware
+214      
+215      $check = $drone  ->  sell $require units of $ware
+216      * debug-
+217      if $debug == [TRUE]
+218       $txt.debug = '[' + $id + ']' + $sell.Station + ';Ware = ' + $ware + ' - Amount Sold = ' + $check + ' - Sold at = ' + $price
+219       gosub Debug.Sub:
+220      end
+221      * -
+222      
+223      if $check > 0
+224       $return = $require - $check
+225        = [THIS]  ->  add $return units of $ware
+226      end
+227      $drone  ->  destruct: show no explosion=[TRUE]
+228     end
+229    end
+230   end
+231   
+232   $stock = [THIS]  ->  get amount of ware $ware in cargo bay
+233   $avail = $stock - $sell.cap
+234   skip if $avail > 0
+235    endsub
+236   
+237   skip if not $ss == ( $ss / 5 ) * 5
+238     = wait 100 ms
+239  end
+240  endsub
+241  
+242  
+243  Sell.Range.Sub:
+244  * Add all sectors within 5 jumps of Node
+245  * Or all sectors within 3 jumps for trade posts
+246  if find $this.sub in array: $node.List
+247   * Find all Nodes in range nad then add the sectors in range
+248   $sn = size of array $node.Array
+249   while $sn > 0
+250    dec $sn =
+251    $node = $node.Array[$sn]
+252    $node.sec = $node  ->  get sector
+253    
+254    $sector.Array = $node.sec  ->  find all sectors within 5 jumps: Only known sectors=[TRUE]
+255    $ss = size of array $sector.Array
+256    while $ss > 0
+257     dec $ss =
+258     $sec = $sector.Array[$ss]
+259     $adv.Sat = find ship: sector=$sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+260     if $adv.Sat
+261      skip if find $sec in array: $sector.sell.Array
+262       append $sec to array $sector.sell.Array
+263     end
+264     skip if not $ss == ( $ss / 10 ) * 10
+265       = wait 100 ms
+266    end
+267    skip if not $sn == ( $sn / 5 ) * 5
+268      = wait 100 ms
+269   end
+270   
+271  else
+272   * If Trade Post
+273   $sector.Array = $sector  ->  find all sectors within 3 jumps: Only known sectors=[TRUE]
+274   $ss = size of array $sector.Array
+275   while $ss > 0
+276    dec $ss =
+277    $sec = $sector.Array[$ss]
+278    $adv.Sat = find ship: sector=$sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+279    if $adv.Sat
+280     append $sec to array $sector.sell.Array
+281    end
+282    skip if not $ss == ( $ss / 10 ) * 10
+283      = wait 100 ms
+284   end
+285  end
+286  
+287  endsub
+288  
+289  Debug.Sub:
+290  $d.time = = playing time
+291  $d.time = = format time: $d.time
+292  $txt = $d.time + ';' + $script + ';' + $txt.debug
+293  write to log file $DebugID  append=[TRUE]  value=$txt
+294  endsub
+295  
+296  return null
+297  
+298  

@@ -1,0 +1,63 @@
+* Script: plugin.LI.FDN.Setup  (v1.0, engine 50)
+* Desc: FDNv8 - Setup
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * setup handles the srart and stop actions for FDN
+004  
+005  * Expected values:
+006  * - dock
+007  
+008  * Returns values:
+009  * - N/A
+010  
+011  * To Do - N/A
+012  
+013  * Version: 1.0
+014  * Date: 23/05/2012
+015  * Tested: 23/05/2012
+016  * -----------------------------------------------------------------------------------
+017  
+018  * Fetch values saved in the AL Plugin global variable:
+019  $al.Settings = get global variable: name='al.LI.FDN.event'
+020  if $al.Settings
+021   $status = $al.Settings[0]
+022   $PageID = $al.Settings[1]
+023   $DebugID = 0 + $PageID
+024  else
+025   return null
+026  end
+027  * -----------------------------------------------------------------------------------
+028  
+029  * Create debug log
+030  $txt = 'FDN Debug Log:'
+031  write to log file $DebugID  append=[FALSE]  value=$txt
+032  
+033  * Setup
+034  if $status == [TRUE]
+035   * add fdn menu to config
+036   $section = = read text: page=$PageID id=101
+037   $txt = = read text: page=$PageID id=102
+038    = [THIS] -> call script plugin.config.addscript : Plugin Name=$txt  Author=null  Script Name='plugin.LI.FDN.Main.Menu'  Display author=[FALSE]  Add to section=$section  Menu=null
+039   * -----------------------------------------------------------------------------------
+040  else
+041   * remove fdn from config
+042   $config.Array = get global variable: name='config.scripts'
+043   if $config.Array
+044    $s = size of array $config.Array
+045    while $s > 0
+046     dec $s =
+047     $script.Array = $config.Array[$s]
+048     $script = $script.Array[0]
+049     $menu = = read text: page=$PageID id=102
+050     if $script == $menu
+051      remove element from array $config.Array at index $s
+052     end
+053    end
+054   end
+055  end
+056  
+057  return null
+058  
+059  
+060  

@@ -1,0 +1,287 @@
+* Script: plugin.LI.FDN.Main.Ware  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * Get AL settings
+005  $script = = get script name
+006  $al.Settings = get global variable: name='al.LI.FDN.event'
+007  if $al.Settings
+008   $PageID = $al.Settings[1]
+009  else
+010   return null
+011  end
+012  
+013  
+014  * Start Menu
+015  while [TRUE]
+016   $txt = = read text: page=$PageID id=102
+017   $menu = = create custom menu array: heading=$txt
+018   
+019   $txt = = read text: page=$PageID id=112
+020   add custom menu heading to array $menu: title=$txt
+021   $txt = = read text: page=$PageID id=224
+022   add custom menu item to array $menu: text=$txt returnvalue='switch'
+023   
+024   gosub Build.Menu.Sub:
+025   
+026   $txt = = read text: page=$PageID id=222
+027   $desc = = sprintf: pageid=$PageID textid=9000, $txt, null, null, null, null
+028   $return = open custom info menu: title=$txt description=$desc option array=$menu maxoptions=2
+029   
+030   * Start of return
+031   if $return == -1
+032    gosub Exit:
+033   else
+034    if $return == 'switch'
+035     $al.Settings[10][2] = [FALSE]
+036      = null -> call script plugin.LI.FDN.Main.Menu.Call :
+037     return null
+038     
+039    else if is datatyp[ $return ] == DATATYP_ARRAY
+040     $cmd = $return[0]
+041     $val = $return[1]
+042     if $cmd == 'show.ware'
+043      $show.Ware = $val  ->  get local variable: name='FDN.Main.Ware.Show'
+044      if $show.Ware == 1
+045       $val  ->  set local variable: name='FDN.Main.Ware.Show' value=2
+046      else
+047       $val  ->  set local variable: name='FDN.Main.Ware.Show' value=1
+048      end
+049     else if $cmd == 'rw.'
+050      $val2 = $return[2]
+051      $al.Settings[10][2] = [FALSE]
+052       = $val -> call script plugin.LI.FDN.Ware.Menu : ware=$val2  caller.script=$script  main.caller.script=$script
+053      return null
+054     else if $cmd == 'rn.'
+055      $al.Settings[10][2] = [FALSE]
+056      $al.Settings[10][1] = [TRUE]
+057      START  = $val -> call script plugin.LI.FDN.Node.Menu.D :
+058       = $val -> call script plugin.LI.FDN.Node.Menu : main.caller.script=$script
+059      return null
+060      
+061     end
+062    end
+063   end
+064  end
+065  
+066  Exit:
+067  $al.Settings[10][2] = [FALSE]
+068  START  = null -> call script plugin.LI.FDN.Cleanup :
+069  return null
+070  
+071  
+072  Build.Menu.Sub:
+073  $pointer = = read text: page=$PageID id=5006
+074  $master.Array = get global variable: name=$pointer
+075  
+076  $s = size of array $master.Array
+077  while $s > 0
+078   dec $s =
+079   $sector.Array = $master.Array[$s]
+080   $ss = size of array $sector.Array
+081   
+082   $sector = $sector.Array[0]
+083   $cc = 1
+084   add custom menu heading to array $menu: title=$sector
+085   while $cc < $ss
+086    $node.Array = $sector.Array[$cc]
+087    
+088    $node = $node.Array[0]
+089    $id = $node  ->  get ID code
+090    
+091    $pointer = = sprintf: pageid=$PageID textid=5007, $id, null, null, null, null
+092    $summary = get global variable: name=$pointer
+093    append $summary to array $menu
+094    
+095    if not $node  ->  get local variable: name='FDN.Main.Ware.Show'
+096     $node  ->  set local variable: name='FDN.Main.Ware.Show' value=1
+097    end
+098    $show.Ware = $node  ->  get local variable: name='FDN.Main.Ware.Show'
+099    
+100    gosub Get.Show.Header.Sub:
+101    
+102    if $show.Ware == 1
+103     $ware.Array = $node.Array[1]
+104     
+105     $main.split.ware.Array = = array alloc: size=0
+106     gosub Split.Ware.Sub:
+107     
+108     * sorted wares list
+109     $sm = size of array $main.split.ware.Array
+110     
+111     while $sm > 0
+112      dec $sm =
+113      $split.ware.Array = $main.split.ware.Array[$sm]
+114      
+115      * ware list main type
+116      $main.type = $split.ware.Array[0]
+117      * ware list
+118      $new.ware.array = $split.ware.Array[1]
+119      $sw = size of array $new.ware.array
+120      if $sw > 0
+121       
+122       gosub Get.Ware.Header.Sub:
+123       
+124       while $sw > 0
+125        dec $sw =
+126        $ware = $new.ware.array[$sw]
+127        $pointer = = sprintf: pageid=$PageID textid=5008, $id, $ware, null, null, null
+128        $summary = get global variable: name=$pointer
+129        append $summary to array $menu
+130       end
+131       add section to custom menu: $menu
+132      end
+133     end
+134    end
+135    * Don't remove this!
+136    inc $cc =
+137    add section to custom menu: $menu
+138   end
+139  end
+140  
+141  endsub
+142  
+143  
+144  * This splits the wares into arrays based on their main type
+145  Split.Ware.Sub:
+146  
+147  $tlaser.Array = = array alloc: size=0
+148  $tshield.Array = = array alloc: size=0
+149  $tmissile.Array = = array alloc: size=0
+150  $tenergy.Array = = array alloc: size=0
+151  $tnatural.Array = = array alloc: size=0
+152  $tbio.Array = = array alloc: size=0
+153  $tfood.Array = = array alloc: size=0
+154  $tmineral.Array = = array alloc: size=0
+155  $ttech.Array = = array alloc: size=0
+156  $tequip.Array = = array alloc: size=0
+157  
+158  $sw = size of array $ware.Array
+159  while $sw > 0
+160   dec $sw =
+161   $ware = $ware.Array[$sw]
+162   if is datatyp[ $ware ] == DATATYP_WARE
+163    $main.t = = get maintype of ware $ware
+164    if $main.t == 8
+165     append $ware to array $tlaser.Array
+166    else if $main.t == 9
+167     append $ware to array $tshield.Array
+168    else if $main.t == 10
+169     append $ware to array $tmissile.Array
+170    else if $main.t == 11
+171     append $ware to array $tenergy.Array
+172    else if $main.t == 12
+173     append $ware to array $tnatural.Array
+174    else if $main.t == 13
+175     append $ware to array $tbio.Array
+176    else if $main.t == 14
+177     append $ware to array $tfood.Array
+178    else if $main.t == 15
+179     append $ware to array $tmineral.Array
+180    else if $main.t == 16
+181     if not is equipment: ware=$ware
+182      append $ware to array $ttech.Array
+183     else
+184      append $ware to array $tequip.Array
+185      
+186     end
+187    end
+188   end
+189  end
+190  
+191  $tequip.Array = = sort array $tequip.Array
+192  $tequip.Array = reverse array $tequip.Array
+193  $ttech.Array = = sort array $ttech.Array
+194  $ttech.Array = reverse array $ttech.Array
+195  $tmineral.Array = = sort array $tmineral.Array
+196  $tmineral.Array = reverse array $tmineral.Array
+197  $tfood.Array = = sort array $tfood.Array
+198  $tfood.Array = reverse array $tfood.Array
+199  $tbio.Array = = sort array $tbio.Array
+200  $tbio.Array = reverse array $tbio.Array
+201  $tnatural.Array = = sort array $tnatural.Array
+202  $tnatural.Array = reverse array $tnatural.Array
+203  $tmissile.Array = = sort array $tmissile.Array
+204  $tmissile.Array = reverse array $tmissile.Array
+205  $tshield.Array = = sort array $tshield.Array
+206  $tshield.Array = reverse array $tshield.Array
+207  $tlaser.Array = = sort array $tlaser.Array
+208  $tlaser.Array = reverse array $tlaser.Array
+209  
+210  $laser.Array = = create new array, arguments=8, $tlaser.Array, null, null, null
+211  $shield.Array = = create new array, arguments=9, $tshield.Array, null, null, null
+212  $missile.Array = = create new array, arguments=10, $tmissile.Array, null, null, null
+213  $energy.Array = = create new array, arguments=11, $tenergy.Array, null, null, null
+214  $natural.Array = = create new array, arguments=12, $tnatural.Array, null, null, null
+215  $bio.Array = = create new array, arguments=13, $tbio.Array, null, null, null
+216  $food.Array = = create new array, arguments=14, $tfood.Array, null, null, null
+217  $mineral.Array = = create new array, arguments=15, $tmineral.Array, null, null, null
+218  $tech.Array = = create new array, arguments=16, $ttech.Array, null, null, null
+219  $equip.Array = = create new array, arguments=17, $tequip.Array, null, null, null
+220  
+221  append $equip.Array to array $main.split.ware.Array
+222  append $tech.Array to array $main.split.ware.Array
+223  append $mineral.Array to array $main.split.ware.Array
+224  append $food.Array to array $main.split.ware.Array
+225  append $bio.Array to array $main.split.ware.Array
+226  append $natural.Array to array $main.split.ware.Array
+227  append $energy.Array to array $main.split.ware.Array
+228  append $missile.Array to array $main.split.ware.Array
+229  append $shield.Array to array $main.split.ware.Array
+230  append $laser.Array to array $main.split.ware.Array
+231  
+232  endsub
+233  
+234  Get.Show.Header.Sub:
+235  $header = = array alloc: size=0
+236  if $show.Ware == 1
+237   $txt = = read text: page=$PageID id=219
+238   append 1 to array $header
+239   append $txt to array $header
+240  else
+241   $txt = = read text: page=$PageID id=220
+242   append 1 to array $header
+243   append $txt to array $header
+244  end
+245  $ret = = create new array, arguments='show.ware', $node, null, null, null
+246  $array = = create new array, arguments=$header, $ret, null, null, null
+247  append $array to array $menu
+248  add section to custom menu: $menu
+249  endsub
+250  
+251  
+252  Get.Ware.Header.Sub:
+253  $header = = array alloc: size=0
+254  $txt = = read text: page=$PageID id=$main.type
+255  $txt = = sprintf: pageid=$PageID textid=9004, $txt, $sw, null, null, null
+256  append 1 to array $header
+257  append $txt to array $header
+258  $txt = = read text: page=$PageID id=214
+259  append -450 to array $header
+260  append $txt to array $header
+261  $txt = = read text: page=$PageID id=215
+262  append -360 to array $header
+263  append $txt to array $header
+264  $txt = = read text: page=$PageID id=216
+265  append -270 to array $header
+266  append $txt to array $header
+267  $txt = = read text: page=$PageID id=217
+268  append -180 to array $header
+269  append $txt to array $header
+270  $txt = = read text: page=$PageID id=218
+271  append -90 to array $header
+272  append $txt to array $header
+273  $txt = = read text: page=$PageID id=137
+274  append -1 to array $header
+275  append $txt to array $header
+276  $ret = 'empty'
+277  $array = = create new array, arguments=$header, $ret, null, null, null
+278  append $array to array $menu
+279  endsub
+280  
+281  return null
+282  
+283  
+284  

@@ -1,0 +1,248 @@
+* Script: plugin.LI.FDN.Menu.Factory.List  (v1.0, engine 50)
+* Desc: FDNv8 - Factory List Menu for TC
+* Arg 0: menu (Value) 'menu'
+* Arg 1: factory.show.array (Value) 'factory.show.array'
+
+001  $al.Settings = get global variable: name='al.LI.FDN.event'
+002  if $al.Settings
+003   $PageID = $al.Settings[1]
+004   $dc = $al.Settings[2]
+005  end
+006  
+007  $name = null
+008  
+009  $sector.array = null -> call script plugin.LI.FDN.Sector.Array : search=4
+010  $s = size of array $sector.array
+011  if $factory.show.array == null
+012   $factory.show.array = = array alloc: size=$s
+013  end
+014  
+015  $factory.count = 0
+016  $sector.count = 0
+017  $dock.count = 0
+018  $sector.count = 0
+019  $product.count = 0
+020  $resource.count = 0
+021  
+022  while $s > 0
+023   dec $s =
+024   $sector = $sector.array[$s]
+025   inc $sector.count =
+026   
+027   $return.array = = array alloc: size=2
+028   $return.array[0] = 'show.factory'
+029   $return.array[1] = $s
+030   
+031   $txt = = sprintf: pageid=$PageID textid=9000, $sector, null, null, null, null
+032   add custom menu heading to array $menu: title=$txt
+033   
+034   if not $factory.show.array[$s]
+035    $factory.show.array[$s] = 1
+036   end
+037   $check = $factory.show.array[$s]
+038   
+039   if $check == 1
+040    $txt = = read text: page=$PageID id=1000
+041    add custom menu item to array $menu: text=$txt returnvalue=$return.array
+042    
+043    * find factories in sector
+044    $flags = [Find.Multiple]
+045    $factory.array = find station: sector=$sector class or type=Factory 2006 race=Player flags=$flags refobj=null maxdist=null maxnum=999 refpos=null
+046    $factory.array = = sort array $factory.array
+047    $factory.array = reverse array $factory.array
+048    * -----------------------------------------------------------------------------------
+049    
+050    * loop factories
+051    $sf = size of array $factory.array
+052    while $sf > 0
+053     dec $sf =
+054     $factory = $factory.array[$sf]
+055     if $factory  ->  is of class Factory 2006
+056      * FOR NOW EXCLUDE COMPLEX HUBS
+057      if not $factory  ->  is of class Complex Hub
+058       $detectable = $factory  ->  is detectable
+059       if $detectable == 0
+060        inc $factory.count =
+061        
+062        gosub Factory.Summary.Sub:
+063       end
+064      end
+065     end
+066    end
+067    * -----------------------------------------------------------------------------------
+068    add section to custom menu: $menu
+069    * find docks in sector
+070    $flags = [Find.Multiple]
+071    $dock.array = find station: sector=$sector class or type=Dock 2007 race=Player flags=$flags refobj=null maxdist=null maxnum=999 refpos=null
+072    $dock.array = = sort array $dock.array
+073    $dock.array = reverse array $dock.array
+074    * -----------------------------------------------------------------------------------
+075    
+076    * loop docks
+077    $sd = size of array $dock.array
+078    while $sd > 0
+079     dec $sd =
+080     $dock = $dock.array[$sd]
+081     if not $dock == $dc
+082      inc $dock.count =
+083      
+084      gosub Dock.Summary.Sub:
+085     end
+086    end
+087    * -----------------------------------------------------------------------------------
+088   else
+089    $txt = = read text: page=$PageID id=1001
+090    add custom menu item to array $menu: text=$txt returnvalue=$return.array
+091   end
+092  end
+093  
+094  
+095  
+096  if $al.Settings[9]
+097   $txt = = read text: page=$PageID id=180
+098  else
+099   $txt = = read text: page=$PageID id=181
+100  end
+101  add custom menu info line to array $menu: text=$txt
+102  add custom menu info line to array $menu: text=' '
+103  * -----------------------------------------------------------------------------------
+104  
+105  if $sector.count > 0
+106   $txt = = sprintf: pageid=$PageID textid=2000, $sector.count, null, null, null, null
+107   add custom menu info line to array $menu: text=$txt
+108   if $factory.count > 0
+109    $txt = = sprintf: pageid=$PageID textid=2002, $factory.count, $product.count, $resource.count, null, null
+110    add custom menu info line to array $menu: text=$txt
+111   end
+112   if $dock.count > 0
+113    $txt = = sprintf: pageid=$PageID textid=2001, $dock.count, null, null, null, null
+114    add custom menu info line to array $menu: text=$txt
+115   end
+116  end
+117  
+118  $txt = = read text: page=$PageID id=157
+119  add custom menu heading to array $menu: title=$txt
+120  $txt = = read text: page=$PageID id=158
+121  add custom menu item to array $menu: text=$txt returnvalue='product.all.on'
+122  $txt = = read text: page=$PageID id=159
+123  add custom menu item to array $menu: text=$txt returnvalue='resource.all.on'
+124  
+125  add section to custom menu: $menu
+126  $txt = = read text: page=$PageID id=166
+127  add custom menu item to array $menu: text=$txt returnvalue='product.all.off'
+128  $txt = = read text: page=$PageID id=167
+129  add custom menu item to array $menu: text=$txt returnvalue='resource.all.off'
+130  
+131  
+132  $return.array = = array alloc: size=2
+133  $return.array[0] = $menu
+134  $return.array[1] = $factory.show.array
+135  
+136  return $return.array
+137  * -----------------------------------------------------------------------------------
+138  
+139  * -----------------------------------------------------------------------------------
+140  * dock summary
+141  Dock.Summary.Sub:
+142  
+143  $name = null -> call script plugin.LI.FDN.Format.Name : object=$dock
+144  $name = '- ' + $name
+145  $name = = sprintf: pageid=$PageID textid=9000, $name, null, null, null, null
+146  * -----------------------------------------------------------------------------------
+147  
+148  * format display line
+149  $temp.array = = array alloc: size=6
+150  $temp.array[0] = 1
+151  $temp.array[1] = ''
+152  $temp.array[2] = 5
+153  $temp.array[3] = $name
+154  $temp.array[4] = -1
+155  $temp.array[5] = ' '
+156  * -----------------------------------------------------------------------------------
+157  
+158  * open factory
+159  $return.array = = array alloc: size=2
+160  $return.array[0] = 'open.dock'
+161  $return.array[1] = $dock
+162  * -----------------------------------------------------------------------------------
+163  
+164  $format = = create new array, arguments=$temp.array, $return.array, null, null, null
+165  append $format to array $menu
+166  endsub
+167  * -----------------------------------------------------------------------------------
+168  
+169  
+170  * -----------------------------------------------------------------------------------
+171  * factory summary
+172  Factory.Summary.Sub:
+173  
+174  $name = null -> call script plugin.LI.FDN.Format.Name : object=$factory
+175  $pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+176  $name = $pre + $name
+177  * -----------------------------------------------------------------------------------
+178  
+179  * get factory settings
+180  $pointer = = read text: page=$PageID id=4001
+181  if not $factory  ->  get local variable: name=$pointer
+182   $settings.array = = array alloc: size=6
+183   $factory  ->  set local variable: name=$pointer value=$settings.array
+184  end
+185  $settings.array = $factory  ->  get local variable: name=$pointer
+186  * -----------------------------------------------------------------------------------
+187  
+188  * auto manage check
+189  if not $settings.array[2]
+190   $settings.array[2] = 1
+191   * check auto manage setting if set turn on at factory
+192   if $al.Settings[9]
+193    $settings.array[0] = 1
+194    $settings.array[1] = 1
+195   end
+196   $factory  ->  set local variable: name=$pointer value=$settings.array
+197  end
+198  * -----------------------------------------------------------------------------------
+199  
+200  $temp.array = = array alloc: size=8
+201  
+202  * manage product setting
+203  if $settings.array[0]
+204   inc $product.count =
+205   $txt = = read text: page=$PageID id=162
+206  else
+207   $txt = = read text: page=$PageID id=160
+208  end
+209  $temp.array[5] = $txt
+210  * -----------------------------------------------------------------------------------
+211  
+212  * manage resource setting
+213  if $settings.array[1]
+214   inc $resource.count =
+215   $txt = = read text: page=$PageID id=163
+216  else
+217   $txt = = read text: page=$PageID id=161
+218  end
+219  $temp.array[7] = $txt
+220  * -----------------------------------------------------------------------------------
+221  
+222  * format display line
+223  $temp.array[0] = 1
+224  $temp.array[1] = ''
+225  $temp.array[2] = 5
+226  $temp.array[3] = $name
+227  $temp.array[4] = -200
+228  $temp.array[6] = -1
+229  * -----------------------------------------------------------------------------------
+230  
+231  * open factory
+232  $return.array = = array alloc: size=2
+233  $return.array[0] = 'open.factory'
+234  $return.array[1] = $factory
+235  * -----------------------------------------------------------------------------------
+236  
+237  $format = = create new array, arguments=$temp.array, $return.array, null, null, null
+238  append $format to array $menu
+239  endsub
+240  * -----------------------------------------------------------------------------------
+241  return null
+242  
+243  

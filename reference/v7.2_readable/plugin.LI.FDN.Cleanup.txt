@@ -1,0 +1,25 @@
+* Script: plugin.LI.FDN.Cleanup  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004   = wait randomly from 2000 to 3000 ms
+005  
+006  * Clear globals used for menus
+007  $glb.Array = get global variables: regular expression='FDND.*'
+008  $s = size of array $glb.Array
+009  while $s > 0
+010   dec $s =
+011   $var = $glb.Array[$s]
+012   $check = = get substring of $var offset=0 length=5
+013   skip if not $check == 'FDND.'
+014    set global variable: name=$var value=null
+015  end
+016  
+017  return null
+018  
+019  
+020  return null
+021  
+022  

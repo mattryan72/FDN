@@ -1,0 +1,159 @@
+* Script: plugin.LI.FDN.Move.Ware  (v1.0, engine 50)
+* Desc: FDNv8 - Handles the user inputs for moving wares
+* Arg 0: ware (Value) 'ware'
+* Arg 1: source (Value) 'source'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * this script handles the user inputs for moving wares
+004  
+005  * Expected values:
+006  * - ware
+007  * - source
+008  
+009  * Returns values:
+010  * - N/A
+011  
+012  * Version: 1.0
+013  * Date: 09/06/2012
+014  * Tested: 09/06/2012
+015  * -----------------------------------------------------------------------------------
+016  
+017  * Fetch values saved in the AL Plugin global variable:
+018  $script = = get script name
+019  $al.Settings = get global variable: name='al.LI.FDN.event'
+020  if $al.Settings
+021   $PageID = $al.Settings[1]
+022   $DebugID = 0 + $PageID
+023  else
+024   return null
+025  end
+026  * -----------------------------------------------------------------------------------
+027  
+028  * fetch ware details from the source
+029  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+030  $ware.array = $source  ->  get local variable: name=$pointer
+031  * calculate the avialable physical, virtual and total
+032  $virtual.avialable = $ware.array[0]
+033  if not $virtual.avialable > 0
+034   $virtual.avialable = 0
+035  end
+036  $physical.avialable = $source  ->  get amount of ware $ware in cargo bay
+037  $stock.avialable = $virtual.avialable + $physical.avialable
+038  * -----------------------------------------------------------------------------------
+039  
+040  if not $stock.avialable > 0
+041   * Debug
+042   if $al.Settings[7]
+043    $txt.debug = $source + ' has no free ' + $ware + ' - exit move ware'
+044    gosub Debug.Sub:
+045   end
+046   return null
+047  end
+048  * -----------------------------------------------------------------------------------
+049  
+050  * USER SELECT - player owned ship or station
+051  $txt = = read text: page=$PageID id=184
+052  $destination = null  ->  get user input: type=Var/Ship/Station owned by Player, title=$txt
+053  * Debug
+054  if $al.Settings[7]
+055   $txt.debug = 'Selected: ' + $destination
+056   gosub Debug.Sub:
+057  end
+058  * -----------------------------------------------------------------------------------
+059  
+060  * check that destination can accept ware
+061  if not $destination  ->  is of class Dock 2007
+062   if not $destination  ->  get free amount of ware $ware in cargo bay
+063    $txt = = sprintf: pageid=$PageID textid=194, $destination, $ware, null, null, null
+064    display subtitle text: text=$txt duration=2000 ms
+065    return null
+066   end
+067  end
+068  * -----------------------------------------------------------------------------------
+069  
+070  * catch if source and destination is the same and exit
+071  if $destination == $source
+072   * Debug
+073   if $al.Settings[7]
+074    $txt.debug = 'Selected: ' + $destination + ' is same as source - exit move ware'
+075    gosub Debug.Sub:
+076   end
+077   $txt = = sprintf: pageid=$PageID textid=192, $destination, null, null, null, null
+078   display subtitle text: text=$txt duration=2000 ms
+079   return null
+080  end
+081  * -----------------------------------------------------------------------------------
+082  
+083  * USER INPUT - amount of ware to move
+084  $txt = = read text: page=$PageID id=178
+085  $amount = null  ->  get user input: type=Var/Number, title=$txt
+086  if not is datatyp[ $amount ] == DATATYPE_NULL
+087   if not $amount > 0
+088    * if not a valid amount exit
+089    return null
+090   end
+091   if $amount > $stock.avialable
+092    * if amount greater than current stock
+093    $amount = $stock.avialable
+094   end
+095  else
+096   $txt = = sprintf: pageid=$PageID textid=193, $amount, $ware, null, null, null
+097   display subtitle text: text=$txt duration=2000 ms
+098   return null
+099  end
+100  * Debug
+101  if $al.Settings[7]
+102   $txt.debug = 'Input : ' + $amount + ' of ' + $ware + ' to be moved'
+103   gosub Debug.Sub:
+104  end
+105  * -----------------------------------------------------------------------------------
+106  
+107  * checks if the destination can hold the ware
+108  if not $destination  ->  is of class Dock 2007
+109   if $destination  ->  get free amount of ware $ware in cargo bay
+110    
+111    * add to destination
+112    $amount.added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$destination  action='add'
+113    * -----------------------------------------------------------------------------------
+114    
+115    if $amount.added > 0
+116     if $amount.added < $amount
+117      $amount = $amount.added
+118     end
+119     
+120     * remove from source
+121      = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$source  action='remove'
+122     * -----------------------------------------------------------------------------------
+123    end
+124   end
+125  else
+126   
+127   * add to destination
+128   $amount.added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$destination  action='add'
+129   * -----------------------------------------------------------------------------------
+130   
+131   if $amount.added > 0
+132    if $amount.added < $amount
+133     $amount = $amount.added
+134    end
+135    
+136    * remove from source
+137     = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$source  action='remove'
+138    * -----------------------------------------------------------------------------------
+139   end
+140  end
+141  return null
+142  * -----------------------------------------------------------------------------------
+143  
+144  * Debug Massage handling
+145  Debug.Sub:
+146  $d.time = = playing time
+147  $d.time = = format time: $d.time
+148  $txt = $d.time + ';' + $script + ';' + $txt.debug
+149  write to log file $DebugID  append=[TRUE]  value=$txt
+150  endsub
+151  * -----------------------------------------------------------------------------------
+152  return null
+153  
+154  

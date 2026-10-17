@@ -1,0 +1,126 @@
+* Script: plugin.LI.FDN.Menu.Factory.Details  (v1.0, engine 50)
+* Desc: FDNv8 - Factory details menu
+* Arg 0: menu (Value) 'menu'
+* Arg 1: value (Value) 'value'
+
+001  $al.Settings = get global variable: name='al.LI.FDN.event'
+002  if $al.Settings
+003   $PageID = $al.Settings[1]
+004  end
+005  
+006  * 4xxx are pointer to locals variables
+007  * 4001 is the pointer for settings
+008  $pointer = = sprintf: pageid=$PageID textid=4001, $value, null, null, null, null
+009  * If there is no variable create one
+010  if not $value  ->  get local variable: name=$pointer
+011   $settings.array = = array alloc: size=6
+012   $value  ->  set local variable: name=$pointer value=$settings.array
+013  end
+014  $settings.array = $value  ->  get local variable: name=$pointer
+015  
+016  $txt = null -> call script plugin.LI.FDN.Format.Name : object=$value
+017  $temp.array = = array alloc: size=4
+018  $temp.array[0] = 1
+019  $temp.array[1] = $txt
+020  $temp.array[2] = -1
+021  $txt = $value  ->  get sector
+022  $temp.array[3] = $txt
+023  add custom menu info line to array $menu: text=$temp.array
+024  add custom menu info line to array $menu: text=' '
+025  
+026  $product.array = = array alloc: size=0
+027  $resource.array = = array alloc: size=0
+028  $ware.array = $value  ->  get tradeable ware array from station
+029  
+030  $s = size of array $ware.array
+031  while $s > 0
+032   dec $s =
+033   $ware = $ware.array[$s]
+034   if $value  ->  uses ware $ware as product
+035    append $ware to array $product.array
+036   else
+037    append $ware to array $resource.array
+038   end
+039  end
+040  
+041  $txt = = read text: page=$PageID id=137
+042  add custom menu info line to array $menu: text=$txt
+043  $s = size of array $product.array
+044  while $s > 0
+045   dec $s =
+046   $ware = $product.array[$s]
+047   $amount = = $value  ->  get number of products per cycle
+048   $txt = $ware + ' [' + $amount + ']'
+049   $temp.array = = array alloc: size=2
+050   $temp.array[0] = -1
+051   $temp.array[1] = $txt
+052   add custom menu info line to array $menu: text=$temp.array
+053  end
+054  add custom menu info line to array $menu: text=' '
+055  
+056  $txt = = read text: page=$PageID id=139
+057  add custom menu info line to array $menu: text=$txt
+058  $s = size of array $resource.array
+059  while $s > 0
+060   dec $s =
+061   $ware = $resource.array[$s]
+062   $amount = = $value  ->  get number of resources per cycle for ware $ware
+063   $txt = $ware + ' [' + $amount + ']'
+064   $temp.array = = array alloc: size=2
+065   $temp.array[0] = -1
+066   $temp.array[1] = $txt
+067   add custom menu info line to array $menu: text=$temp.array
+068  end
+069  
+070  
+071  * Products On/Off
+072  $txt = = read text: page=$PageID id=137
+073  add custom menu heading to array $menu: title=$txt
+074  
+075  $temp.array = = array alloc: size=4
+076  $temp.array[0] = 1
+077  $txt = = read text: page=$PageID id=138
+078  $temp.array[1] = $txt
+079  $temp.array[2] = -1
+080  if $settings.array[0]
+081   $txt = = read text: page=$PageID id=148
+082  else
+083   $txt = = read text: page=$PageID id=149
+084  end
+085  $temp.array[3] = $txt
+086  
+087  $ret.array = = array alloc: size=2
+088  $ret.array[0] = 'product'
+089  $ret.array[1] = $value
+090  
+091  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+092  append $format to array $menu
+093  
+094  
+095  * Resource On/Off
+096  $txt = = read text: page=$PageID id=139
+097  add custom menu heading to array $menu: title=$txt
+098  
+099  $temp.array = = array alloc: size=4
+100  $temp.array[0] = 1
+101  $txt = = read text: page=$PageID id=138
+102  $temp.array[1] = $txt
+103  $temp.array[2] = -1
+104  if $settings.array[1]
+105   $txt = = read text: page=$PageID id=148
+106  else
+107   $txt = = read text: page=$PageID id=149
+108  end
+109  $temp.array[3] = $txt
+110  
+111  $ret.array = = array alloc: size=2
+112  $ret.array[0] = 'resource'
+113  $ret.array[1] = $value
+114  
+115  $format = = create new array, arguments=$temp.array, $ret.array, null, null, null
+116  append $format to array $menu
+117  
+118  return $menu
+119  
+120  
+121  

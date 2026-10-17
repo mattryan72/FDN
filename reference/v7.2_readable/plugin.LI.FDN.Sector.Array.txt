@@ -1,0 +1,94 @@
+* Script: plugin.LI.FDN.Sector.Array  (v7, engine 44)
+* Desc: 
+* Arg 0: sector (Var/Sector) 'sector'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $node.Array = $al.Settings[2]
+007  else
+008   return null
+009  end
+010  
+011  $return.Array = = array alloc: size=0
+012  
+013  if $sector
+014   
+015   * Add all sectors within 5 jumps of Node
+016   $sector.Array = $sector  ->  find all sectors within 5 jumps: Only known sectors=[TRUE]
+017   $s = size of array $sector.Array
+018   while $s > 0
+019    dec $s =
+020    $sec = $sector.Array[$s]
+021    $adv.Sat = find ship: sector=$sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+022    if $adv.Sat
+023     $factory = find station: sector=$sec class or type=Factory 2006 race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+024     skip if not $factory
+025      append $sec to array $return.Array
+026    end
+027   end
+028   
+029   * Find all Nodes in INN range nad then add the sectors in range
+030   $dock.Array = null -> call script plugin.LI.FDN.Find.INN : sector=$sector
+031   $s = size of array $dock.Array
+032   while $s > 0
+033    dec $s =
+034    $dock = $dock.Array[$s]
+035    $dock.sec = $dock  ->  get sector
+036    $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+037    if $adv.Sat
+038     $dock.sub = = $dock  ->  get subtype
+039     if find $dock.sub in array: $node.Array
+040      $sector.Array = $dock.sec  ->  find all sectors within 5 jumps: Only known sectors=[TRUE]
+041      $ss = size of array $sector.Array
+042      while $ss > 0
+043       dec $ss =
+044       $sec = $sector.Array[$ss]
+045       $adv.Sat = find ship: sector=$sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+046       if $adv.Sat
+047        $factory = find station: sector=$sec class or type=Factory 2006 race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+048        if $factory
+049         skip if find $sec in array: $return.Array
+050          append $sec to array $return.Array
+051        end
+052       end
+053      end
+054     end
+055    end
+056   end
+057   
+058  else
+059   START:
+060   
+061   $dock.Array = = get station array: of race Player class/type=Dock 2007
+062   $s = size of array $dock.Array
+063   while $s > 0
+064    dec $s =
+065    $dock = $dock.Array[$s]
+066    $dock.sec = $dock  ->  get sector
+067    $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+068    if $adv.Sat
+069     $sub = = $dock  ->  get subtype
+070     if find $sub in array: $node.Array
+071      $sector = $dock  ->  get sector
+072      skip if find $sector in array: $return.Array
+073       append $sector to array $return.Array
+074     end
+075    end
+076   end
+077   
+078  end
+079  
+080  $s = size of array $return.Array
+081  if $s > 0
+082   return $return.Array
+083  else
+084   goto label Exit:
+085  end
+086  
+087  Exit:
+088  return null
+089  
+090  

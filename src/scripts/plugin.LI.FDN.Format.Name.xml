@@ -1,0 +1,45 @@
+<?xml version="1.0" standalone="yes"?>
+<?xml-stylesheet href="x2script.xsl" type="text/xsl"?>
+<!--Produced externally by the Exscriptor-->
+<script>
+   <name>plugin.LI.FDN.Format.Name</name>
+   <version>1.0</version>
+   <engineversion>50</engineversion>
+   <description>FDNv8 - Formats object name for menus</description>
+   <arguments>
+      <argument index="0" name="object" type="Value" desc="object" />
+   </arguments>
+   <sourcetext>
+      <line linenr="001" indent=""><comment>* Author: Logain Abler</comment></line>
+      <line linenr="002" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="003" indent=""><comment>* This script fromats object names for the menu</comment></line>
+      <line linenr="004" indent=""> </line>
+      <line linenr="005" indent=""><comment>* <var>Expected values</var><text>:</text></comment></line>
+      <line linenr="006" indent=""><comment>* -object</comment></line>
+      <line linenr="007" indent=""> </line>
+      <line linenr="008" indent=""><comment>* <var>Returns values</var><text>:</text></comment></line>
+      <line linenr="009" indent=""><comment>* - formatted name</comment></line>
+      <line linenr="010" indent=""> </line>
+      <line linenr="011" indent=""><comment>* Version: 1.0</comment></line>
+      <line linenr="012" indent=""><comment>* Date: 22/05/2012</comment></line>
+      <line linenr="013" indent=""><comment>* Tested: 22/05/2012</comment></line>
+      <line linenr="014" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="015" indent=""> </line>
+      <line linenr="016" indent=""><text></text><var>$al.Settings =</var><text> get global variable: name=</text><var>'al.LI.FDN.event'</var><text></text></line>
+      <line linenr="017" indent=""><var>if </var><text></text><var>$al.Settings </var><text></text></line>
+      <line linenr="018" indent="&#160;"><text></text><var>$PageID =</var><text> </text><var>$al.Settings</var><text>[</text><var>1</var><text>]</text></line>
+      <line linenr="019" indent=""><text>end</text></line>
+      <line linenr="020" indent=""> </line>
+      <line linenr="021" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="022" indent=""><text></text><var>$name =</var><text> </text><var>$object</var><text>  ->  get name</text></line>
+      <line linenr="023" indent=""><text></text><var>$id =</var><text> </text><var>$object</var><text>  ->  get ID code</text></line>
+      <line linenr="024" indent=""><text></text><var>$return =</var><text> = sprintf: pageid=</text><var>$PageID</var><text> textid=</text><var>134</var><text>, </text><var>$name</var><text>, </text><var>$id</var><text>, </text><var>null</var><text>, </text><var>null</var><text>, </text><var>null</var><text></text></line>
+      <line linenr="025" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="026" indent=""><text>return </text><var>$return</var><text></text></line>
+      <line linenr="027" indent=""> </line>
+      <line linenr="028" indent=""> </line>
+      <line linenr="029" indent=""> </line>
+   </sourcetext>
+   <codearray><sval type="array" size="10"><sval type="string" val="plugin.LI.FDN.Format.Name" /><sval type="int" val="50" /><sval type="string" val="FDNv8 - Formats object name for menus" /><sval type="int" val="1.0" /><sval type="int" val="0" /><sval type="array" size="6"><sval type="string" val="object" /><sval type="string" val="al.Settings" /><sval type="string" val="PageID" /><sval type="string" val="name" /><sval type="string" val="id" /><sval type="string" val="return" /></sval><sval type="array" size="7"><sval type="array" size="4"><sval type="int" val="158" /><sval type="int" val="5" /><sval type="string" val="al.LI.FDN.event" /><sval type="int" val="1" /></sval><sval type="array" size="7"><sval type="int" val="104" /><sval type="int" val="-1610611965" /><sval type="int" val="1" /><sval type="int" val="131074" /><sval type="int" val="1" /><sval type="int" val="1" /><sval type="int" val="-1" /></sval><sval type="array" size="6"><sval type="int" val="129" /><sval type="int" val="2" /><sval type="int" val="131074" /><sval type="int" val="1" /><sval type="int" val="4" /><sval type="int" val="1" /></sval><sval type="array" size="4"><sval type="int" val="1028" /><sval type="int" val="131074" /><sval type="int" val="0" /><sval type="int" val="3" /></sval><sval type="array" size="4"><sval type="int" val="1036" /><sval type="int" val="131074" /><sval type="int" val="0" /><sval type="int" val="4" /></sval><sval type="array" size="16"><sval type="int" val="150" /><sval type="int" val="5" /><sval type="int" val="131074" /><sval type="int" val="2" /><sval type="int" val="4" /><sval type="int" val="134" /><sval type="int" val="131074" /><sval type="int" val="3" /><sval type="int" val="131074" /><sval type="int" val="4" /><sval type="int" val="0" /><sval type="int" val="0" /><sval type="int" val="0" /><sval type="int" val="0" /><sval type="int" val="0" /><sval type="int" val="0" /></sval><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="131074" /><sval type="int" val="5" /></sval></sval><sval type="array" size="1"><sval type="array" size="2"><sval type="int" val="9" /><sval type="string" val="object" /></sval></sval><sval type="array" size="22"><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Author: Logain Abler" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="This script fromats object names for the menu" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="4"><sval type="int" val="0" /><sval type="int" val="3" /><sval type="int" val="101" /><sval type="string" val="Expected values" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="-object" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="4"><sval type="int" val="0" /><sval type="int" val="3" /><sval type="int" val="101" /><sval type="string" val="Returns values" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="- formatted name" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Version: 1.0" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Date: 22/05/2012" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Tested: 22/05/2012" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="3" /><sval type="int" val="4" /></sval><sval type="array" size="2"><sval type="int" val="3" /><sval type="int" val="2" /></sval><sval type="array" size="3"><sval type="int" val="3" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="3"><sval type="int" val="6" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="2"><sval type="int" val="7" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="7" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="7" /><sval type="int" val="2" /></sval></sval><sval type="int" val="0" /></sval>
+   </codearray>
+</script>

@@ -1,0 +1,36 @@
+* Script: plugin.LI.FDN.Cleanup  (v1.0, engine 50)
+* Desc: FDNv8 - Clears Global values used by Dynamic menus
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * this script clears the global values used for dynamic menus
+004  
+005  * Expected values:
+006  * - n/a
+007  
+008  * Return values:
+009  * - n/a
+010  
+011  * Version: 1.0
+012  * Date: 17/05/2012
+013  * Tested: 17/05/2012
+014  * -----------------------------------------------------------------------------------
+015  
+016  * Clears globals used for dynamic menus
+017  * All globals will be prefixed with FDND.
+018  $glb.Array = get global variables: regular expression='FDND.*'
+019  $s = size of array $glb.Array
+020  while $s > 0
+021   dec $s =
+022   $var = $glb.Array[$s]
+023   $check = = get substring of $var offset=0 length=5
+024   if $check == 'FDND.'
+025    set global variable: name=$var value=null
+026   end
+027  end
+028  * -----------------------------------------------------------------------------------
+029  return null
+030  
+031  
+032  
+033  

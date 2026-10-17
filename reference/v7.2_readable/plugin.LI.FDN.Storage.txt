@@ -1,0 +1,42 @@
+* Script: plugin.LI.FDN.Storage  (v7, engine 44)
+* Desc: 
+* Arg 0: stn (Var/Station) 'stn'
+* Arg 1: act (Value) 'act'
+
+001  * Auther: Logain Abler
+002  
+003  $class = $stn  ->  get object class
+004  if $act == 'Max'
+005   if $class == Equipment Dock 2075 OR $class == Trading Dock
+006    $ware.Array = $stn  ->  get tradeable ware array from station
+007    $s = size of array $ware.Array
+008    $total = 0
+009    while $s > 0
+010     dec $s =
+011     $ware = $ware.Array[$s]
+012     $max = $stn  ->  get max amount of ware $ware that can be stored in cargo bay
+013     $total = $total + $max
+014    end
+015   else
+016    $total = $stn  ->  get cargo bay size
+017   end
+018  else
+019   if $class == Equipment Dock 2075 OR $class == Trading Dock
+020    $ware.Array = $stn  ->  get tradeable ware array from station
+021    $s = size of array $ware.Array
+022    $total = 0
+023    while $s > 0
+024     dec $s =
+025     $ware = $ware.Array[$s]
+026     $curr = $stn  ->  get amount of ware $ware in cargo bay
+027     $total = $total + $curr
+028    end
+029   else
+030    $total = $stn  ->  get total volume in cargo bay
+031   end
+032  end
+033  $total = = convert number $total to string
+034  
+035  return $total
+036  
+037  

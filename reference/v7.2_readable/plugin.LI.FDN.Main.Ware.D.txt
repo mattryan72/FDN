@@ -1,0 +1,285 @@
+* Script: plugin.LI.FDN.Main.Ware.D  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * AL settings--
+005  $al.Settings = get global variable: name='al.LI.FDN.event'
+006  if $al.Settings
+007   $PageID = $al.Settings[1]
+008   $master.node.Array = $al.Settings[2]
+009   
+010   $dynamic = $al.Settings[9]
+011   $s = size of array $dynamic
+012   if $s < 3
+013    append [TRUE] to array $dynamic
+014   end
+015   $dynamic = $al.Settings[9][2]
+016   
+017   $is.On = $al.Settings[10]
+018   $s = size of array $is.On
+019   if $s < 3
+020    append [TRUE] to array $is.On
+021   end
+022   $is.On = $al.Settings[10][2]
+023   
+024  else
+025   return null
+026  end
+027  
+028  $master.Array = = array alloc: size=0
+029  gosub Build.Global.Refs.Sub:
+030  
+031  * Compile dynamic Menu--
+032  while [TRUE]
+033   
+034   gosub Update.Global.Refs.Sub:
+035   
+036   * wait one second
+037    = wait 1000 ms
+038   * Check
+039   
+040   skip if $al.Settings[0]
+041    return null
+042   
+043   $dynamic = $al.Settings[9][2]
+044   skip if $dynamic == [TRUE]
+045    return null
+046   
+047   $is.On = $al.Settings[10][2]
+048   skip if $is.On == [TRUE]
+049    return null
+050   
+051  end
+052  
+053  return null
+054  
+055  
+056  Build.Global.Refs.Sub:
+057  $sector.Array = [THIS] -> call script plugin.LI.FDN.Sector.Array : sector=null
+058  
+059  $s = size of array $sector.Array
+060  while $s > 0
+061   dec $s =
+062   
+063   $temp.sector.Array = = array alloc: size=0
+064   $sector = $sector.Array[$s]
+065   append $sector to array $temp.sector.Array
+066   
+067   $node.Array = = array alloc: size=0
+068   gosub Node.List.Sub:
+069   
+070   $sn = size of array $node.Array
+071   while $sn > 0
+072    dec $sn =
+073    $node = $node.Array[$sn]
+074    $temp.node.Array = = array alloc: size=0
+075    append $node to array $temp.node.Array
+076    
+077    $id = $node  ->  get ID code
+078    $a = = array alloc: size=6
+079    $a[0] = 1
+080    $a[2] = 400
+081    $a[4] = -1
+082    
+083    $return.value = = create new array, arguments='rn.', $node, null, null, null
+084    $a.Node = = create new array, arguments=$a, $return.value, null, null, null
+085    $pointer = = sprintf: pageid=$PageID textid=5007, $id, null, null, null, null
+086    set global variable: name=$pointer value=$a.Node
+087    
+088    $ware.Array = $node  ->  get tradeable ware array from station
+089    $sw = size of array $ware.Array
+090    $temp.ware.Array = = array alloc: size=0
+091    while $sw > 0
+092     dec $sw =
+093     $ware = $ware.Array[$sw]
+094     $t.class = = get transport class of ware $ware
+095     if not $t.class == ST
+096      append $ware to array $temp.ware.Array
+097      
+098      $a = = array alloc: size=14
+099      $a[0] = 1
+100      $a[2] = -450
+101      $a[4] = -360
+102      $a[6] = -270
+103      $a[8] = -180
+104      $a[10] = -90
+105      $a[12] = -1
+106      
+107      $return.value = = create new array, arguments='rw.', $node, $ware, null, null
+108      $a.Ware = = create new array, arguments=$a, $return.value, null, null, null
+109      $pointer = = sprintf: pageid=$PageID textid=5008, $id, $ware, null, null, null
+110      set global variable: name=$pointer value=$a.Ware
+111      
+112     end
+113    end
+114    append $temp.ware.Array to array $temp.node.Array
+115    append $temp.node.Array to array $temp.sector.Array
+116    
+117   end
+118   
+119   append $temp.sector.Array to array $master.Array
+120  end
+121  
+122  $pointer = = read text: page=$PageID id=5006
+123  set global variable: name=$pointer value=$master.Array
+124  
+125  endsub
+126  
+127  
+128  Update.Global.Refs.Sub:
+129  $s = size of array $master.Array
+130  while $s > 0
+131   dec $s =
+132   $node.Array = $master.Array[$s]
+133   
+134   $sn = size of array $node.Array
+135   while $sn > 0
+136    dec $sn =
+137    $node = $node.Array[$sn][0]
+138    
+139    $name = $node  ->  get name
+140    $id = $node  ->  get ID code
+141    
+142    $pointer = = sprintf: pageid=$PageID textid=5007, $id, null, null, null, null
+143    $a.Node = get global variable: name=$pointer
+144    
+145    $pointer = = read text: page=$PageID id=4000
+146    $details.Array = $node  ->  get local variable: name=$pointer
+147    if $details.Array[0]
+148     $txt = = sprintf: pageid=$PageID textid=9000, $name, null, null, null, null
+149    else
+150     $txt = $name
+151    end
+152    $a.Node[0][1] = $txt
+153    
+154    * Storage
+155    $curr = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Current'
+156    $max = [THIS] -> call script plugin.LI.FDN.Storage : stn=$node  act='Max'
+157    $storage = '[ ' + $curr + ' / ' + $max + ' ]'
+158    $a.Node[0][3] = $storage
+159    
+160    * Money
+161    $money = $node  ->  get money
+162    $money = = convert number $money to string
+163    $money = $money + ' Cr'
+164    $a.Node[0][5] = $money
+165    
+166    * Wares
+167    $ware.Array = $node.Array[$sn][1]
+168    
+169    $sw = size of array $ware.Array
+170    while $sw > 0
+171     dec $sw =
+172     $ware = $ware.Array[$sw]
+173     
+174     $pointer = = sprintf: pageid=$PageID textid=5008, $id, $ware, null, null, null
+175     $a.Ware = get global variable: name=$pointer
+176     
+177     $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+178     if not $node  ->  get local variable: name=$pointer
+179      $settings.Array = = array alloc: size=7
+180      $node  ->  set local variable: name=$pointer value=$settings.Array
+181     end
+182     $settings.Array = $node  ->  get local variable: name=$pointer
+183     
+184     gosub Ware.Summary.Sub:
+185     
+186     $txt = $pre + $ware
+187     $a.Ware[0][1] = $txt
+188     $a.Ware[0][3] = $cap
+189     $a.Ware[0][5] = $remote
+190     $a.Ware[0][7] = $sell
+191     $a.Ware[0][9] = $buy.at
+192     $a.Ware[0][11] = $sell.at
+193     $a.Ware[0][13] = $amt
+194    end
+195   end
+196  end
+197  endsub
+198  
+199  Ware.Summary.Sub:
+200  if not $settings.Array[0]
+201   $txt1 = = read text: page=$PageID id=130
+202  else
+203   $txt1 = = read text: page=$PageID id=133
+204  end
+205  if not $settings.Array[1]
+206   $txt2 = = read text: page=$PageID id=131
+207  else
+208   $txt2 = = read text: page=$PageID id=134
+209  end
+210  if not $settings.Array[2]
+211   $txt3 = = read text: page=$PageID id=132
+212  else
+213   $txt3 = = read text: page=$PageID id=135
+214  end
+215  $pre = $txt1 + '|' + $txt2 + '|' + $txt3 + ' '
+216  
+217  $remote = $settings.Array[4]
+218  if $remote >= 0
+219   $remote = = convert number $remote to string
+220  else
+221   $remote = '-'
+222  end
+223  
+224  $sell = $settings.Array[5]
+225  if $sell >= 0
+226   $sell = = convert number $sell to string
+227  else
+228   $sell = '-'
+229  end
+230  
+231  
+232  * Ware Trade
+233  $stn.price = $node  ->  get price of ware $ware
+234  $buy.at = $settings.Array[6][0]
+235  $sell.at = $settings.Array[6][1]
+236  if not $buy.at > 0
+237   $settings.Array[6][0] = $stn.price
+238   $buy.at = $settings.Array[6][0]
+239  end
+240  if not $sell.at > 0
+241   $settings.Array[6][1] = $stn.price
+242   $sell.at = $settings.Array[6][1]
+243  end
+244  $buy.at = = convert number $buy.at to string
+245  $sell.at = = convert number $sell.at to string
+246  
+247  
+248  $amt = $node  ->  get amount of ware $ware in cargo bay
+249  $amt = = convert number $amt to string
+250  
+251  $cap = $settings.Array[3]
+252  if $cap >= 0
+253   $cap = = convert number $cap to string
+254  else
+255   $cap = '-'
+256  end
+257  endsub
+258  
+259  Node.List.Sub:
+260  
+261  $dock.Array = = $sector  ->  get dock array from sector
+262  $sd = size of array $dock.Array
+263  while $sd > 0
+264   dec $sd =
+265   $dock = $dock.Array[$sd]
+266   $sub = = $dock  ->  get subtype
+267   $race = $dock  ->  get owner race
+268   if $race == Player
+269    if find $sub in array: $master.node.Array
+270     skip if find $dock in array: $node.Array
+271      append $dock to array $node.Array
+272    end
+273   end
+274  end
+275  $node.Array = = sort array $node.Array
+276  $node.Array = reverse array $node.Array
+277  endsub
+278  
+279  
+280  return null
+281  
+282  

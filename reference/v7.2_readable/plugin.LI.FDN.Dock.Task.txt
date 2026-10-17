@@ -1,0 +1,58 @@
+* Script: plugin.LI.FDN.Dock.Task  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $status = $al.Settings[0]
+006   $PageID = $al.Settings[1]
+007  else
+008   return null
+009  end
+010  
+011  
+012  $pointer = = read text: page=$PageID id=4000
+013  $settings.Array = [THIS]  ->  get local variable: name=$pointer
+014  $is.on = $settings.Array[0]
+015  
+016  * While is On
+017  while $is.on == [TRUE]
+018   skip if $status == [TRUE]
+019    return null
+020   
+021   * Restart script check
+022   if is a new script version available
+023    $task = = [THIS]  ->  get next available task: starting=$PageID
+024    $settings.Array[3] = $task
+025    [THIS]  ->  start task $task with script plugin.LI.FDN.Dock.Task and prio 10: arg1=null arg2=null arg3=null arg4=null arg5=null
+026    return null
+027   end
+028   
+029   * Production Cycle Timer v2
+030    = wait randomly from 180000 to 300000 ms
+031   
+032   * Check Adv Sat exit if no Adv Sat detected
+033   $sector = [THIS]  ->  get sector
+034   $adv.Sat = find ship: sector=$sector class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+035   if not $adv.Sat
+036    $settings.Array[0] = null
+037    $txt = = sprintf: pageid=$PageID textid=3001, [THIS], null, null, null, null
+038    send incoming message $txt to player: display it=[FALSE]
+039    [THIS]  ->  set local variable: name=$pointer value=null
+040    return null
+041   end
+042   
+043   * Call supply logic script
+044   START  = [THIS] -> call script plugin.LI.FDN.Supply.Dock :
+045   
+046   
+047   * Wait 5 seconds
+048    = wait 5000 ms
+049   $is.on = $settings.Array[0]
+050  end
+051  
+052  
+053  return null
+054  
+055  

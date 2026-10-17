@@ -1,0 +1,47 @@
+<?xml version="1.0" standalone="yes"?>
+<?xml-stylesheet href="x2script.xsl" type="text/xsl"?>
+<!--Produced externally by the Exscriptor-->
+<script>
+   <name>plugin.LI.FDN.Cleanup</name>
+   <version>1.0</version>
+   <engineversion>50</engineversion>
+   <description>FDNv8 - Clears Global values used by Dynamic menus</description>
+   <arguments />
+   <sourcetext>
+      <line linenr="001" indent=""><comment>* Author: Logain Abler</comment></line>
+      <line linenr="002" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="003" indent=""><comment>* this script clears the global values used for dynamic menus</comment></line>
+      <line linenr="004" indent=""> </line>
+      <line linenr="005" indent=""><comment>* <var>Expected values</var><text>:</text></comment></line>
+      <line linenr="006" indent=""><comment>* - n/a</comment></line>
+      <line linenr="007" indent=""> </line>
+      <line linenr="008" indent=""><comment>* <var>Return values</var><text>:</text></comment></line>
+      <line linenr="009" indent=""><comment>* - n/a</comment></line>
+      <line linenr="010" indent=""> </line>
+      <line linenr="011" indent=""><comment>* Version: 1.0</comment></line>
+      <line linenr="012" indent=""><comment>* Date: 17/05/2012</comment></line>
+      <line linenr="013" indent=""><comment>* Tested: 17/05/2012</comment></line>
+      <line linenr="014" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="015" indent=""> </line>
+      <line linenr="016" indent=""><comment>* Clears globals used for dynamic menus</comment></line>
+      <line linenr="017" indent=""><comment>* All globals will be prefixed with FDND.</comment></line>
+      <line linenr="018" indent=""><text></text><var>$glb.Array =</var><text> get global variables: regular expression=</text><var>'FDND.*'</var><text></text></line>
+      <line linenr="019" indent=""><text></text><var>$s =</var><text> size of array </text><var>$glb.Array</var><text></text></line>
+      <line linenr="020" indent=""><var>while </var><text></text><var>$s &gt; 0 </var><text></text></line>
+      <line linenr="021" indent="&#160;"><text>dec </text><var>$s</var><text> =</text></line>
+      <line linenr="022" indent="&#160;"><text></text><var>$var =</var><text> </text><var>$glb.Array</var><text>[</text><var>$s</var><text>]</text></line>
+      <line linenr="023" indent="&#160;"><text></text><var>$check =</var><text> = get substring of </text><var>$var</var><text> offset=</text><var>0</var><text> length=</text><var>5</var><text></text></line>
+      <line linenr="024" indent="&#160;"><var>if </var><text></text><var>$check == 'FDND.' </var><text></text></line>
+      <line linenr="025" indent="&#160;&#160;"><text>set global variable: name=</text><var>$var</var><text> value=</text><var>null</var><text></text></line>
+      <line linenr="026" indent="&#160;"><text>end</text></line>
+      <line linenr="027" indent=""><text>end</text></line>
+      <line linenr="028" indent=""><comment>* -----------------------------------------------------------------------------------</comment></line>
+      <line linenr="029" indent=""><text>return </text><var>null</var><text></text></line>
+      <line linenr="030" indent=""> </line>
+      <line linenr="031" indent=""> </line>
+      <line linenr="032" indent=""> </line>
+      <line linenr="033" indent=""> </line>
+   </sourcetext>
+   <codearray><sval type="array" size="10"><sval type="string" val="plugin.LI.FDN.Cleanup" /><sval type="int" val="50" /><sval type="string" val="FDNv8 - Clears Global values used by Dynamic menus" /><sval type="int" val="1.0" /><sval type="int" val="0" /><sval type="array" size="4"><sval type="string" val="glb.Array" /><sval type="string" val="s" /><sval type="string" val="var" /><sval type="string" val="check" /></sval><sval type="array" size="10"><sval type="array" size="4"><sval type="int" val="1451" /><sval type="int" val="0" /><sval type="int" val="5" /><sval type="string" val="FDND.*" /></sval><sval type="array" size="4"><sval type="int" val="131" /><sval type="int" val="1" /><sval type="int" val="131074" /><sval type="int" val="0" /></sval><sval type="array" size="13"><sval type="int" val="104" /><sval type="int" val="-1610610423" /><sval type="int" val="3" /><sval type="int" val="131074" /><sval type="int" val="1" /><sval type="int" val="4" /><sval type="int" val="0" /><sval type="int" val="15" /><sval type="int" val="2" /><sval type="int" val="3" /><sval type="int" val="-1" /><sval type="int" val="2" /><sval type="int" val="-2" /></sval><sval type="array" size="2"><sval type="int" val="143" /><sval type="int" val="1" /></sval><sval type="array" size="6"><sval type="int" val="129" /><sval type="int" val="2" /><sval type="int" val="131074" /><sval type="int" val="0" /><sval type="int" val="131074" /><sval type="int" val="1" /></sval><sval type="array" size="8"><sval type="int" val="1077" /><sval type="int" val="3" /><sval type="int" val="131074" /><sval type="int" val="2" /><sval type="int" val="4" /><sval type="int" val="0" /><sval type="int" val="4" /><sval type="int" val="5" /></sval><sval type="array" size="13"><sval type="int" val="104" /><sval type="int" val="-1610610685" /><sval type="int" val="3" /><sval type="int" val="131074" /><sval type="int" val="3" /><sval type="int" val="5" /><sval type="string" val="FDND." /><sval type="int" val="15" /><sval type="int" val="0" /><sval type="int" val="3" /><sval type="int" val="-1" /><sval type="int" val="0" /><sval type="int" val="-2" /></sval><sval type="array" size="5"><sval type="int" val="157" /><sval type="int" val="131074" /><sval type="int" val="2" /><sval type="int" val="0" /><sval type="int" val="0" /></sval><sval type="array" size="2"><sval type="int" val="112" /><sval type="int" val="2" /></sval><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="0" /><sval type="int" val="0" /></sval></sval><sval type="int" val="0" /><sval type="array" size="24"><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Author: Logain Abler" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="this script clears the global values used for dynamic menus" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="4"><sval type="int" val="0" /><sval type="int" val="3" /><sval type="int" val="101" /><sval type="string" val="Expected values" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="- n/a" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="4"><sval type="int" val="0" /><sval type="int" val="3" /><sval type="int" val="101" /><sval type="string" val="Return values" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="- n/a" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Version: 1.0" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Date: 17/05/2012" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Tested: 17/05/2012" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="2"><sval type="int" val="0" /><sval type="int" val="2" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Clears globals used for dynamic menus" /></sval><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="All globals will be prefixed with FDND." /></sval><sval type="array" size="2"><sval type="int" val="8" /><sval type="int" val="4" /></sval><sval type="array" size="2"><sval type="int" val="9" /><sval type="int" val="4" /></sval><sval type="array" size="3"><sval type="int" val="9" /><sval type="int" val="1" /><sval type="string" val="-----------------------------------------------------------------------------------" /></sval><sval type="array" size="2"><sval type="int" val="10" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="10" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="10" /><sval type="int" val="2" /></sval><sval type="array" size="2"><sval type="int" val="10" /><sval type="int" val="2" /></sval></sval><sval type="int" val="0" /></sval>
+   </codearray>
+</script>

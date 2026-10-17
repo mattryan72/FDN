@@ -1,0 +1,605 @@
+* Script: plugin.LI.FDN.Sector.Menu  (v7, engine 44)
+* Desc: 
+* Arg 0: sector (Var/Sector) 'sector'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007  else
+008   return null
+009  end
+010  
+011  $complex.found = [FALSE]
+012  $pointer = = read text: page=$PageID id=4001
+013  $show.full = [FALSE]
+014  $show.adv = [FALSE]
+015  $show.complex = [FALSE]
+016  
+017  while [TRUE]
+018   $text = = read text: page=$PageID id=108
+019   $menu = = create custom menu array: heading=$text
+020   
+021   * Build main body
+022   gosub Build.Menu.Sub:
+023   
+024   $text = = read text: page=$PageID id=108
+025   $desc = = sprintf: pageid=$PageID textid=9000, $sector, null, null, null, null
+026   $return = open custom menu: title=$text description=$desc option array=$menu
+027   
+028   * Start of return
+029   if $return == -1
+030     = [THIS] -> call script plugin.LI.FDN.Main.Menu.Call :
+031    return null
+032   else
+033    
+034    if is datatyp[ $return ] == DATATYP_ARRAY
+035     $cmd = $return[0]
+036     $val = $return[1]
+037     $update.Array = $val  ->  get local variable: name=$pointer
+038     
+039     if $cmd == 'fdn.on'
+040      gosub FDN.Enable.Sub:
+041      
+042     else if $cmd == 'supply'
+043      if not $val  ->  is of class Complex Hub
+044       if $update.Array[1]
+045        $update.Array[1] = null
+046       else
+047        $update.Array[1] = [TRUE]
+048       end
+049      else
+050       
+051       if $update.Array[1]
+052        $update.Array[1] = null
+053       else
+054        $update.Array[1] = [TRUE]
+055       end
+056       
+057       $factroy.Array = = $val  ->  get factory array from sector
+058       $sf = size of array $factroy.Array
+059       while $sf > 0
+060        dec $sf =
+061        $factory = $factroy.Array[$sf]
+062        $factroy.update.Array = $factory  ->  get local variable: name=$pointer
+063        if $update.Array[1]
+064         $factroy.update.Array[1] = [TRUE]
+065        else
+066         $factroy.update.Array[1] = null
+067        end
+068       end
+069      end
+070      
+071     else if $cmd == 'production'
+072      if not $val  ->  is of class Complex Hub
+073       if $update.Array[2]
+074        $update.Array[2] = null
+075        $val  ->  station trade and production tasks: on=[FALSE]
+076       else
+077        $update.Array[2] = [TRUE]
+078        $val  ->  station trade and production tasks: on=[TRUE]
+079       end
+080      else
+081       
+082       if $update.Array[2]
+083        $update.Array[2] = null
+084        $val  ->  station trade and production tasks: on=[FALSE]
+085       else
+086        $update.Array[2] = [TRUE]
+087        $val  ->  station trade and production tasks: on=[TRUE]
+088       end
+089       
+090       $factroy.Array = = $val  ->  get factory array from sector
+091       $sf = size of array $factroy.Array
+092       while $sf > 0
+093        dec $sf =
+094        $factory = $factroy.Array[$sf]
+095        $factroy.update.Array = $factory  ->  get local variable: name=$pointer
+096        
+097        if $update.Array[2]
+098         $factroy.update.Array[2] = [TRUE]
+099         $factory  ->  station trade and production tasks: on=[TRUE]
+100        else
+101         $factroy.update.Array[2] = null
+102         $factory  ->  station trade and production tasks: on=[FALSE]
+103        end
+104       end
+105      end
+106      
+107     else if $cmd == 'adv.Node'
+108      gosub Update.Node.Sub:
+109      
+110     else if $cmd == 'ware.menu'
+111       = $val -> call script plugin.LI.FDN.Factory.Ware.Menu :
+112     end
+113     
+114    else
+115     if $return == 'all.On' OR $return == 'all.Off'
+116      gosub FDN.Enable.All.Sub:
+117      
+118     else if $return == 'show'
+119      if $show.full
+120       $show.full = [FALSE]
+121       $show.complex = [FALSE]
+122      else
+123       $show.full = [TRUE]
+124      end
+125      
+126     else if $return == 'adv'
+127      if $show.adv
+128       $show.adv = [FALSE]
+129      else
+130       $show.adv = [TRUE]
+131      end
+132      
+133     else if $return == 'comp'
+134      if $show.complex
+135       $show.complex = [FALSE]
+136      else
+137       $show.complex = [TRUE]
+138      end
+139     end
+140    end
+141   end
+142   
+143  end
+144  return null
+145  
+146  Update.Node.Sub:
+147  $node = $val -> call script plugin.LI.FDN.Sub.Menu : action='select.Node'
+148  
+149  if $val  ->  is of class Complex Hub
+150   $update.Array[3] = $node
+151   $factroy.Array = = $val  ->  get factory array from sector
+152   $s = size of array $factroy.Array
+153   while $s > 0
+154    dec $s =
+155    $factory = $factroy.Array[$s]
+156    $update.Array = $factory  ->  get local variable: name=$pointer
+157    $update.Array[3] = $node
+158   end
+159  else
+160   $update.Array[3] = $node
+161  end
+162  
+163  endsub
+164  
+165  
+166  FDN.Enable.Sub:
+167  if $val  ->  is of class Complex Hub
+168   if not $update.Array[0]
+169    $update.Array[0] = [TRUE]
+170   else
+171    $update.Array[0] = null
+172   end
+173   
+174   $factroy.Array = = $val  ->  get factory array from sector
+175   $sf = size of array $factroy.Array
+176   while $sf > 0
+177    dec $sf =
+178    $factory = $factroy.Array[$sf]
+179    $factroy.update.Array = $factory  ->  get local variable: name=$pointer
+180    
+181    if $update.Array[0]
+182     $factroy.update.Array[0] = [TRUE]
+183     if not $factroy.update.Array[5]
+184      $task = = $factory  ->  get next available task: starting=$PageID
+185      $factroy.update.Array[5] = $task
+186     else
+187      $task = $factroy.update.Array[5]
+188     end
+189     $check = $factory  ->  is script plugin.LI.FDN.Station.Task on stack of task=$task
+190     if not $check
+191      $factory  ->  start task $task with script plugin.LI.FDN.Station.Task and prio 100: arg1=null arg2=null arg3=null arg4=null arg5=null
+192     end
+193     
+194    else
+195     $factroy.update.Array[0] = null
+196     $task = $factroy.update.Array[5]
+197     $factory  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+198    end
+199   end
+200   
+201  else
+202   if not $update.Array[0]
+203    * On
+204    $update.Array[0] = [TRUE]
+205    if not $update.Array[5]
+206     $task = = $val  ->  get next available task: starting=$PageID
+207     $update.Array[5] = $task
+208    else
+209     $task = $update.Array[5]
+210    end
+211    
+212    $check = $val  ->  is script plugin.LI.FDN.Station.Task on stack of task=$task
+213    if not $check
+214     $val  ->  start task $task with script plugin.LI.FDN.Station.Task and prio 100: arg1=null arg2=null arg3=null arg4=null arg5=null
+215    end
+216    
+217   else
+218    * Off
+219    $update.Array[0] = null
+220    $task = $update.Array[5]
+221    $val  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+222   end
+223  end
+224  endsub
+225  
+226  FDN.Enable.All.Sub:
+227  $station.Array = = $sector  ->  get player owned station array from sector
+228  $s = size of array $station.Array
+229  
+230  while $s > 0
+231   dec $s =
+232   $station = $station.Array[$s]
+233   
+234   if $station  ->  is of class Complex Hub
+235    if $return == 'all.On'
+236     if not $update.Array[0]
+237      $update.Array[0] = [TRUE]
+238     end
+239    else if $return == 'all.Off'
+240     if $update.Array[0]
+241      $update.Array[0] = null
+242     end
+243    end
+244    
+245    $factroy.Array = = $station  ->  get factory array from sector
+246    $sf = size of array $factroy.Array
+247    while $sf > 0
+248     dec $sf =
+249     $factory = $factroy.Array[$sf]
+250     $factroy.update.Array = $factory  ->  get local variable: name=$pointer
+251     $factroy.update.Array[3] = $station
+252     
+253     if $update.Array[0]
+254      $factroy.update.Array[0] = [TRUE]
+255      if not $factroy.update.Array[5]
+256       $task = = $factory  ->  get next available task: starting=$PageID
+257       $factroy.update.Array[5] = $task
+258      else
+259       $task = $factroy.update.Array[5]
+260      end
+261      $check = $factory  ->  is script plugin.LI.FDN.Station.Task on stack of task=$task
+262      if not $check
+263       $factory  ->  start task $task with script plugin.LI.FDN.Station.Task and prio 100: arg1=null arg2=null arg3=null arg4=null arg5=null
+264      end
+265      
+266     else
+267      $factroy.update.Array[0] = null
+268      $task = $factroy.update.Array[5]
+269      $factory  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+270     end
+271    end
+272   end
+273   
+274   if $station  ->  is of class Factory 2006
+275    $detectable = $station  ->  is detectable
+276    if $detectable == 0
+277     
+278     $update.Array = $station  ->  get local variable: name=$pointer
+279     
+280     if not $update.Array[5]
+281      $task = = $station  ->  get next available task: starting=$PageID
+282      $update.Array[5] = $task
+283     else
+284      $task = $update.Array[5]
+285     end
+286     
+287     if $return == 'all.On'
+288      if not $update.Array[0]
+289       $update.Array[0] = [TRUE]
+290       $check = $station  ->  is script plugin.LI.FDN.Station.Task on stack of task=$task
+291       if not $check
+292        $station  ->  start task $task with script plugin.LI.FDN.Station.Task and prio 100: arg1=null arg2=null arg3=null arg4=null arg5=null
+293       end
+294      end
+295     else if $return == 'all.Off'
+296      if $update.Array[0]
+297       $update.Array[0] = null
+298       $station  ->  start task $task with script !lib.interrupt and prio 0: arg1=null arg2=null arg3=null arg4=null arg5=null
+299      end
+300     end
+301    end
+302   end
+303  end
+304  endsub
+305  
+306  
+307  Build.Menu.Sub:
+308  * Show Full Station Details
+309  $txt1 = = read text: page=$PageID id=112
+310  $txt2 = = read text: page=$PageID id=9005
+311  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+312  add custom menu heading to array $menu: title=$array
+313  
+314  if $show.full
+315   $onoff = = read text: page=$PageID id=9006
+316  else
+317   $onoff = = read text: page=$PageID id=9007
+318  end
+319  $txt = = read text: page=$PageID id=113
+320  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+321  $array = = create new array, arguments=$a, 'show', null, null, null
+322  append $array to array $menu
+323  if $show.full
+324   
+325   if $complex.found
+326    if $show.complex
+327     $onoff = = read text: page=$PageID id=9006
+328    else
+329     $onoff = = read text: page=$PageID id=9007
+330    end
+331    $txt = = read text: page=$PageID id=186
+332    $a = = create new array, arguments=1, $txt, -1, $onoff, null
+333    $array = = create new array, arguments=$a, 'comp', null, null, null
+334    append $array to array $menu
+335   end
+336   
+337   if $show.adv
+338    $onoff = = read text: page=$PageID id=9006
+339   else
+340    $onoff = = read text: page=$PageID id=9007
+341   end
+342   $txt = = read text: page=$PageID id=153
+343   $a = = create new array, arguments=1, $txt, -1, $onoff, null
+344   $array = = create new array, arguments=$a, 'adv', null, null, null
+345   append $array to array $menu
+346   
+347  end
+348  
+349  if not $show.full
+350   $txt1 = = read text: page=$PageID id=114
+351   $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+352   add custom menu heading to array $menu: title=$array
+353  end
+354  
+355  $station.Array = = $sector  ->  get player owned station array from sector
+356  $station.Array = = sort array $station.Array
+357  $station.Array = reverse array $station.Array
+358  $s = size of array $station.Array
+359  
+360  while $s > 0
+361   dec $s =
+362   $station = $station.Array[$s]
+363   
+364   $class = $station  ->  get object class
+365   * Complex flag for menu options
+366   skip if not $class == Complex Hub
+367    $complex.found = [TRUE]
+368   
+369   if $class == Factory 2006 OR $class == Complex Hub
+370    $detectable = $station  ->  is detectable
+371    if $detectable == 0
+372     if $class == Complex Hub AND $show.complex == [TRUE]
+373      
+374      $settings.Array = $station  ->  get local variable: name=$pointer
+375      skip if $settings.Array
+376       gosub Create.Station.Settings:
+377      
+378      $name = $station  ->  get name
+379      $id = $station  ->  get ID code
+380      $txt.name = '[' + $id + '] ' + $name
+381      gosub Build.Station.Details.Menu.Sub:
+382      
+383      $factory.Array = = $station  ->  get factory array from sector
+384      $sf = size of array $factory.Array
+385      
+386      while $sf > 0
+387       dec $sf =
+388       $factory = $factory.Array[$sf]
+389       $settings.Array = $factory  ->  get local variable: name=$pointer
+390       $name = $factory  ->  get name
+391       $id = $factory  ->  get ID code
+392       $txt.name = '[' + $id + '] ' + $name
+393       $txt.name = = sprintf: pageid=$PageID textid=9003, $txt.name, null, null, null, null
+394       gosub Build.Complex.Factory.Details.Menu.Sub:
+395      end
+396      
+397     else
+398      $settings.Array = $station  ->  get local variable: name=$pointer
+399      skip if $settings.Array
+400       gosub Create.Station.Settings:
+401      
+402      $name = $station  ->  get name
+403      $id = $station  ->  get ID code
+404      if $class == Complex Hub
+405       $factory.Array = = $station  ->  get factory array from sector
+406       $sf = size of array $factory.Array
+407       $txt.sf = '(' + $sf + ')'
+408       $txt.sf = = sprintf: pageid=$PageID textid=9003, $txt.sf, null, null, null, null
+409       $txt.name = '[' + $id + '] ' + $name + ' ' + $txt.sf
+410      else
+411       $txt.name = '[' + $id + '] ' + $name
+412      end
+413      
+414      if not $show.full
+415       if $settings.Array[0]
+416        $onoff = = read text: page=$PageID id=9006
+417       else
+418        $onoff = = read text: page=$PageID id=9007
+419       end
+420       $a = = create new array, arguments=1, $txt.name, -1, $onoff, null
+421       $ret = = create new array, arguments='fdn.on', $station, null, null, null
+422       $array = = create new array, arguments=$a, $ret, null, null, null
+423       append $array to array $menu
+424       add section to custom menu: $menu
+425      else
+426       gosub Build.Station.Details.Menu.Sub:
+427       
+428      end
+429     end
+430    end
+431   end
+432  end
+433  
+434  $txt = = read text: page=$PageID id=118
+435  add custom menu heading to array $menu: title=$txt
+436  $txt = = read text: page=$PageID id=119
+437  add custom menu item to array $menu: text=$txt returnvalue='all.On'
+438  $txt = = read text: page=$PageID id=125
+439  add custom menu item to array $menu: text=$txt returnvalue='all.Off'
+440  endsub
+441  
+442  
+443  Create.Station.Settings:
+444  $settings.Array = = array alloc: size=0
+445  append null to array $settings.Array
+446  append 1 to array $settings.Array
+447  append 1 to array $settings.Array
+448  append null to array $settings.Array
+449  append $station to array $settings.Array
+450  append null to array $settings.Array
+451  append null to array $settings.Array
+452  $station  ->  set local variable: name=$pointer value=$settings.Array
+453  
+454  if $station  ->  is of class Complex Hub
+455   $factroy.Array = = $station  ->  get factory array from sector
+456   $s = size of array $factroy.Array
+457   while $s > 0
+458    dec $s =
+459    $factory = $factroy.Array[$s]
+460    $settings.Array = $factory  ->  get local variable: name=$pointer
+461    if not $settings.Array
+462     $settings.Array = = array alloc: size=0
+463     append null to array $settings.Array
+464     append 1 to array $settings.Array
+465     append 1 to array $settings.Array
+466     append null to array $settings.Array
+467     append $station to array $settings.Array
+468     append null to array $settings.Array
+469     append null to array $settings.Array
+470     $factory  ->  set local variable: name=$pointer value=$settings.Array
+471    end
+472   end
+473  end
+474  endsub
+475  
+476  
+477  Build.Station.Details.Menu.Sub:
+478  $array = = create new array, arguments=1, $txt.name, -1, $txt2, null
+479  add custom menu heading to array $menu: title=$array
+480  * FDN Enabled
+481  if $settings.Array[0]
+482   $onoff = = read text: page=$PageID id=9006
+483  else
+484   $onoff = = read text: page=$PageID id=9007
+485  end
+486  $txt = = read text: page=$PageID id=115
+487  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+488  $ret = = create new array, arguments='fdn.on', $station, null, null, null
+489  $array = = create new array, arguments=$a, $ret, null, null, null
+490  append $array to array $menu
+491  add section to custom menu: $menu
+492  
+493  * Supply FDN
+494  $txt = = read text: page=$PageID id=116
+495  $a = = create new array, arguments=1, $txt, -1, ' ', null
+496  if $settings.Array[1]
+497   $onoff = = read text: page=$PageID id=9006
+498  else
+499   $onoff = = read text: page=$PageID id=9007
+500  end
+501  $txt = = read text: page=$PageID id=116
+502  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+503  $ret = = create new array, arguments='supply', $station, null, null, null
+504  $array = = create new array, arguments=$a, $ret, null, null, null
+505  append $array to array $menu
+506  
+507  * Production
+508  if $settings.Array[2]
+509   $onoff = = read text: page=$PageID id=9006
+510  else
+511   $onoff = = read text: page=$PageID id=9007
+512  end
+513  $txt = = read text: page=$PageID id=117
+514  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+515  $ret = = create new array, arguments='production', $station, null, null, null
+516  $array = = create new array, arguments=$a, $ret, null, null, null
+517  append $array to array $menu
+518  
+519  add section to custom menu: $menu
+520  $txt = = read text: page=$PageID id=195
+521  $ret = = create new array, arguments='ware.menu', $station, null, null, null
+522  add custom menu item to array $menu: text=$txt returnvalue=$ret
+523  
+524  if $show.adv
+525   add section to custom menu: $menu
+526   $txt = = read text: page=$PageID id=154
+527   if not $settings.Array[3]
+528    $txtMode = = read text: page=$PageID id=155
+529   else
+530    $txtMode = $settings.Array[3]
+531   end
+532   $b = = create new array, arguments=1, $txt, -1, $txtMode, null
+533   $ret = = create new array, arguments='adv.Node', $station, null, null, null
+534   $array = = create new array, arguments=$b, $ret, null, null, null
+535   append $array to array $menu
+536  end
+537  endsub
+538  
+539  
+540  Build.Complex.Factory.Details.Menu.Sub:
+541  $array = = create new array, arguments=1, $txt.name, -1, $txt2, null
+542  add custom menu heading to array $menu: title=$array
+543  * FDN Enabled
+544  if $settings.Array[0]
+545   $onoff = = read text: page=$PageID id=9006
+546  else
+547   $onoff = = read text: page=$PageID id=9007
+548  end
+549  $txt = = read text: page=$PageID id=115
+550  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+551  $ret = = create new array, arguments='fdn.on', $factory, null, null, null
+552  $array = = create new array, arguments=$a, $ret, null, null, null
+553  append $array to array $menu
+554  add section to custom menu: $menu
+555  
+556  * Supply FDN
+557  $txt = = read text: page=$PageID id=116
+558  $a = = create new array, arguments=1, $txt, -1, ' ', null
+559  if $settings.Array[1]
+560   $onoff = = read text: page=$PageID id=9006
+561  else
+562   $onoff = = read text: page=$PageID id=9007
+563  end
+564  $txt = = read text: page=$PageID id=116
+565  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+566  $ret = = create new array, arguments='supply', $factory, null, null, null
+567  $array = = create new array, arguments=$a, $ret, null, null, null
+568  append $array to array $menu
+569  
+570  * Production
+571  if $settings.Array[2]
+572   $onoff = = read text: page=$PageID id=9006
+573  else
+574   $onoff = = read text: page=$PageID id=9007
+575  end
+576  $txt = = read text: page=$PageID id=117
+577  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+578  $ret = = create new array, arguments='production', $factory, null, null, null
+579  $array = = create new array, arguments=$a, $ret, null, null, null
+580  append $array to array $menu
+581  
+582  if $show.adv
+583   add section to custom menu: $menu
+584   $txt = = read text: page=$PageID id=154
+585   if not $settings.Array[3]
+586    $txtMode = = read text: page=$PageID id=155
+587   else
+588    $txtMode = $settings.Array[3]
+589   end
+590   $b = = create new array, arguments=1, $txt, -1, $txtMode, null
+591   $ret = = create new array, arguments='adv.Node', $factory, null, null, null
+592   $array = = create new array, arguments=$b, $ret, null, null, null
+593   append $array to array $menu
+594  end
+595  
+596  endsub
+597  
+598  
+599  return null
+600  
+601  

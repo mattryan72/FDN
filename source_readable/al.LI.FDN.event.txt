@@ -1,0 +1,59 @@
+* Script: al.LI.FDN.event  (v1.0, engine 50)
+* Desc: FDNv8 - AL Event
+* Arg 0: al.PluginID (Var/String) 'Plugin ID'
+* Arg 1: al.Event (Var/String) 'AL Event'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $PageID = 9910
+005  
+006  $al.Settings = get global variable: name=$al.PluginID
+007  if not $al.Settings
+008   $al.Settings = = array alloc: size=30
+009   $al.Settings[0] = [FALSE]
+010   $al.Settings[1] = $PageID
+011   $al.Settings[2] = null
+012   $factory.array = = array alloc: size=0
+013   $al.Settings[3] = $factory.array
+014   $dock.array = = array alloc: size=0
+015   $al.Settings[4] = $dock.array
+016   $al.Settings[5] = null
+017   $is.dymanic = = array alloc: size=10
+018   $is.dymanic[0] = [TRUE]
+019   $is.dymanic[1] = [TRUE]
+020   $is.dymanic[2] = [TRUE]
+021   $al.Settings[6] = $is.dymanic
+022   $al.Settings[7] = null
+023   set global variable: name=$al.PluginID value=$al.Settings
+024  end
+025  
+026  $al.Ret = null
+027  if $al.Event == 'init' OR $al.Event == 'reinit'
+028   
+029   $plugin.description = = sprintf: pageid=$PageID textid=100, null, null, null, null, null
+030   al engine: set plugin $al.PluginID description to $plugin.description
+031   al engine: set plugin $al.PluginID timer interval to 25 s
+032   
+033    = [THIS] -> call script plugin.LI.FDN.Setup :
+034   
+035  else if $al.Event == 'start'
+036   $al.Settings[0] = [TRUE]
+037    = [THIS] -> call script plugin.LI.FDN.Setup :
+038   
+039  else if $al.Event == 'stop'
+040   $al.Settings[0] = [FALSE]
+041    = [THIS] -> call script plugin.LI.FDN.Setup :
+042   
+043  else if $al.Event == 'timer'
+044   if $al.Settings[0]
+045     = [THIS] -> call script plugin.LI.FDN.Supply.Start :
+046   end
+047  else if $al.Event == 'isenabled'
+048   $al.Ret = $al.Settings[0]
+049  end
+050  
+051  return $al.Ret
+052  
+053  
+054  

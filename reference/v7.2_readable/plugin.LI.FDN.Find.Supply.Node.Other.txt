@@ -1,0 +1,138 @@
+* Script: plugin.LI.FDN.Find.Supply.Node.Other  (v7, engine 44)
+* Desc: 
+* Arg 0: default.node (Var/Ship/Station) 'default.node'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * Version 2
+005  * This script finds and returns all FDN Nodes in INN range of the caller.
+006  * It is used by script other than FDN
+007  * By default it will place any default Node last so it is called first.
+008  
+009  * Used by:
+010  * PM
+011  
+012  
+013  
+014  * Al Settings
+015  $al.Settings = get global variable: name='al.LI.FDN.event'
+016  if $al.Settings
+017   $PageID = $al.Settings[1]
+018   $node.Array = $al.Settings[2]
+019  end
+020  
+021  
+022  $sector = [THIS]  ->  get sector
+023  $sub = = [THIS]  ->  get subtype
+024  
+025  * Is the caller a Node - Node distance is 8 other is 5
+026  if [THIS]  ->  is of class Ship 2004
+027   $distance = 5
+028  else
+029   if find $sub in array: $node.Array
+030    $distance = 8
+031   else
+032    $distance = 5
+033   end
+034  end
+035  
+036  $n.pointer = = read text: page=$PageID id=4000
+037  
+038  * Find all Docks i Range
+039  $flags = [Find.Multiple]
+040  $dock.Array = find station in galaxy: startsector=$sector class or type=Dock 2007 race=Player flags=$flags refobj=null serial=null max.jumps=$distance num=100
+041  $s = size of array $dock.Array
+042  $temp.Array = = array alloc: size=0
+043  
+044  
+045  * If Dock is a Node
+046  while $s > 0
+047   dec $s =
+048   $dock = $dock.Array[$s]
+049   $dock.sub = = $dock  ->  get subtype
+050   if find $dock.sub in array: $node.Array
+051    $n.pointer = = read text: page=$PageID id=4000
+052    $node.Settings = $dock  ->  get local variable: name=$n.pointer
+053    if $node.Settings[0]
+054     $dock.sec = $dock  ->  get sector
+055     * Check if in Adv Sat coverage
+056     $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+057     if $adv.Sat
+058      append $dock to array $temp.Array
+059     end
+060    end
+061   end
+062  end
+063  
+064  
+065  * Find All Nodes within Range of first search
+066  $s = size of array $temp.Array
+067  while $s > 0
+068   dec $s =
+069   $node = $temp.Array[$s]
+070   $nodes.in.range.Array = $node -> call script plugin.LI.FDN.Find.Node :
+071   $sr = size of array $nodes.in.range.Array
+072   while $sr > 0
+073    dec $sr =
+074    $node.in.range = $nodes.in.range.Array[$sr]
+075    $n.pointer = = read text: page=$PageID id=4000
+076    $node.Settings = $node.in.range  ->  get local variable: name=$n.pointer
+077    if $node.Settings[0]
+078     skip if find $node.in.range in array: $temp.Array
+079      append $node.in.range to array $temp.Array
+080    end
+081   end
+082  end
+083  
+084  
+085  * Sort results by jump distance
+086  $temp2.Array = = sort array $temp.Array
+087  $s = size of array $temp2.Array
+088  $sort.Array = = array alloc: size=$s
+089  $cnt = 0
+090  while $cnt < $s
+091   $node = $temp2.Array[$cnt]
+092   $node.Sec = $node  ->  get sector
+093   $jump = get jumps from sector $node.Sec to sector $sector
+094   $sort.Array[$cnt] = $jump
+095   inc $cnt =
+096  end
+097  $return.Array = = sort array: data=$temp2.Array sort values=$sort.Array
+098  $return.Array = reverse array $return.Array
+099  
+100  
+101  * Part of the linked node check
+102  if $default.node  ->  exists
+103   $found = [FALSE]
+104   gosub Linked.Node.Check:
+105   * If found add to end of array
+106   if $found
+107    append $default.node to array $return.Array
+108   end
+109  end
+110  
+111  $s = size of array $return.Array
+112  if $s > 0
+113   return $return.Array
+114  else
+115   return null
+116  end
+117  
+118  * This sub checks the search resultd for the linked Node and removes
+119  Linked.Node.Check:
+120  $s = size of array $return.Array
+121  while $s > 0
+122   dec $s =
+123   $node = $return.Array[$s]
+124   if $node == $default.node
+125    $found = [TRUE]
+126    remove element from array $return.Array at index $s
+127    endsub
+128   end
+129  end
+130  endsub
+131  
+132  return null
+133  
+134  

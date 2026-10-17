@@ -1,0 +1,26 @@
+* Script: plugin.LI.Dock.Remover  (v1, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  
+004  if not get global variable: name='LI.Shipyards'
+005   return null
+006  end
+007  
+008  $array.Shipyard = get global variable: name='LI.Shipyards'
+009  $s = size of array $array.Shipyard
+010  
+011  while $s > 0
+012   dec $s =
+013   $shipyard = $array.Shipyard[$s]
+014   if $shipyard -> exists
+015    $shipyard -> destruct: show no explosion=[TRUE]
+016   end
+017  end
+018  
+019  set global variable: name='LI.Shipyards' value=null
+020  
+021  return null
+022  
+023  

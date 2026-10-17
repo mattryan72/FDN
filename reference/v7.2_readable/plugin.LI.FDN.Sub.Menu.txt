@@ -1,0 +1,146 @@
+* Script: plugin.LI.FDN.Sub.Menu  (v7, engine 44)
+* Desc: 
+* Arg 0: action (Value) 'action'
+* Arg 1: caller.script (Value) 'caller.script'
+* Arg 2: main.caller.script (Value) 'main.caller.script'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007  else
+008   return null
+009  end
+010  
+011  if $action == 'select.Node'
+012   $header = = read text: page=$PageID id=156
+013  else if is datatyp[ $action ] == DATATYP_WARE
+014   $header = = read text: page=$PageID id=156
+015   
+016   
+017  else if $action == 'add.ware'
+018   $txt = = sprintf: pageid=$PageID textid=163, [THIS], null, null, null, null
+019   $ret.ware = [THIS]  ->  get user input: type=Var/Ware, title=$txt
+020   if is datatyp[ $ret.ware ] == DATATYP_WARE
+021     = [THIS]  ->  add 1 units of $ret.ware
+022     = [THIS]  ->  add -1 units of $ret.ware
+023   end
+024   
+025   if $caller.script == 'plugin.LI.FDN.Node.Menu'
+026    $al.Settings[10][1] = [TRUE]
+027    START  = [THIS] -> call script plugin.LI.FDN.Node.Menu.D :
+028     = [THIS] -> call script plugin.LI.FDN.Node.Menu : main.caller.script=$main.caller.script
+029    return null
+030   else
+031    $al.Settings[10][2] = [TRUE]
+032    START  = null -> call script plugin.LI.FDN.Main.Ware.D :
+033     = null -> call script plugin.LI.FDN.Main.Ware :
+034    return null
+035   end
+036   
+037   return null
+038  end
+039  
+040  while [TRUE]
+041   $menu = = create custom menu array: heading=$header
+042   
+043   if $action == 'select.Node'
+044    gosub Build.Select.Node.Sub:
+045   else if is datatyp[ $action ] == DATATYP_WARE
+046    gosub Build.Select.Node.Sub:
+047   end
+048   
+049   $return = open custom menu: title=$header description=$header option array=$menu
+050   
+051   * Start of return
+052   if $return == -1
+053    return null
+054   else
+055    if $return == 'default'
+056     return null
+057    else
+058     $cmd = $return[0]
+059     $val = $return[1]
+060     if $cmd == 'select.Node'
+061      return $val
+062      
+063     else if $cmd == 'move.Ware'
+064      $amt = [THIS]  ->  get amount of ware $action in cargo bay
+065      $amt.txt = = convert number $amt to string
+066      $txt = = sprintf: pageid=$PageID textid=162, $action, $amt.txt, null, null, null
+067      $vol = [THIS]  ->  get user input: type=Var/Number, title=$txt
+068      
+069      if is datatyp[ $vol ] == DATATYP_INT
+070       if $vol > 0
+071        
+072        skip if $amt > $vol
+073         $vol = $amt
+074        
+075        $max = $val  ->  get max amount of ware $action that can be stored in cargo bay
+076        skip if $max > $vol
+077         $vol = $max
+078        
+079         = $val  ->  add $vol units of $action
+080        $remove = - $vol
+081         = [THIS]  ->  add $remove units of $action
+082       end
+083      end
+084      
+085       = [THIS] -> call script plugin.LI.FDN.Ware.Menu : ware=$action  caller.script=$caller.script  main.caller.script=$main.caller.script
+086      return null
+087     end
+088    end
+089   end
+090  end
+091  
+092  return null
+093  
+094  Build.Select.Node.Sub:
+095  
+096  $txt1 = = read text: page=$PageID id=158
+097  $txt2 = = read text: page=$PageID id=159
+098  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+099  add custom menu heading to array $menu: title=$array
+100  
+101  $sector = [THIS]  ->  get sector
+102  $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Supply.Node :
+103  $s = size of array $node.Array
+104  while $s > 0
+105   dec $s =
+106   $node = $node.Array[$s]
+107   if not $node == [THIS]
+108    $node.sector = $node  ->  get sector
+109    $jump = get jumps from sector $node.sector to sector $sector
+110    $jump = = sprintf: pageid=$PageID textid=9002, $jump, null, null, null, null
+111    $jump = '[' + $jump + ']'
+112    $a = = create new array, arguments=1, $node, -1, $jump, null
+113    
+114    if $action == 'select.Node'
+115     $ret = = create new array, arguments='select.Node', $node, null, null, null
+116    else if is datatyp[ $action ] == DATATYP_WARE
+117     $ret = = create new array, arguments='move.Ware', $node, null, null, null
+118    end
+119    $array = = create new array, arguments=$a, $ret, null, null, null
+120    append $array to array $menu
+121    
+122    if is datatyp[ $action ] == DATATYP_WARE
+123     $amt = $node  ->  get amount of ware $action in cargo bay
+124     $amt = = convert number $amt to string
+125     $txt = = sprintf: pageid=$PageID textid=161, $amt, null, null, null, null
+126     $ret = = create new array, arguments='move.Ware', $node, null, null, null
+127     add custom menu item to array $menu: text=$txt returnvalue=$ret
+128    end
+129    add section to custom menu: $menu
+130   end
+131  end
+132  if $action == 'select.Node'
+133   $txt = = read text: page=$PageID id=155
+134   add custom menu item to array $menu: text=$txt returnvalue='default'
+135  end
+136  endsub
+137  
+138  return null
+139  
+140  

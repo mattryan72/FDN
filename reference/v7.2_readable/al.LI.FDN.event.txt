@@ -1,0 +1,72 @@
+* Script: al.LI.FDN.event  (v16, engine 44)
+* Desc: v4 AL Event
+* Arg 0: al.PluginID (Var/String) 'Plugin ID'
+* Arg 1: al.Event (Var/String) 'AL Event'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $PageID = 9910
+005  
+006  $al.Settings = get global variable: name=$al.PluginID
+007  if not $al.Settings
+008   $al.Settings = = array alloc: size=12
+009   $al.Settings[0] = [FALSE]
+010   $al.Settings[1] = $PageID
+011   $al.Settings[11] = 'gbl.LI.FDN.key'
+012   $array.Settings = [THIS] -> call script plugin.LI.FDN.Settings :
+013   if $array.Settings
+014    * FDN Stn
+015    $val = $array.Settings[0]
+016    $al.Settings[2] = $val
+017    $val = $array.Settings[1]
+018    $al.Settings[3] = $val
+019    $val = $array.Settings[2]
+020    $al.Settings[4] = $val
+021    * Debug
+022    $val = $array.Settings[3]
+023    $al.Settings[5] = $val
+024    * FDN Dummy Stn
+025    $val = $array.Settings[4]
+026    $al.Settings[6] = $val
+027    $val = $array.Settings[5]
+028    $al.Settings[7] = $val
+029    $val = $array.Settings[6]
+030    $al.Settings[8] = $val
+031    * Menu
+032    $val = $array.Settings[7]
+033    $al.Settings[9] = $val
+034    $val = $array.Settings[8]
+035    $al.Settings[10] = $val
+036   end
+037   set global variable: name=$al.PluginID value=$al.Settings
+038   
+039  end
+040  
+041  $al.Ret = null
+042  if $al.Event == 'init' OR $al.Event == 'reinit'
+043   
+044   $plugin.description = = sprintf: pageid=$PageID textid=100, null, null, null, null, null
+045   al engine: set plugin $al.PluginID description to $plugin.description
+046   al engine: set plugin $al.PluginID timer interval to 180 s
+047   
+048    = [THIS] -> call script plugin.LI.FDN.Setup :
+049    = [THIS] -> call script plugin.LI.Dock.Installer :
+050   
+051  else if $al.Event == 'start'
+052   $al.Settings[0] = [TRUE]
+053    = [THIS] -> call script plugin.LI.FDN.Setup :
+054    = [THIS] -> call script plugin.LI.Dock.Installer :
+055   
+056  else if $al.Event == 'stop'
+057   $al.Settings[0] = [FALSE]
+058    = [THIS] -> call script plugin.LI.FDN.Setup :
+059    = [THIS] -> call script plugin.LI.FDN.Reset :
+060   
+061  else if $al.Event == 'isenabled'
+062   $al.Ret = $al.Settings[0]
+063  end
+064  
+065  return $al.Ret
+066  
+067  

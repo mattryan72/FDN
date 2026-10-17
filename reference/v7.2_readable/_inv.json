@@ -1,0 +1,1718 @@
+[
+ {
+  "name": "al.LI.FDN.event",
+  "desc": "v4 AL Event",
+  "version": "16",
+  "args": [
+   "al.PluginID",
+   "al.Event"
+  ],
+  "lines": 67,
+  "code": 49,
+  "calls": [
+   "plugin.LI.Dock.Installer",
+   "plugin.LI.FDN.Reset",
+   "plugin.LI.FDN.Settings",
+   "plugin.LI.FDN.Setup"
+  ],
+  "starts": [],
+  "gget": [
+   "$al.PluginID"
+  ],
+  "gset": [
+   "$al.PluginID"
+  ],
+  "lvar": [],
+  "tids": [
+   100
+  ],
+  "settings": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "waits": 0,
+  "whiles": 0,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "al.plugin.LI.FDN.register",
+  "desc": "v4 AL Plugin registration script",
+  "version": "6",
+  "args": [],
+  "lines": 9,
+  "code": 4,
+  "calls": [],
+  "starts": [],
+  "gget": [],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [],
+  "waits": 0,
+  "whiles": 0,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.Dock.Check",
+  "desc": "",
+  "version": "1",
+  "args": [],
+  "lines": 94,
+  "code": 59,
+  "calls": [
+   "plugin.LI.Dock.Replace"
+  ],
+  "starts": [],
+  "gget": [],
+  "gset": [],
+  "lvar": [],
+  "tids": [
+   300038,
+   300040,
+   300042,
+   300044,
+   300046,
+   300048,
+   300050,
+   300052,
+   300054
+  ],
+  "settings": [],
+  "waits": 0,
+  "whiles": 2,
+  "subs": [
+   "Build.Ref.Array"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.Dock.Installer",
+  "desc": "",
+  "version": "1",
+  "args": [],
+  "lines": 200,
+  "code": 170,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'LI.Shipyards'"
+  ],
+  "gset": [
+   "'LI.Shipyards'"
+  ],
+  "lvar": [],
+  "tids": [
+   300038,
+   300040,
+   300042,
+   300044,
+   300046,
+   300048,
+   300050,
+   300052,
+   300054
+  ],
+  "settings": [],
+  "waits": 0,
+  "whiles": 3,
+  "subs": [
+   "Get.Shipyard.Ref",
+   "Build.Ref.Array",
+   "Build.Shipyard",
+   "Install"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.Dock.Remover",
+  "desc": "",
+  "version": "1",
+  "args": [],
+  "lines": 23,
+  "code": 14,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'LI.Shipyards'"
+  ],
+  "gset": [
+   "'LI.Shipyards'"
+  ],
+  "lvar": [],
+  "tids": [],
+  "settings": [],
+  "waits": 0,
+  "whiles": 1,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.Dock.Replace",
+  "desc": "",
+  "version": "1",
+  "args": [
+   "stn"
+  ],
+  "lines": 103,
+  "code": 85,
+  "calls": [],
+  "starts": [],
+  "gget": [],
+  "gset": [],
+  "lvar": [
+   "$var",
+   "'com.agent.auto.account'",
+   "'com.agent.auto.price'",
+   "'com.agent.homebase'"
+  ],
+  "tids": [],
+  "settings": [],
+  "waits": 0,
+  "whiles": 4,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Cleanup",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 22,
+  "code": 12,
+  "calls": [],
+  "starts": [],
+  "gget": [],
+  "gset": [
+   "$var"
+  ],
+  "lvar": [],
+  "tids": [],
+  "settings": [],
+  "waits": 1,
+  "whiles": 1,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Complex.Check",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "ware"
+  ],
+  "lines": 81,
+  "code": 55,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   4001,
+   4003
+  ],
+  "settings": [
+   1,
+   5
+  ],
+  "waits": 0,
+  "whiles": 1,
+  "subs": [
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Config.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 435,
+  "code": 350,
+  "calls": [
+   "plugin.LI.Dock.Check",
+   "plugin.LI.FDN.Reset"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   109,
+   165,
+   166,
+   167,
+   168,
+   169,
+   170,
+   171,
+   172,
+   173,
+   174,
+   175,
+   176,
+   177,
+   178,
+   179,
+   192,
+   193,
+   194,
+   225,
+   4000,
+   4002,
+   9005,
+   9006,
+   9007
+  ],
+  "settings": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   9
+  ],
+  "waits": 0,
+  "whiles": 11,
+  "subs": [
+   "Update.FDN.Array",
+   "Build.Main.Menu.Sub",
+   "Build.Sub.Menu.Sub",
+   "Build.FDN.Array",
+   "Build.Dock.Array"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Dock.Task",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 55,
+  "code": 34,
+  "calls": [
+   "plugin.LI.FDN.Supply.Dock"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Supply.Dock"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   3001,
+   4000
+  ],
+  "settings": [
+   0,
+   1
+  ],
+  "waits": 2,
+  "whiles": 1,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Factory.Ware.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 161,
+  "code": 130,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   136,
+   196,
+   197,
+   198,
+   199,
+   200,
+   201,
+   202,
+   4003,
+   9000
+  ],
+  "settings": [
+   1
+  ],
+  "waits": 0,
+  "whiles": 5,
+  "subs": [
+   "Split.Wares.Sub",
+   "Build.Menu.Sub"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Find.INN",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "sector"
+  ],
+  "lines": 68,
+  "code": 40,
+  "calls": [
+   "plugin.LI.FDN.Find.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   2
+  ],
+  "waits": 0,
+  "whiles": 3,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Find.Node",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 63,
+  "code": 48,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   2
+  ],
+  "waits": 0,
+  "whiles": 2,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Find.Supply.Node.Other",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "default.node"
+  ],
+  "lines": 134,
+  "code": 93,
+  "calls": [
+   "plugin.LI.FDN.Find.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$n.pointer"
+  ],
+  "tids": [
+   4000
+  ],
+  "settings": [
+   1,
+   2
+  ],
+  "waits": 0,
+  "whiles": 5,
+  "subs": [
+   "Linked.Node.Check"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Find.Supply.Node",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 168,
+  "code": 115,
+  "calls": [
+   "plugin.LI.FDN.Find.INN"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$d.pointer",
+   "$n.pointer",
+   "$s.pointer"
+  ],
+  "tids": [
+   4000,
+   4001
+  ],
+  "settings": [
+   1,
+   2
+  ],
+  "waits": 0,
+  "whiles": 5,
+  "subs": [
+   "Linked.Node.Check",
+   "Link.node"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.INN.Array.Test",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 76,
+  "code": 57,
+  "calls": [
+   "plugin.LI.FDN.Find.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   2
+  ],
+  "waits": 0,
+  "whiles": 5,
+  "subs": [
+   "INN.Array"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Main.Menu.Call",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 16,
+  "code": 10,
+  "calls": [
+   "plugin.LI.Dock.Check",
+   "plugin.LI.FDN.Main.Menu",
+   "plugin.LI.FDN.Main.Menu.D"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Main.Menu.D"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   10
+  ],
+  "waits": 0,
+  "whiles": 0,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Main.Menu.D",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 431,
+  "code": 307,
+  "calls": [
+   "plugin.LI.FDN.Node.Array",
+   "plugin.LI.FDN.Sector.Array",
+   "plugin.LI.FDN.Storage"
+  ],
+  "starts": [],
+  "gget": [
+   "$pointer",
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [
+   "$pointer"
+  ],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   110,
+   130,
+   131,
+   132,
+   133,
+   134,
+   135,
+   4000,
+   4001,
+   4002,
+   5000,
+   5001,
+   5002,
+   9000,
+   9002
+  ],
+  "settings": [
+   0,
+   1,
+   9,
+   10
+  ],
+  "waits": 1,
+  "whiles": 14,
+  "subs": [
+   "Build.Global.Refs.Sub",
+   "Update.Global.Refs.Sub",
+   "Ware.Summary.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Main.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 273,
+  "code": 212,
+  "calls": [
+   "plugin.LI.FDN.Cleanup",
+   "plugin.LI.FDN.Main.Ware",
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Node.Menu",
+   "plugin.LI.FDN.Node.Menu.D",
+   "plugin.LI.FDN.Relay.Menu",
+   "plugin.LI.FDN.Sector.Menu"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Cleanup",
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Node.Menu.D"
+  ],
+  "gget": [
+   "$pointer",
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "'FDN.Node.Show.Menus'"
+  ],
+  "tids": [
+   102,
+   111,
+   112,
+   221,
+   223,
+   1000,
+   1001,
+   1002,
+   1003,
+   1004,
+   1005,
+   1006,
+   1007,
+   5000,
+   5001,
+   5002,
+   9000
+  ],
+  "settings": [
+   1,
+   10
+  ],
+  "waits": 0,
+  "whiles": 7,
+  "subs": [
+   "Build.Menu.Sub",
+   "Exit"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Main.Ware.Call",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 12,
+  "code": 7,
+  "calls": [
+   "plugin.LI.FDN.Main.Ware",
+   "plugin.LI.FDN.Main.Ware.D"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Main.Ware.D"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   10
+  ],
+  "waits": 0,
+  "whiles": 0,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Main.Ware.D",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 282,
+  "code": 215,
+  "calls": [
+   "plugin.LI.FDN.Sector.Array",
+   "plugin.LI.FDN.Storage"
+  ],
+  "starts": [],
+  "gget": [
+   "$pointer",
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [
+   "$pointer"
+  ],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   130,
+   131,
+   132,
+   133,
+   134,
+   135,
+   4000,
+   4003,
+   5006,
+   5007,
+   5008,
+   9000
+  ],
+  "settings": [
+   0,
+   1,
+   2,
+   9,
+   10
+  ],
+  "waits": 1,
+  "whiles": 8,
+  "subs": [
+   "Build.Global.Refs.Sub",
+   "Update.Global.Refs.Sub",
+   "Ware.Summary.Sub",
+   "Node.List.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Main.Ware",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 275,
+  "code": 225,
+  "calls": [
+   "plugin.LI.FDN.Cleanup",
+   "plugin.LI.FDN.Main.Menu.Call",
+   "plugin.LI.FDN.Node.Menu",
+   "plugin.LI.FDN.Node.Menu.D",
+   "plugin.LI.FDN.Ware.Menu"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Cleanup",
+   "plugin.LI.FDN.Node.Menu.D"
+  ],
+  "gget": [
+   "$pointer",
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "'FDN.Main.Ware.Show'"
+  ],
+  "tids": [
+   102,
+   112,
+   137,
+   214,
+   215,
+   216,
+   217,
+   218,
+   219,
+   220,
+   222,
+   224,
+   5006,
+   5007,
+   5008,
+   9000,
+   9004
+  ],
+  "settings": [
+   1,
+   10
+  ],
+  "waits": 0,
+  "whiles": 6,
+  "subs": [
+   "Exit",
+   "Build.Menu.Sub",
+   "Split.Ware.Sub",
+   "Get.Show.Header.Sub",
+   "Get.Ware.Header.Sub"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Node.Array",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "sector"
+  ],
+  "lines": 220,
+  "code": 166,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   2,
+   4
+  ],
+  "waits": 0,
+  "whiles": 7,
+  "subs": [
+   "Sub.In.Range.Sub",
+   "INN.Search",
+   "Exit"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Node.Menu.D",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 168,
+  "code": 128,
+  "calls": [
+   "plugin.LI.FDN.Storage"
+  ],
+  "starts": [],
+  "gget": [
+   "$pointer",
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [
+   "$pointer"
+  ],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   128,
+   130,
+   131,
+   132,
+   133,
+   134,
+   135,
+   136,
+   4003,
+   5003,
+   5005
+  ],
+  "settings": [
+   0,
+   1,
+   2,
+   3,
+   9,
+   10
+  ],
+  "waits": 1,
+  "whiles": 3,
+  "subs": [
+   "Build.Global.Refs.Sub",
+   "Update.Global.Refs.Sub",
+   "Ware.Summary.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Node.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "main.caller.script"
+  ],
+  "lines": 466,
+  "code": 355,
+  "calls": [
+   "plugin.LI.FDN.Main.Menu.Call",
+   "plugin.LI.FDN.Main.Ware",
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Sub.Menu",
+   "plugin.LI.FDN.Ware.Menu"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Main.Ware.D"
+  ],
+  "gget": [
+   "$s.pointer",
+   "$w.pointer",
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer",
+   "'FDN.Node.Ware.Show'"
+  ],
+  "tids": [
+   18,
+   19,
+   103,
+   115,
+   120,
+   126,
+   127,
+   129,
+   137,
+   138,
+   208,
+   209,
+   210,
+   211,
+   212,
+   213,
+   4000,
+   5003,
+   5005,
+   9000,
+   9005,
+   9006,
+   9007
+  ],
+  "settings": [
+   1,
+   2,
+   3,
+   10
+  ],
+  "waits": 0,
+  "whiles": 4,
+  "subs": [
+   "Enable.Dock.Task",
+   "Enable.Sell.Task",
+   "Update.Show.Sub",
+   "Update.Sub",
+   "Credit.Menu.Sub",
+   "Build.Menu.Sub",
+   "Split.Ware.Sub",
+   "Get.Ware.Header.Sub"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Relay.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 149,
+  "code": 113,
+  "calls": [
+   "plugin.LI.FDN.Main.Menu.Call"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   106,
+   115,
+   120,
+   121,
+   122,
+   123,
+   124,
+   4002,
+   9000,
+   9005,
+   9006,
+   9007
+  ],
+  "settings": [
+   1
+  ],
+  "waits": 0,
+  "whiles": 1,
+  "subs": [
+   "Update.Sub",
+   "Enable.Relay.Sub",
+   "Build.Menu.Sub"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Relay.Task",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 55,
+  "code": 34,
+  "calls": [
+   "plugin.LI.FDN.Supply.Ship"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Supply.Ship"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   3001,
+   4002
+  ],
+  "settings": [
+   0,
+   1
+  ],
+  "waits": 2,
+  "whiles": 1,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Reset",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 98,
+  "code": 73,
+  "calls": [],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer",
+   "$var"
+  ],
+  "tids": [
+   4000,
+   4001,
+   4002
+  ],
+  "settings": [
+   1,
+   2,
+   4
+  ],
+  "waits": 0,
+  "whiles": 4,
+  "subs": [
+   "Kill.FDN.Task",
+   "Node.Task"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Sector.Array",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "sector"
+  ],
+  "lines": 90,
+  "code": 74,
+  "calls": [
+   "plugin.LI.FDN.Find.INN"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [
+   2
+  ],
+  "waits": 0,
+  "whiles": 4,
+  "subs": [
+   "START",
+   "Exit"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Sector.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "sector"
+  ],
+  "lines": 601,
+  "code": 505,
+  "calls": [
+   "plugin.LI.FDN.Factory.Ware.Menu",
+   "plugin.LI.FDN.Main.Menu.Call",
+   "plugin.LI.FDN.Sub.Menu"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   108,
+   112,
+   113,
+   114,
+   115,
+   116,
+   117,
+   118,
+   119,
+   125,
+   153,
+   154,
+   155,
+   186,
+   195,
+   4001,
+   9000,
+   9003,
+   9005,
+   9006,
+   9007
+  ],
+  "settings": [
+   1
+  ],
+  "waits": 0,
+  "whiles": 10,
+  "subs": [
+   "Update.Node.Sub",
+   "FDN.Enable.Sub",
+   "FDN.Enable.All.Sub",
+   "Build.Menu.Sub",
+   "Create.Station.Settings",
+   "Build.Station.Details.Menu.Sub",
+   "Build.Complex.Factory.Details.Menu.Sub"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Sell.Task",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 54,
+  "code": 34,
+  "calls": [
+   "plugin.LI.FDN.Sell.Ware"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   3001,
+   4000
+  ],
+  "settings": [
+   0,
+   1
+  ],
+  "waits": 2,
+  "whiles": 1,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Sell.Ware",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 298,
+  "code": 218,
+  "calls": [
+   "plugin.LI.FDN.Find.Supply.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   4003
+  ],
+  "settings": [
+   1,
+   2,
+   5
+  ],
+  "waits": 5,
+  "whiles": 5,
+  "subs": [
+   "Sell.Search.Sub",
+   "Sell.Range.Sub",
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Settings",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 197,
+  "code": 160,
+  "calls": [],
+  "starts": [],
+  "gget": [],
+  "gset": [],
+  "lvar": [],
+  "tids": [
+   300020,
+   300022,
+   300024,
+   300026,
+   300028,
+   300030,
+   300038,
+   300040,
+   300042,
+   300044,
+   300046,
+   300048
+  ],
+  "settings": [],
+  "waits": 0,
+  "whiles": 12,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Setup",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 80,
+  "code": 58,
+  "calls": [
+   "plugin.LI.FDN.Main.Menu.Call",
+   "plugin.config.addscript",
+   "plugin.hotkeymanager.add",
+   "plugin.hotkeymanager.purge"
+  ],
+  "starts": [],
+  "gget": [
+   "$al.Hotkey",
+   "'al.LI.FDN.event'",
+   "'config.scripts'"
+  ],
+  "gset": [
+   "$al.Hotkey"
+  ],
+  "lvar": [],
+  "tids": [
+   101,
+   102,
+   105,
+   207
+  ],
+  "settings": [
+   0,
+   1,
+   11
+  ],
+  "waits": 0,
+  "whiles": 1,
+  "subs": [
+   "RemoveHT.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Station.Task",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 100,
+  "code": 64,
+  "calls": [
+   "plugin.LI.FDN.Find.Node",
+   "plugin.LI.FDN.Supply.Node",
+   "plugin.LI.FDN.Supply.Station"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Supply.Node"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   3001,
+   4001
+  ],
+  "settings": [
+   0,
+   1
+  ],
+  "waits": 3,
+  "whiles": 3,
+  "subs": [
+   "Network.Exit.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Storage",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "stn",
+   "act"
+  ],
+  "lines": 37,
+  "code": 32,
+  "calls": [],
+  "starts": [],
+  "gget": [],
+  "gset": [],
+  "lvar": [],
+  "tids": [],
+  "settings": [],
+  "waits": 0,
+  "whiles": 2,
+  "subs": [],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Sub.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "action",
+   "caller.script",
+   "main.caller.script"
+  ],
+  "lines": 140,
+  "code": 112,
+  "calls": [
+   "plugin.LI.FDN.Find.Supply.Node",
+   "plugin.LI.FDN.Main.Ware",
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Node.Menu",
+   "plugin.LI.FDN.Node.Menu.D",
+   "plugin.LI.FDN.Ware.Menu"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Node.Menu.D"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [],
+  "tids": [
+   155,
+   156,
+   158,
+   159,
+   161,
+   162,
+   163,
+   9002
+  ],
+  "settings": [
+   1,
+   10
+  ],
+  "waits": 0,
+  "whiles": 2,
+  "subs": [
+   "Build.Select.Node.Sub"
+  ],
+  "menus": 1
+ },
+ {
+  "name": "plugin.LI.FDN.Supply.Dock",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 257,
+  "code": 186,
+  "calls": [
+   "plugin.LI.FDN.Find.Supply.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$w.pointer"
+  ],
+  "tids": [
+   4003
+  ],
+  "settings": [
+   1,
+   5
+  ],
+  "waits": 3,
+  "whiles": 3,
+  "subs": [
+   "Supply.Dock",
+   "Supply.Node",
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Supply.Node.Other",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "ware",
+   "amount",
+   "default.node"
+  ],
+  "lines": 159,
+  "code": 105,
+  "calls": [
+   "plugin.LI.FDN.Find.Supply.Node.Other"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$w.pointer"
+  ],
+  "tids": [
+   4003
+  ],
+  "settings": [
+   0,
+   1,
+   5
+  ],
+  "waits": 1,
+  "whiles": 1,
+  "subs": [
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Supply.Node",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 198,
+  "code": 140,
+  "calls": [
+   "plugin.LI.FDN.Complex.Check",
+   "plugin.LI.FDN.Find.Supply.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$s.pointer",
+   "$w.pointer"
+  ],
+  "tids": [
+   4001,
+   4003
+  ],
+  "settings": [
+   1,
+   5
+  ],
+  "waits": 2,
+  "whiles": 2,
+  "subs": [
+   "Supply.Node.Sub",
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Supply.Other",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "ware",
+   "amount",
+   "default.node",
+   "ignore.remote",
+   "buy.ware"
+  ],
+  "lines": 297,
+  "code": 207,
+  "calls": [
+   "plugin.LI.FDN.Find.Supply.Node.Other"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$w.pointer"
+  ],
+  "tids": [
+   4003
+  ],
+  "settings": [
+   0,
+   1,
+   5
+  ],
+  "waits": 3,
+  "whiles": 4,
+  "subs": [
+   "Supply.Ware.Sub",
+   "Buy.Ware.Sub",
+   "Buy.Range.Sub",
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Supply.Ship",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 282,
+  "code": 208,
+  "calls": [
+   "plugin.LI.FDN.Find.Supply.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer",
+   "$w.pointer"
+  ],
+  "tids": [
+   4002,
+   4003
+  ],
+  "settings": [
+   1,
+   5
+  ],
+  "waits": 4,
+  "whiles": 7,
+  "subs": [
+   "Node.Search",
+   "Get.Ammount.Sub",
+   "Build.Ship.Array",
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Supply.Station",
+  "desc": "",
+  "version": "7",
+  "args": [],
+  "lines": 352,
+  "code": 256,
+  "calls": [
+   "plugin.LI.FDN.Complex.Check",
+   "plugin.LI.FDN.Find.Supply.Node"
+  ],
+  "starts": [],
+  "gget": [
+   "'al.LI.FDN.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$s.pointer",
+   "$w.pointer"
+  ],
+  "tids": [
+   4001,
+   4003
+  ],
+  "settings": [
+   1,
+   5
+  ],
+  "waits": 4,
+  "whiles": 6,
+  "subs": [
+   "Supply.Ware.Sub",
+   "Supply.Check.Sub",
+   "Buy.Ware.Sub",
+   "Buy.Range.Sub",
+   "Debug.Sub"
+  ],
+  "menus": 0
+ },
+ {
+  "name": "plugin.LI.FDN.Ware.Menu",
+  "desc": "",
+  "version": "7",
+  "args": [
+   "ware",
+   "caller.script",
+   "main.caller.script"
+  ],
+  "lines": 363,
+  "code": 289,
+  "calls": [
+   "plugin.LI.FDN.Main.Ware",
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Node.Menu",
+   "plugin.LI.FDN.Node.Menu.D",
+   "plugin.LI.FDN.Sub.Menu",
+   "plugin.LI.PM.Ware.Menu",
+   "plugin.LI.PM.Ware.Menu.D"
+  ],
+  "starts": [
+   "plugin.LI.FDN.Main.Ware.D",
+   "plugin.LI.FDN.Node.Menu.D",
+   "plugin.LI.PM.Ware.Menu.D"
+  ],
+  "gget": [
+   "'al.LI.FDN.event'",
+   "'al.LI.PM.event'"
+  ],
+  "gset": [],
+  "lvar": [
+   "$pointer"
+  ],
+  "tids": [
+   107,
+   136,
+   139,
+   140,
+   141,
+   142,
+   143,
+   144,
+   145,
+   146,
+   147,
+   148,
+   149,
+   150,
+   151,
+   152,
+   160,
+   164,
+   187,
+   188,
+   189,
+   190,
+   191,
+   4003,
+   9000,
+   9005,
+   9006,
+   9007
+  ],
+  "settings": [
+   1,
+   2,
+   3,
+   10
+  ],
+  "waits": 0,
+  "whiles": 1,
+  "subs": [
+   "Update.Settings.Sub",
+   "Update.Sub",
+   "Build.Menu.Sub"
+  ],
+  "menus": 1
+ }
+]

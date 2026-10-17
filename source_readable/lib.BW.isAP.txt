@@ -1,0 +1,19 @@
+* Script: lib.BW.isAP  (v0, engine 50)
+* Desc: isAP Tests whether the current script enginer version is from AP or TC
+
+001  * BW: ===============================
+002  * Test for AP.
+003  * BW: ===============================
+004  $scriptEngineVersion = = script engine version
+005  * TC 3.2 = 44
+006  * AP 2.0 = 52
+007  if $scriptEngineVersion >= 50
+008   $RetVal = [TRUE]
+009  else
+010   $RetVal = [FALSE]
+011  end
+012  
+013  return $RetVal
+014  
+015  
+016  

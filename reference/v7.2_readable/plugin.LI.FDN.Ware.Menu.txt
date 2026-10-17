@@ -1,0 +1,369 @@
+* Script: plugin.LI.FDN.Ware.Menu  (v7, engine 44)
+* Desc: 
+* Arg 0: ware (Var/Ware) 'ware'
+* Arg 1: caller.script (Value) 'caller.script'
+* Arg 2: main.caller.script (Value) 'main.caller.script'
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  $al.Settings = get global variable: name='al.LI.FDN.event'
+005  if $al.Settings
+006   $PageID = $al.Settings[1]
+007   $node.Array = $al.Settings[2]
+008   $trade.Array = $al.Settings[3]
+009  else
+010   return null
+011  end
+012  
+013  $al.PM.Settings = get global variable: name='al.LI.PM.event'
+014  if $al.PM.Settings
+015   $PMPageID = $al.PM.Settings[1]
+016  end
+017  
+018  $sub = = [THIS]  ->  get subtype
+019  $is.node = find $sub in array: $node.Array
+020  $is.trade = find $sub in array: $trade.Array
+021  
+022  while [TRUE]
+023   $msg = [FALSE]
+024   $trade = [FALSE]
+025   
+026   $txt = = read text: page=$PageID id=107
+027   $menu = = create custom menu array: heading=$txt
+028   
+029   gosub Build.Menu.Sub:
+030   
+031   $amt = [THIS]  ->  get amount of ware $ware in cargo bay
+032   $amt = = convert number $amt to string
+033   $desc = $ware + ' [ ' + $amt + ' ]'
+034   $desc = = sprintf: pageid=$PageID textid=9000, $desc, null, null, null, null
+035   
+036   $txt = = read text: page=$PageID id=107
+037   $return = open custom menu: title=$txt description=$desc option array=$menu
+038   
+039   * Start of return
+040   if $return == -1
+041    if $caller.script == 'plugin.LI.FDN.Node.Menu'
+042     * Node On
+043     $al.Settings[10][1] = [TRUE]
+044     START  = [THIS] -> call script plugin.LI.FDN.Node.Menu.D :
+045      = [THIS] -> call script plugin.LI.FDN.Node.Menu : main.caller.script=$main.caller.script
+046     return null
+047     
+048    else if $caller.script == 'plugin.LI.FDN.Main.Ware'
+049     $al.Settings[10][2] = [TRUE]
+050     START  = [THIS] -> call script plugin.LI.FDN.Main.Ware.D :
+051      = [THIS] -> call script plugin.LI.FDN.Main.Ware :
+052     return null
+053     
+054    else
+055     $al.PM.Settings[8][4] = [TRUE]
+056     if $caller.script  ->  is of class Ship 2004
+057      $task = = $caller.script  ->  get next available task: starting=$PMPageID
+058      $caller.script  ->  start named script: task=$task scriptname='plugin.LI.PM.Ware.Menu.D' prio=0, null, null, null, null, null
+059     else
+060      START  = $caller.script -> call script plugin.LI.PM.Ware.Menu.D :
+061     end
+062      = $caller.script -> call script plugin.LI.PM.Ware.Menu :
+063     return null
+064    end
+065   else
+066    gosub Update.Settings.Sub:
+067   end
+068  end
+069  
+070  
+071  return null
+072  
+073  Update.Settings.Sub:
+074  
+075  $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+076  $update.Array = [THIS]  ->  get local variable: name=$pointer
+077  
+078  if $return == 'status'
+079   $c = 0
+080   gosub Update.Sub:
+081   endsub
+082  else if $return == 'buy'
+083   $c = 1
+084   gosub Update.Sub:
+085   endsub
+086  else if $return == 'sell'
+087   $c = 2
+088   gosub Update.Sub:
+089   endsub
+090  else if $return == 'move.ware'
+091    = [THIS] -> call script plugin.LI.FDN.Sub.Menu : action=$ware  caller.script=$caller.script  main.caller.script=$main.caller.script
+092   return null
+093   
+094  else if $return == 'remove.ware'
+095   [THIS]  ->  remove product from factory or dock: $ware
+096   [THIS]  ->  set local variable: name=$pointer value=null
+097   
+098   if $caller.script == 'plugin.LI.FDN.Node.Menu'
+099    * Node On
+100    $al.Settings[10][1] = [TRUE]
+101    START  = [THIS] -> call script plugin.LI.FDN.Node.Menu.D :
+102     = [THIS] -> call script plugin.LI.FDN.Node.Menu : main.caller.script=$main.caller.script
+103    
+104    return null
+105    
+106   else if $caller.script == 'plugin.LI.FDN.Main.Ware'
+107    $al.Settings[10][2] = [TRUE]
+108    START  = [THIS] -> call script plugin.LI.FDN.Main.Ware.D :
+109     = [THIS] -> call script plugin.LI.FDN.Main.Ware :
+110    return null
+111    
+112   else
+113    $al.PM.Settings[8][4] = [TRUE]
+114    if $caller.script  ->  is of class Ship 2004
+115     $task = = $caller.script  ->  get next available task: starting=$PMPageID
+116     $caller.script  ->  start named script: task=$task scriptname='plugin.LI.PM.Ware.Menu.D' prio=0, null, null, null, null, null
+117    else
+118     START  = $caller.script -> call script plugin.LI.PM.Ware.Menu.D :
+119    end
+120     = $caller.script -> call script plugin.LI.PM.Ware.Menu :
+121    return null
+122   end
+123   return null
+124   
+125  else if $return == 'main.cap'
+126   $c = 3
+127   $msg = [TRUE]
+128   $txt = = sprintf: pageid=$PageID textid=150, $ware, null, null, null, null
+129  else if $return == 'remote.cap'
+130   $c = 4
+131   $msg = [TRUE]
+132   $txt = = sprintf: pageid=$PageID textid=151, $ware, null, null, null, null
+133  else if $return == 'sell.cap'
+134   $c = 5
+135   $msg = [TRUE]
+136   $txt = = sprintf: pageid=$PageID textid=152, $ware, null, null, null, null
+137  end
+138  
+139  if $msg == [TRUE]
+140   $amt = [THIS]  ->  get user input: type=Var/Number, title=$txt
+141   if not is datatyp[ $amt ] == DATATYP_NULL
+142    if not $amt < 0
+143     $update.Array[$c] = $amt
+144    else
+145     $update.Array[$c] = null
+146    end
+147   end
+148   endsub
+149  end
+150  
+151  if $return == 'buy.at'
+152   $c = 0
+153   $trade = [TRUE]
+154  else if $return == 'sell.at'
+155   $c = 1
+156   $trade = [TRUE]
+157  end
+158  
+159  if $trade == [TRUE]
+160   $txt = = sprintf: pageid=$PageID textid=187, $min.txt, $avg.txt, $max.txt, null, null
+161   $amt = [THIS]  ->  get user input: type=Var/Number, title=$txt
+162   if not is datatyp[ $amt ] == DATATYP_NULL
+163    if $amt >= $min AND $amt <= $max
+164     $update.Array[6][$c] = $amt
+165    end
+166   end
+167   endsub
+168  end
+169  
+170  endsub
+171  
+172  Update.Sub:
+173  if $update.Array[$c]
+174   $update.Array[$c] = null
+175  else
+176   $update.Array[$c] = [TRUE]
+177  end
+178  endsub
+179  
+180  
+181  Build.Menu.Sub:
+182  * Settings Array
+183  $pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+184  if not [THIS]  ->  get local variable: name=$pointer
+185   $settings.Array = = array alloc: size=7
+186   [THIS]  ->  set local variable: name=$pointer value=$settings.Array
+187  end
+188  $settings.Array = [THIS]  ->  get local variable: name=$pointer
+189  
+190  * Ware header
+191  $txt1 = = read text: page=$PageID id=148
+192  $txt2 = = read text: page=$PageID id=9005
+193  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+194  add custom menu heading to array $menu: title=$array
+195  
+196  * Status
+197  if $settings.Array[0]
+198   $onoff = = read text: page=$PageID id=9006
+199  else
+200   $onoff = = read text: page=$PageID id=9007
+201  end
+202  
+203  if $is.node
+204   $txt = = read text: page=$PageID id=144
+205  else
+206   $txt = = read text: page=$PageID id=145
+207  end
+208  
+209  $a = = create new array, arguments=1, $txt, -1, $onoff, null
+210  $array = = create new array, arguments=$a, 'status', null, null, null
+211  append $array to array $menu
+212  add section to custom menu: $menu
+213  
+214  * Buy
+215  if $is.node
+216   if $settings.Array[1]
+217    $onoff = = read text: page=$PageID id=9006
+218   else
+219    $onoff = = read text: page=$PageID id=9007
+220   end
+221   $txt = = read text: page=$PageID id=147
+222   $a = = create new array, arguments=1, $txt, -1, $onoff, null
+223   $array = = create new array, arguments=$a, 'buy', null, null, null
+224   append $array to array $menu
+225   add section to custom menu: $menu
+226  end
+227  
+228  * Sell
+229  if $is.node OR $is.trade
+230   if $settings.Array[2]
+231    $onoff = = read text: page=$PageID id=9006
+232   else
+233    $onoff = = read text: page=$PageID id=9007
+234   end
+235   $txt = = read text: page=$PageID id=146
+236   $a = = create new array, arguments=1, $txt, -1, $onoff, null
+237   $array = = create new array, arguments=$a, 'sell', null, null, null
+238   append $array to array $menu
+239   add section to custom menu: $menu
+240  end
+241  
+242  * Ware levels
+243  $txt = = read text: page=$PageID id=149
+244  $txt2 = = read text: page=$PageID id=190
+245  $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+246  add custom menu heading to array $menu: title=$array
+247  
+248  * Max ware
+249  
+250  * -Tweak 13/08/2010 - Allow 0 for max
+251  * -----------------------------------
+252  $max = $settings.Array[3]
+253  if not $max >= 0
+254   $txt.level = = read text: page=$PageID id=136
+255  else
+256   $txt.level = = convert number $max to string
+257  end
+258  
+259  if $is.node
+260   $txt = = read text: page=$PageID id=140
+261  else
+262   $txt = = read text: page=$PageID id=143
+263  end
+264  
+265  $a = = create new array, arguments=1, $txt, -1, $txt.level, null
+266  $array = = create new array, arguments=$a, 'main.cap', null, null, null
+267  append $array to array $menu
+268  add section to custom menu: $menu
+269  
+270  * Remote
+271  if $is.node
+272   if not $settings.Array[4]
+273    $txt.level = = read text: page=$PageID id=136
+274   else
+275    $amt = $settings.Array[4]
+276    $txt.level = = convert number $amt to string
+277   end
+278   
+279   $txt = = read text: page=$PageID id=141
+280   $a = = create new array, arguments=1, $txt, -1, $txt.level, null
+281   $array = = create new array, arguments=$a, 'remote.cap', null, null, null
+282   append $array to array $menu
+283   add section to custom menu: $menu
+284  end
+285  
+286  * Sell
+287  if $is.node OR $is.trade
+288   if not $settings.Array[5]
+289    $txt.level = = read text: page=$PageID id=136
+290   else
+291    $amt = $settings.Array[5]
+292    $txt.level = = convert number $amt to string
+293   end
+294   
+295   $txt = = read text: page=$PageID id=142
+296   $a = = create new array, arguments=1, $txt, -1, $txt.level, null
+297   $array = = create new array, arguments=$a, 'sell.cap', null, null, null
+298   append $array to array $menu
+299   add section to custom menu: $menu
+300   
+301   * Ware Trade
+302   $min = = get min price of ware $ware
+303   $min.txt = = convert number $min to string
+304   $avg = = get average price of ware $ware
+305   $avg.txt = = convert number $avg to string
+306   $max = = get max price of ware $ware
+307   $max.txt = = convert number $max to string
+308   $stn.price = [THIS]  ->  get price of ware $ware
+309   
+310   
+311   $buy.at = $settings.Array[6][0]
+312   $sell.at = $settings.Array[6][1]
+313   if not $buy.at > 0
+314    $settings.Array[6][0] = $stn.price
+315    $buy.at = $settings.Array[6][0]
+316   end
+317   if not $sell.at > 0
+318    $settings.Array[6][1] = $stn.price
+319    $sell.at = $settings.Array[6][1]
+320   end
+321   
+322   $txt1 = = sprintf: pageid=$PageID textid=187, $min.txt, $avg.txt, $max.txt, null, null
+323   $txt2 = = read text: page=$PageID id=191
+324   $array = = create new array, arguments=1, $txt1, -1, $txt2, null
+325   add custom menu heading to array $menu: title=$array
+326   
+327   $txt = = read text: page=$PageID id=188
+328   $txt.price = = convert number $buy.at to string
+329   $a = = create new array, arguments=1, $txt, -1, $txt.price, null
+330   $array = = create new array, arguments=$a, 'buy.at', null, null, null
+331   append $array to array $menu
+332   add section to custom menu: $menu
+333   
+334   $txt = = read text: page=$PageID id=189
+335   $txt.price = = convert number $sell.at to string
+336   $a = = create new array, arguments=1, $txt, -1, $txt.price, null
+337   $array = = create new array, arguments=$a, 'sell.at', null, null, null
+338   append $array to array $menu
+339  end
+340  
+341  * options
+342  $txt = = read text: page=$PageID id=160
+343  add custom menu heading to array $menu: title=$txt
+344  $amt = [THIS]  ->  get amount of ware $ware in cargo bay
+345  if $amt > 0
+346   $txt = = read text: page=$PageID id=139
+347   $a = = create new array, arguments=1, $txt, null, null, null
+348   $array = = create new array, arguments=$a, 'move.ware', null, null, null
+349   append $array to array $menu
+350  else
+351   $txt = = read text: page=$PageID id=164
+352   $a = = create new array, arguments=1, $txt, null, null, null
+353   $array = = create new array, arguments=$a, 'remove.ware', null, null, null
+354   append $array to array $menu
+355  end
+356  endsub
+357  
+358  
+359  endsub
+360  
+361  return null
+362  
+363  

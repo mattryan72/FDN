@@ -1,0 +1,588 @@
+* Script: plugin.LI.FDN.Main.Menu  (v1.0, engine 50)
+* Desc: FDNv8 - Main Menu
+
+001  * Auth0r: Logain Abler
+002  * --------------------
+003  * This is the main menu for FDN and has 3 dynamic viewa
+004  * Menu View 1 = Distribution Centre Details (default)
+005  * Menu View 2 = Factory View
+006  * Menu View 3 = Dock View - REMOVED
+007  * Menu View 4 = Factory Details
+008  * Menu View 5 = Dock Details
+009  * Menu View 6 = Ware Details
+010  * Menu View 7 = Config
+011  * Menu is called from pludin manager
+012  
+013  * Returns TBC
+014  * Date: 17/05/2012 - v1.0
+015  * Tested: TBC
+016  
+017  
+018  * Get AL settings
+019  
+020  $al.Settings = get global variable: name='al.LI.FDN.event'
+021  if $al.Settings
+022   $PageID = $al.Settings[1]
+023   $dc = $al.Settings[2]
+024   $factory.array = $al.Settings[3]
+025  else
+026   return null
+027  end
+028  
+029  * if AP use AP menus
+030  $is.AP = null -> call script lib.BW.isAP :
+031  
+032  $return = null
+033  $called.by = null
+034  $factory.show.array = null
+035  $menu.view = 1
+036  
+037  * Start Menu
+038  while [TRUE]
+039   $cap = null
+040   $trade = null
+041   $dc = $al.Settings[2]
+042   $is.dynamic = $al.Settings[6]
+043   
+044   $txt = = read text: page=$PageID id=102
+045   $menu = = create custom menu array: heading=$txt
+046   
+047   if $menu.view == 1 OR $menu.view == 2 OR $menu.view == 3
+048    gosub Menu.View.Header.Sub:
+049   end
+050   
+051   if not $dc
+052    $menu.view = 7
+053    gosub Config.View.Sub:
+054   else
+055    * Build Menu Body
+056    if $menu.view == 1
+057     gosub DC.Details.View.Sub:
+058    else if $menu.view == 2
+059     gosub Factory.List.View.Sub:
+060    else if $menu.view == 4
+061     gosub Factory.Details.View.Sub:
+062    else if $menu.view == 5
+063     gosub Dock.Details.View.Sub:
+064    else if $menu.view == 6
+065     gosub Ware.Details.View.Sub:
+066    else if $menu.view == 7
+067     gosub Config.View.Sub:
+068    end
+069   end
+070   
+071   $al.Settings[5] = $menu.view
+072   set global variable: name='al.LI.FDN.event' value=$al.Settings
+073   
+074   add section to custom menu: $menu
+075   
+076   * Call Menu View for Footer
+077   gosub Menu.View.Footer.Sub:
+078   
+079   
+080   * Start of return
+081   if $return == -1
+082    if $menu.view == 1 OR $menu.view == 2 OR $menu.view == 3
+083     $al.Settings[5] = null
+084     set global variable: name='al.LI.FDN.event' value=$al.Settings
+085     START  = null -> call script plugin.LI.FDN.Cleanup :
+086     return null
+087    else if not $dc
+088     START  = null -> call script plugin.LI.FDN.Cleanup :
+089     return null
+090    else
+091     
+092     if $menu.view == 3
+093      $menu.view = 1
+094     else if $menu.view == 4
+095      $menu.view = 2
+096     else if $menu.view == 5
+097      $menu.view = 2
+098     else if $menu.view == 6
+099      $menu.view = $called.by
+100     else if $menu.view == 7
+101      $menu.view = 1
+102     end
+103    end
+104    
+105   else if is datatyp[ $return ] == DATATYPE_ARRAY
+106    $command = $return[0]
+107    $value = $return[1]
+108    
+109    if $command == 'remote.cap'
+110     $menu.view = 6
+111     $ware = $return[2]
+112     $cap = [TRUE]
+113     gosub Ware.User.Input.Sub:
+114     
+115    else if $command == 'maintain.cap'
+116     $menu.view = 6
+117     $ware = $return[2]
+118     $cap = [TRUE]
+119     gosub Ware.User.Input.Sub:
+120     
+121    else if $command == 'can.buy'
+122     $menu.view = 6
+123     $ware = $return[2]
+124     gosub Ware.User.Input.Sub:
+125     
+126    else if $command == 'surplus'
+127     $menu.view = 6
+128     $ware = $return[2]
+129     gosub Ware.User.Input.Sub:
+130     
+131    else if $command == 'buy.at'
+132     $menu.view = 6
+133     $ware = $return[2]
+134     $trade = [TRUE]
+135     gosub Ware.User.Input.Sub:
+136     
+137    else if $command == 'sell.cap'
+138     $menu.view = 6
+139     $ware = $return[2]
+140     $cap = [TRUE]
+141     gosub Ware.User.Input.Sub:
+142     
+143    else if $command == 'sell.at'
+144     $menu.view = 6
+145     $ware = $return[2]
+146     $trade = [TRUE]
+147     gosub Ware.User.Input.Sub:
+148     
+149    else if $command == 'move.ware'
+150     $menu.view = 6
+151     $ware = $return[2]
+152     $dummy = null -> call script plugin.LI.FDN.Move.Ware : ware=$ware  source=$value
+153     
+154    else if $command == 'to.physical'
+155     $menu.view = 6
+156     $ware = $return[2]
+157     gosub Regroom.Ware.Sub:
+158     
+159    else if $command == 'to.virtual'
+160     $menu.view = 6
+161     $ware = $return[2]
+162     gosub Regroom.Ware.Sub:
+163     
+164    else if $command == 'remove.ware'
+165     $menu.view = $called.by
+166     $ware = $return[2]
+167     gosub Remove.Ware.Sub:
+168     
+169    else if $command == 'add.ware'
+170     gosub Add.Ware.Sub:
+171     
+172    else if $command == 'open.factory'
+173     $menu.view = 4
+174     
+175    else if $command == 'add.dc'
+176     $al.Settings[2] = $value
+177     set global variable: name='al.LI.FDN.event' value=$al.Settings
+178     $menu.view = 7
+179     
+180    else if $command == 'change.dc'
+181     $al.Settings[2] = $value
+182     set global variable: name='al.LI.FDN.event' value=$al.Settings
+183     $menu.view = 7
+184     
+185    else if $command == 'open.dock'
+186     $menu.view = 5
+187     
+188    else if $command == 'open.ware'
+189     $called.by = $menu.view
+190     $ware = $return[2]
+191     $menu.view = 6
+192     
+193     * these are used for TC menu - not required for AP
+194     
+195    else if $command == 'show.factory'
+196     $check = $factory.show.array[$value]
+197     if $check == 1
+198      $factory.show.array[$value] = 2
+199     else
+200      $factory.show.array[$value] = 1
+201     end
+202     
+203    else if $command == 'show.type.dc'
+204     $pointer = = read text: page=$PageID id=4004
+205     $show.type.array = $dc  ->  get local variable: name=$pointer
+206     $check = $show.type.array[$value]
+207     if $check == 1
+208      $show.type.array[$value] = 2
+209     else
+210      $show.type.array[$value] = 1
+211     end
+212     $dc  ->  set local variable: name=$pointer value=$show.type.array
+213     
+214    else if $command == 'show.type.dock'
+215     $count = $return[1][0]
+216     $value = $return[1][1]
+217     $pointer = = read text: page=$PageID id=4003
+218     $show.type.array = $value  ->  get local variable: name=$pointer
+219     $check = $show.type.array[$count]
+220     if $check == 1
+221      $show.type.array[$count] = 2
+222     else
+223      $show.type.array[$count] = 1
+224     end
+225     $value  ->  set local variable: name=$pointer value=$show.type.array
+226     
+227     
+228    else if $command == 'product'
+229     $pointer = = read text: page=$PageID id=4001
+230     $settings.array = $value  ->  get local variable: name=$pointer
+231     if $settings.array[0]
+232      $settings.array[0] = null
+233     else
+234      $settings.array[0] = 1
+235     end
+236     $value  ->  set local variable: name=$pointer value=$settings.array
+237     
+238    else if $command == 'resource'
+239     $pointer = = read text: page=$PageID id=4001
+240     $settings.array = $value  ->  get local variable: name=$pointer
+241     if $settings.array[1]
+242      $settings.array[1] = null
+243     else
+244      $settings.array[1] = 1
+245     end
+246     $value  ->  set local variable: name=$pointer value=$settings.array
+247     
+248    end
+249    
+250    $al.Settings[5] = $menu.view
+251    set global variable: name='al.LI.FDN.event' value=$al.Settings
+252   else
+253    
+254    if $return == 'dynamic.dc'
+255     if $is.dynamic[0]
+256      $is.dynamic[0] = null
+257     else
+258      $is.dynamic[0] = 1
+259     end
+260     
+261    else if $return == 'dynamic.dock'
+262     if $is.dynamic[2]
+263      $is.dynamic[2] = null
+264     else
+265      $is.dynamic[2] = 1
+266     end
+267     
+268    else if $return == 'dynamic.dock.list'
+269     if $is.dynamic[1]
+270      $is.dynamic[1] = null
+271     else
+272      $is.dynamic[1] = 1
+273      
+274     end
+275    else if $return == 'debug'
+276     if $al.Settings[7]
+277      $al.Settings[7] = null
+278     else
+279      $al.Settings[7] = 1
+280      
+281     end
+282    else if $return == 'auto'
+283     if $al.Settings[9]
+284      $al.Settings[9] = null
+285     else
+286      $al.Settings[9] = 1
+287     end
+288     
+289    else if $return == 'open.config'
+290     $menu.view = 7
+291     
+292    else if $return == 'product.all.on'
+293     $cmd.opt1 = 1
+294     $cmd.opt2 = 1
+295     gosub Global.Factory.Sub:
+296     
+297    else if $return == 'product.all.off'
+298     $cmd.opt1 = 1
+299     $cmd.opt2 = 2
+300     gosub Global.Factory.Sub:
+301     
+302    else if $return == 'resource.all.on'
+303     $cmd.opt1 = 2
+304     $cmd.opt2 = 1
+305     gosub Global.Factory.Sub:
+306     
+307    else if $return == 'resource.all.off'
+308     $cmd.opt1 = 2
+309     $cmd.opt2 = 2
+310     gosub Global.Factory.Sub:
+311     
+312    else if $return == 'open.dc.menu'
+313     $menu.view = 4
+314     $al.Settings[5] = $menu.view
+315     set global variable: name='al.LI.FDN.event' value=$al.Settings
+316     
+317    else if $return == 'switch.menu'
+318     if $menu.view == 1
+319      $menu.view = 2
+320     else
+321      $menu.view = 1
+322     end
+323     
+324    else if $return == 'master.reset'
+325     $txt = = read text: page=$PageID id=186
+326     $confirm = null  ->  get user input: type=Var/Boolean, title=$txt
+327     if $confirm == [TRUE]
+328       = null -> call script plugin.LI.FDN.Reset :
+329      return null
+330     end
+331    end
+332   end
+333  end
+334  
+335  return null
+336  
+337  
+338  Ware.User.Input.Sub:
+339  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+340  $ware.settings = $value  ->  get local variable: name=$pointer
+341  
+342  if $command == 'can.buy'
+343   if $ware.settings[3]
+344    $ware.settings[3] = null
+345   else
+346    $ware.settings[3] = 1
+347   end
+348   
+349  else if $command == 'surplus'
+350   if $ware.settings[7]
+351    $ware.settings[7] = null
+352   else
+353    $ware.settings[7] = 1
+354   end
+355   
+356  else
+357   
+358   if $cap
+359    $txt = = sprintf: pageid=$PageID textid=182, $ware, null, null, null, null
+360    $amount = null  ->  get user input: type=Var/Number, title=$txt
+361    if is datatyp[ $amount ] == DATATYPE_NULL
+362     endsub
+363    else
+364     if $amount >= 0
+365      if $command == 'remote.cap'
+366       $ware.settings[1] = $amount
+367      else if $command == 'maintain.cap'
+368       $ware.settings[2] = $amount
+369      else if $command == 'sell.cap'
+370       $ware.settings[5] = $amount
+371      end
+372     else
+373      if $command == 'remote.cap'
+374       $ware.settings[1] = null
+375      else if $command == 'maintain.cap'
+376       $ware.settings[2] = null
+377      else if $command == 'sell.cap'
+378       $ware.settings[5] = null
+379      end
+380     end
+381    end
+382   end
+383   
+384   if $trade
+385    $min = = get min price of ware $ware
+386    $min.txt = = convert number $min to string
+387    $avg = = get average price of ware $ware
+388    $avg.txt = = convert number $avg to string
+389    $max = = get max price of ware $ware
+390    $max.txt = = convert number $max to string
+391    
+392    $txt = = sprintf: pageid=$PageID textid=183, $min.txt, $avg.txt, $max.txt, null, null
+393    $amount = null  ->  get user input: type=Var/Number, title=$txt
+394    if not is datatyp[ $amount ] == DATATYPE_NULL
+395     if $amount >= $min AND $amount <= $max
+396      if $command == 'buy.at'
+397       $ware.settings[4] = $amount
+398      else if $command == 'sell.at'
+399       $ware.settings[6] = $amount
+400      end
+401     end
+402    end
+403   end
+404  end
+405  
+406  $value  ->  set local variable: name=$pointer value=$ware.settings
+407  endsub
+408  
+409  
+410  
+411  DC.Details.View.Sub:
+412  * Menu View 1 = DC Details
+413  START  = null -> call script plugin.LI.FDN.Menu.DC.Details_D :
+414  if $is.AP == [TRUE]
+415   $menu = null -> call script plugin.LI.FDN.Menu.AP.DC.Details : menu=$menu
+416  else
+417   $menu = null -> call script plugin.LI.FDN.Menu.DC.Details : menu=$menu
+418  end
+419  endsub
+420  
+421  
+422  Factory.List.View.Sub:
+423  * Menu View 2 = Factory List
+424  if $is.AP == [TRUE]
+425   $menu = null -> call script plugin.LI.FDN.Menu.AP.Factory.List : menu=$menu
+426  else
+427   if $factory.show.array == null
+428    $return.array = null -> call script plugin.LI.FDN.Menu.Factory.List : menu=$menu  factory.show.array=null
+429   else
+430    $return.array = null -> call script plugin.LI.FDN.Menu.Factory.List : menu=$menu  factory.show.array=$factory.show.array
+431   end
+432   $menu = $return.array[0]
+433   $factory.show.array = $return.array[1]
+434  end
+435  endsub
+436  
+437  
+438  Factory.Details.View.Sub:
+439  * Menu View 4 = Factory Details
+440  $menu = null -> call script plugin.LI.FDN.Menu.Factory.Details : menu=$menu  value=$value
+441  endsub
+442  
+443  
+444  Dock.Details.View.Sub:
+445  * Menu View 5 = Dock Details
+446  START  = null -> call script plugin.LI.FDN.Menu.Dock.Details_D : value=$value
+447  if $is.AP == [TRUE]
+448   $menu = null -> call script plugin.LI.FDN.Menu.AP.Dock.Details : menu=$menu  value=$value
+449  else
+450   $menu = null -> call script plugin.LI.FDN.Menu.Dock.Details : menu=$menu  value=$value
+451  end
+452  endsub
+453  
+454  
+455  Ware.Details.View.Sub:
+456  * Menu View 6 = Ware Details
+457  $menu = null -> call script plugin.LI.FDN.Menu.Ware.Details : menu=$menu  value=$value  ware=$ware
+458  endsub
+459  
+460  
+461  Config.View.Sub:
+462  * Menu View 6 = Ware Details
+463  $menu = null -> call script plugin.LI.FDN.Config.Menu : menu=$menu
+464  endsub
+465  
+466  
+467  Add.Ware.Sub:
+468  $txt = = read text: page=$PageID id=197
+469  $ware = null  ->  get user input: type=Var/Ware, title=$txt
+470  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+471  $ware.array = $value  ->  get local variable: name=$pointer
+472  if not $ware.array
+473   $amount = $value  ->  get amount of ware $ware in cargo bay
+474   if not $amount > 0
+475     = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=null  station=$value  action='create'
+476   end
+477  end
+478  endsub
+479  
+480  
+481  Regroom.Ware.Sub:
+482  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+483  $ware.array = $value  ->  get local variable: name=$pointer
+484  $virtual = $ware.array[0]
+485  
+486  if $command == 'to.virtual'
+487   $amount = $value  ->  get amount of ware $ware in cargo bay
+488   $virtual = $virtual + $amount
+489   $ware.array[0] = $virtual
+490   $remove = - $amount
+491    = $value  ->  add $remove units of $ware
+492  else
+493   $amount = $value  ->  get free amount of ware $ware in cargo bay
+494   if $virtual <= $amount
+495     = $value  ->  add $virtual units of $ware
+496    $ware.array[0] = 0
+497   else
+498     = $value  ->  add $amount units of $ware
+499    $virtual = $virtual - $amount
+500    $ware.array[0] = $virtual
+501   end
+502  end
+503  $value  ->  set local variable: name=$pointer value=$ware.array
+504  endsub
+505  
+506  
+507  Remove.Ware.Sub:
+508  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+509  $value  ->  set local variable: name=$pointer value=null
+510  $value  ->  remove product from factory or dock: $ware
+511  endsub
+512  
+513  
+514  Global.Factory.Sub:
+515  $s = size of array $factory.array
+516  while $s > 0
+517   dec $s =
+518   $factory = $factory.array[$s]
+519   $pointer = = read text: page=$PageID id=4001
+520   $settings.array = $factory  ->  get local variable: name=$pointer
+521   if $cmd.opt1 == 1
+522    if $cmd.opt2 == 1
+523     $settings.array[0] = 1
+524    else
+525     $settings.array[0] = null
+526    end
+527    
+528   else
+529    if $cmd.opt2 == 1
+530     $settings.array[1] = 1
+531    else
+532     $settings.array[1] = null
+533    end
+534   end
+535   $factory  ->  set local variable: name=$pointer value=$settings.array
+536  end
+537  endsub
+538  
+539  
+540  Menu.View.Header.Sub:
+541  $txt = = read text: page=$PageID id=110
+542  add custom menu heading to array $menu: title=$txt
+543  if $menu.view == 1
+544   $txt = = read text: page=$PageID id=112
+545  else if $menu.view == 2
+546   $txt = = read text: page=$PageID id=111
+547  else if $menu.view == 4
+548   $txt = $dc
+549  else if $menu.view == 5
+550   $txt = $value
+551  else if $menu.view == 6
+552   $txt = $value
+553  else if $menu.view == 7
+554   $txt = = read text: page=$PageID id=103
+555  end
+556  $pre.txt = = read text: page=$PageID id=114
+557  $txt = $pre.txt + $txt
+558  add custom menu item to array $menu: text=$txt returnvalue='switch.menu'
+559  add section to custom menu: $menu
+560  endsub
+561  
+562  
+563  Menu.View.Footer.Sub:
+564  if $menu.view == 1
+565   $txt = = read text: page=$PageID id=111
+566  else if $menu.view == 2
+567   $txt = = read text: page=$PageID id=112
+568  else if $menu.view == 7
+569   $txt = = read text: page=$PageID id=103
+570  else
+571   $txt = = read text: page=$PageID id=133
+572  end
+573  if $menu.view == 1 OR $menu.view == 2 OR $menu.view == 5
+574   $return = open custom info menu: title=$txt description=null option array=$menu maxoptions=2
+575  else
+576   $return = open custom menu: title=$txt description=null option array=$menu
+577  end
+578  endsub
+579  
+580  return null
+581  
+582  
+583  
+584  
+585  

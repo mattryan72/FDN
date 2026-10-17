@@ -1,0 +1,355 @@
+* Script: plugin.LI.FDN.Supply.Station  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  
+003  $al.Settings = get global variable: name='al.LI.FDN.event'
+004  if $al.Settings
+005   $PageID = $al.Settings[1]
+006   $debug = $al.Settings[5][0]
+007   $DebugID = 0 + $PageID
+008  end
+009  
+010  if $debug == [TRUE]
+011   $sector = [THIS]  ->  get sector
+012   $id = [THIS]  ->  get ID code
+013   $script = = get script name
+014  end
+015  
+016  $node.Array = [THIS] -> call script plugin.LI.FDN.Find.Supply.Node :
+017  skip if $node.Array
+018   return [FALSE]
+019  
+020  * ----
+021  if $debug == [TRUE]
+022   $txt.debug = '[' + $id + ']' + [THIS] + ';Node Array = ' + $node.Array
+023   gosub Debug.Sub:
+024  end
+025  * ----
+026  
+027  $s.pointer = = read text: page=$PageID id=4001
+028  
+029  $ret = [TRUE]
+030  $ware.Check.Array = = array alloc: size=0
+031  
+032  * Part of Complex check
+033  $station.Settings = [THIS]  ->  get local variable: name=$s.pointer
+034  $is.part.of.Complex = [FALSE]
+035  $parent.Check = $station.Settings[4]
+036  skip if $parent.Check == [THIS]
+037   $is.part.of.Complex = [TRUE]
+038  
+039  * ----
+040  if $debug == [TRUE]
+041   $txt.debug = '[' + $id + ']' + [THIS] + ';Is part of Complex =  ' + $is.part.of.Complex
+042   gosub Debug.Sub:
+043  end
+044  * ----
+045  
+046  $station.Array = = get station array: of race Player class/type=Station 2016
+047  
+048  $ware.Array = [THIS]  ->  get tradeable ware array from station
+049  $sw = size of array $ware.Array
+050  while $sw > 0
+051   dec $sw =
+052   $ware = $ware.Array[$sw]
+053   if [THIS]  ->  uses ware $ware as primary resource
+054    $temp.Ware = = array alloc: size=0
+055    
+056    append $ware to array $temp.Ware
+057    $current = [THIS]  ->  get amount of ware $ware in cargo bay
+058    
+059    * Complex Check
+060    if $is.part.of.Complex
+061     $keep = [THIS] -> call script plugin.LI.FDN.Complex.Check : ware=$ware
+062     if $current > $keep
+063      $current = 0
+064     else
+065      $current = $keep - $current
+066     end
+067    end
+068    
+069    $max = [THIS]  ->  get max amount of ware $ware that can be stored in cargo bay
+070    $per.cycle = = [THIS]  ->  get number of resources per cycle for ware $ware
+071    
+072    if $is.part.of.Complex
+073     append $current to array $temp.Ware
+074     $required = $current
+075    else
+076     append $per.cycle to array $temp.Ware
+077     $required = ( $per.cycle * 2 ) - $current
+078    end
+079    
+080    skip if $required < $max
+081     $required = $max
+082    
+083    * ----
+084    if $debug == [TRUE]
+085     $txt.debug = '[' + $id + ']' + [THIS] + ';Requires ' + $required + ' of ' + $ware
+086     gosub Debug.Sub:
+087    end
+088    * ----
+089    
+090    if $required > 0
+091     append $temp.Ware to array $ware.Check.Array
+092     gosub Supply.Ware.Sub:
+093    end
+094   end
+095   skip if not $sw == ( $sw / 10 ) * 10
+096     = wait 100 ms
+097  end
+098  
+099  gosub Supply.Check.Sub:
+100  
+101  return $ret
+102  
+103  
+104  Supply.Ware.Sub:
+105  $sn = size of array $node.Array
+106  while $sn > 0
+107   dec $sn =
+108   $node = $node.Array[$sn]
+109   
+110   
+111   if $debug == [TRUE]
+112    $n.id = $node  ->  get ID code
+113    $n.sector = $node  ->  get sector
+114    $jump = get jumps from sector $n.sector to sector $sector
+115   end
+116   
+117   * ----
+118   if $debug == [TRUE]
+119    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Array Position = ' + $sn
+120    gosub Debug.Sub:
+121   end
+122   * ----
+123   
+124   if not $node  ->  trades with ware $ware
+125     = $node  ->  add 1 units of $ware
+126     = $node  ->  add -1 units of $ware
+127    $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+128    $ware.Settings = = array alloc: size=6
+129    $temp = = array alloc: size=2
+130    append $temp to array $ware.Settings
+131    $node  ->  set local variable: name=$w.pointer value=$ware.Settings
+132    continue
+133   end
+134   
+135   $amt.at.Node = $node  ->  get amount of ware $ware in cargo bay
+136   
+137   * ----
+138   if $debug == [TRUE]
+139    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';' + $amt.at.Node + ' of ' + $ware + ' is in cargo bay'
+140    gosub Debug.Sub:
+141   end
+142   * ----
+143   
+144   if $amt.at.Node > 0
+145    if $amt.at.Node >= $required
+146      = [THIS]  ->  add $required units of $ware
+147     $remove = - $required
+148      = $node  ->  add $remove units of $ware
+149     
+150     * ----
+151     if $debug == [TRUE]
+152      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Removed ' + $remove + ' of ' + $ware
+153      gosub Debug.Sub:
+154      $txt.debug = '[' + $id + ']' + [THIS] + ';Received ' + $required + ' of ' + $ware
+155      gosub Debug.Sub:
+156     end
+157     * ----
+158     
+159     endsub
+160    else
+161     $required = $required - $amt.at.Node
+162      = [THIS]  ->  add $required units of $ware
+163     $remove = - $required
+164      = $node  ->  add $remove units of $ware
+165     
+166     * ----
+167     if $debug == [TRUE]
+168      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Removed ' + $remove + ' of ' + $ware
+169      gosub Debug.Sub:
+170      $txt.debug = '[' + $id + ']' + [THIS] + ';Received ' + $required + ' of ' + $ware
+171      gosub Debug.Sub:
+172     end
+173     * ----
+174     
+175    end
+176    
+177   end
+178   skip if not $sn == ( $sn / 5 ) * 5
+179     = wait 100 ms
+180  end
+181  endsub
+182  
+183  
+184  Supply.Check.Sub:
+185  * Now check to ensure all has been supplied
+186  $sw = size of array $ware.Check.Array
+187  while $sw > 0
+188   dec $sw =
+189   $ware = $ware.Check.Array[$sw][0]
+190   $required = $ware.Check.Array[$sw][1]
+191   $current = [THIS]  ->  get amount of ware $ware in cargo bay
+192   
+193   if $current < $required
+194    * --Bug fix - Node not calling Buy Ware - 27-08-2010 --*
+195    * ----
+196    if $debug == [TRUE]
+197     $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Buy ' + $ware
+198     gosub Debug.Sub:
+199    end
+200    * ----
+201    gosub Buy.Ware.Sub:
+202    
+203    $current = [THIS]  ->  get amount of ware $ware in cargo bay
+204    if $current < $required
+205     return [FALSE]
+206    else
+207     remove element from array $ware.Check.Array at index $sw
+208    end
+209    
+210   else
+211    remove element from array $ware.Check.Array at index $sw
+212   end
+213  end
+214  endsub
+215  
+216  
+217  Buy.Ware.Sub:
+218  $buy.amount = $required - $current
+219  
+220  $sn = size of array $node.Array
+221  while $sn > 0
+222   dec $sn =
+223   $node = $node.Array[$sn]
+224   
+225   if $debug == [TRUE]
+226    $n.id = $node  ->  get ID code
+227    $n.sector = $node  ->  get sector
+228    $jump = get jumps from sector $n.sector to sector $sector
+229   end
+230   
+231   $w.pointer = = sprintf: pageid=$PageID textid=4003, $ware, null, null, null, null
+232   $ware.Settings = $node  ->  get local variable: name=$w.pointer
+233   * ----
+234   if $debug == [TRUE]
+235    $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Ware Settings for ' + $ware + ' = ' + $ware.Settings
+236    gosub Debug.Sub:
+237   end
+238   * ----
+239   
+240   if $ware.Settings[1]
+241    $buy.at = $ware.Settings[6][0]
+242    
+243    * ----
+244    if $debug == [TRUE]
+245     $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Buy ' + $ware + ' at ' + $buy.at
+246     gosub Debug.Sub:
+247    end
+248    * ----
+249    
+250    $sector.buy.Array = = array alloc: size=0
+251    gosub Buy.Range.Sub:
+252    
+253    $ss = size of array $sector.buy.Array
+254    while $ss > 0
+255     dec $ss =
+256     $sec = $sector.buy.Array[$ss]
+257     
+258     * ----
+259     if $debug == [TRUE]
+260      $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Check Sector ' + $sec
+261      gosub Debug.Sub:
+262     end
+263     * ----
+264     
+265     $buy.Station = find station: product $ware with best price:  max.price=$buy.at, amount=$buy.amount, max.jumps=0, startsector=$sec, trader=null, exclude array=$station.Array
+266     if $buy.Station
+267      $relation = [THIS]  ->  get relation to object $buy.Station
+268      if not $relation == Foe
+269       $id = $buy.Station  ->  get ID code
+270       $price = $buy.Station  ->  get price of ware $ware
+271       
+272       $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$buy.Station x=null y=null z=null
+273       $drone  ->  set homebase to $node
+274       
+275        = $drone  ->  buy $buy.amount units of $ware
+276        = [THIS]  ->  add $buy.amount units of $ware
+277       $rem = - $buy.amount
+278        = $drone  ->  add $rem units of $ware
+279       $drone  ->  destruct: show no explosion=[TRUE]
+280       
+281       * ----
+282       if $debug == [TRUE]
+283        $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Ware' + $ware + ' Bought from ' + $buy.Station
+284        gosub Debug.Sub:
+285       end
+286       * ----
+287       endsub
+288      end
+289     end
+290     
+291     $buy.Station = find station sells: resource $ware with best price: max.price=$buy.at, amount=$buy.amount, max.jumps=0, startsector=$sec, trader=null, exclude array=$station.Array
+292     if $buy.Station
+293      $relation = [THIS]  ->  get relation to object $buy.Station
+294      if not $relation == Foe
+295       $id = $buy.Station  ->  get ID code
+296       $price = $buy.Station  ->  get price of ware $ware
+297       
+298       $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$buy.Station x=null y=null z=null
+299       $drone  ->  set homebase to $node
+300       
+301        = $drone  ->  buy $buy.amount units of $ware
+302        = [THIS]  ->  add $buy.amount units of $ware
+303       $rem = - $buy.amount
+304        = $drone  ->  add $rem units of $ware
+305       $drone  ->  destruct: show no explosion=[TRUE]
+306       
+307       * ----
+308       if $debug == [TRUE]
+309        $txt.debug = '[' + $jump + ']|[' + $n.id + ']' + $node + ';Ware' + $ware + ' Bought from ' + $buy.Station
+310        gosub Debug.Sub:
+311       end
+312       * ----
+313       endsub
+314      end
+315     end
+316     
+317     skip if not $ss == ( $ss / 10 ) * 10
+318       = wait 100 ms
+319    end
+320   end
+321  end
+322  endsub
+323  
+324  
+325  Buy.Range.Sub:
+326  $sector = $node  ->  get sector
+327  * Add all sectors within 5 jumps of Node
+328  $sector.Array = $sector  ->  find all sectors within 5 jumps: Only known sectors=[TRUE]
+329  $s = size of array $sector.Array
+330  while $s > 0
+331   dec $s =
+332   $sec = $sector.Array[$s]
+333   $adv.Sat = find ship: sector=$sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+334   if $adv.Sat
+335    append $sec to array $sector.buy.Array
+336   end
+337   skip if not $s == ( $s / 5 ) * 5
+338     = wait 100 ms
+339  end
+340  endsub
+341  
+342  Debug.Sub:
+343  $d.time = = playing time
+344  $d.time = = format time: $d.time
+345  $txt = $d.time + ';' + $script + ';' + $txt.debug
+346  write to log file $DebugID  append=[TRUE]  value=$txt
+347  endsub
+348  
+349  return null
+350  
+351  
+352  

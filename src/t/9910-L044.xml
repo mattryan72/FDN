@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<language id="44">
+<page id="17" title="" descr="">
+
+</page>
+
+<page id="9910" title="Freight Distribution Network" descr="Info Nom">
+
+  <t id="100">Logain Industries: \033GFDN\033X</t>
+  <t id="101">Logain Industries Menus</t>
+  <t id="102">FDN Main Menu</t>
+  <t id="103">FDN Config Menu</t>
+  <t id="104">Distribution Center Menu:</t>
+  <t id="105">Dock List Menu:</t>
+  <t id="106">Dock Details Menu:</t>
+  <t id="107">Supply Debug:</t>
+  <t id="108">Global Options:</t>
+  <t id="109">Auto Manage Factories</t>
+
+  <t id="110">Menu Options:</t>
+  <t id="111">Distribution Center</t>
+  <t id="112">Stations</t>
+  <t id="113">Docks</t>
+  <t id="114">\033YSwitch to:\033X </t>
+  <t id="115">\033GAvailable Distribution Center\033X:</t>
+  <t id="116">\033GAvailable Factories\033X:</t>
+  <t id="117">\033GAvailable Docks\033X:</t>
+  <t id="118">\033GSELECT\033X Distribution Centre to start</t>
+  <t id="119">\033RNo Available Factories found\033X</t>
+
+  <t id="120">\033RNo Available Docks found\033X</t>
+  <t id="121">Distribution Center Menu</t>
+  <t id="122"></t>
+  <t id="123">\033GAdd\033X Distribution Centre</t>
+  <t id="124">\033OChange\033X Distribution Centre</t>
+  <t id="125">Dynamic Menus:</t>
+  <t id="126">Debug settings:</t>
+  <t id="127">Master Reset:</t>
+  <t id="128">\033RMaster Reset\033X -  FDN will be returned to default</t>
+  <t id="129">\033GCurrent\033X Distribution Centre:</t>
+
+  <t id="130">Distribution Centre Details</t>
+  <t id="131">Factory Details</t>
+  <t id="132">Dock LDetails</t>
+  <t id="133">Details Menu</t>
+  <t id="134">%s [%s]</t>
+  <t id="135">show.sector.%s</t>L
+  <t id="136">FDN Enabled:</t>
+  <t id="137">Products:</t>
+  <t id="138">FDN Managed</t>
+  <t id="139">Resources:</t>
+
+  <t id="140">\033CPhysical/Virtual Storage:\033X </t>
+  <t id="141">\033RNo Wares currently held in storage\033X</t>
+  <t id="142">\033CRemote Cap:\033X</t>
+  <t id="143">\033CSell Cap:\033X</t>
+  <t id="144">\033CBuy At:\033X</t>
+  <t id="145">\033CSell At:\033X</t>
+  <t id="146">Wares:</t>
+  <t id="147">\033CMaintain:\033X</t>
+  <t id="148">\033G ON \033X</t>
+  <t id="149">\033R OFF \033X</t>
+
+  <t id="150">R</t>
+  <t id="151">\033GR\033X</t>
+  <t id="152">B</t>
+  <t id="153">\033GB\033X</t>
+  <t id="154">S</t>
+  <t id="155">\033GS\033X</t>
+  <t id="156">Unlimited</t>
+  <t id="157">Global Commands:</t>
+  <t id="158">\033GFDN\033X Manage Products</t>
+  <t id="159">\033GFDN\033X Manage Resources</t> 
+
+  <t id="160">Products Managed</t>
+  <t id="161">Resources Managed</t>
+  <t id="162">\033GProducts Managed\033X</t>
+  <t id="163">\033GResources Managed\033X</t>
+  <t id="164">Configuration Options:</t>
+  <t id="165">\033YOpen\033X</t>
+  <t id="166">\033RFDN\033X Manage Products</t>
+  <t id="167">\033RFDN\033X Manage Resources</t> 
+
+  <t id="170">Remote access past stock level:</t>
+  <t id="171">Maintain stock at level:</t>
+  <t id="172">Allow FDN to buy ware:</t>
+  <t id="173">Buy ware at/or below:</t>
+  <t id="174">Sell ware past stock level:</t>
+  <t id="175">Sell ware at/or above:</t>
+  <t id="176">Options:</t>
+  <t id="177">Transfer Stock to player owned Station or Ship</t>
+  <t id="178">Input amount to Move</t>
+  <t id="179">Settings:</t>
+
+  <t id="180">\033GAuto Manage\033X Factories is \033GON\033X</t>
+  <t id="181">\033GAuto Manage\033X Factories is \033ROFF\033X</t>
+  <t id="182">Input Level for %s</t>
+  <t id="183">Min: %s | Avg: %s | Max: %s</t>
+  <t id="184">Select Ship or Station:</t>
+  <t id="185">Pass Surplus to Distribution Centre:</t>
+  <t id="186">Confrim reset - All virtual wares will be lost</t>
+  <t id="187">\033CStock Control Options\033X:</t>
+  <t id="188">\033CStock Manage Options\033X:</t>
+  <t id="189">Move \033OVirtual\033X stock to Physical</t>
+
+  <t id="190">Move Physical stock to \033OVirtual\033X</t>
+  <t id="191">\033RRemove\033X Ware</t>
+  <t id="192">Selected destination %s is the same as the source - Request cancelled</t>
+  <t id="193"> %s of %s is not a valid value - Request cancelled</t>
+  <t id="194">Selected destination %s cannot accept %s - Request cancelled</t>
+  <t id="195">Ware Option:</t>
+  <t id="196">\033GAdd\033X Ware</t> 
+  <t id="197">Select Ware</t>
+  <t id="198">\033GShow\033X All</t>
+  <t id="199">\033RHide\033X All</t>
+
+  <t id="200">Sectors:</t>
+  <t id="201">\033CWare:\033X</t>
+  <t id="202">Cr: %s</t>
+
+  <t id="8">Laser:</t>
+  <t id="9">Shield:</t>
+  <t id="10">Missile:</t>
+  <t id="11">Energy:</t>
+  <t id="12">Natural:</t>
+  <t id="13">Bio:</t>
+  <t id="14">Food:</t>
+  <t id="15">Mineral:</t>
+  <t id="16">Tech:</t>
+  <t id="17">Ship Equipment:</t>
+  <t id="18">\033C%s\033X [%s] \033R-\033X</t>
+  <t id="19">\033C%s\033X [%s] \033G+\033X</t>
+
+  <t id="1000">List \033R-\033X</t>
+  <t id="1001">List \033G+\033X</t>
+  <t id="1002">\033CWares\033X \033R-\033X</t>
+  <t id="1003">\033CWares\033X \033G+\033X</t>
+
+  <t id="2000">FDN is tracking Stations over [%s] Sectors</t>
+  <t id="2001">FDN is tracking [%s] Docks</t>
+  <t id="2002">FDN is tracking [%s] Factories with [%s] Product and [%s] Resource FDN managed</t>
+
+  <t id="4000">FDN.Ware.%s</t>
+  <t id="4001">FDN.Settings</t>
+  <t id="4002">FDN.Show.Dock.List</t>
+  <t id="4003">FDN.Show.Dock</t>
+  <t id="4004">FDN.Show.DC</t>
+  <t id="4005">FDN.Show.Wares</t>
+  
+  <t id="5000">FDND.Ware.%s.%s</t>
+  <t id="5001">FDND.Credits.%s</t>
+  <t id="5002"></t>
+  <t id="5003"></t>
+  <t id="5004"></t>
+  <t id="5005"></t>
+
+  <t id="5006"></t>
+  <t id="5007"></t>
+  <t id="5008"></t>
+
+  <t id="9000">\033G%s\033X</t>
+  <t id="9001">\033R%s\033X</t>
+  <t id="9002">\033Y%s\033X</t>
+  <t id="9003">\033C%s\033X</t>
+  <t id="9004">\033O%s\033X</t>
+  <t id="9005">\033GON\033X</t>
+  <t id="9006">\033ROFF\033X</t>
+  <t id="9007">\033M%s\033X</t>
+
+
+</page>
+</language>

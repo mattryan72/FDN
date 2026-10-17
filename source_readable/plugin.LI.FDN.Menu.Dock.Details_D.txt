@@ -1,0 +1,156 @@
+* Script: plugin.LI.FDN.Menu.Dock.Details_D  (v1.0, engine 50)
+* Desc: FDNv8 - Dynamic updates for the Dock Details menu
+* Arg 0: value (Value) 'value'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script builds and updates the global refs that hold the updated values for
+004  * plugin.LI.FDN.Menu.DC.Details
+005  
+006  * Expected values:
+007  * - N/A the DC is recovered from the AL Plugin global variable
+008  
+009  * Returns values:
+010  * - N/A created and updateds global variables for dymanic menu
+011  
+012  * Version: 1.0
+013  * Date: 22/05/2012
+014  * Tested: 22/05/2012
+015  * -----------------------------------------------------------------------------------
+016  
+017  * Fetch values saved in the AL Plugin global variable:
+018  * - Page ID
+019  * - open.menu - this is used to check if the LI.FDN.Menu.Dock.Details is open
+020  * - is.dynamic - flags if the menu is dynamic
+021  * open.menu  - value is 5
+022  $al.Settings = get global variable: name='al.LI.FDN.event'
+023  if $al.Settings
+024   $PageID = $al.Settings[1]
+025   $open.menu = $al.Settings[5]
+026   $is.dynamic = $al.Settings[6][1]
+027  end
+028  * -----------------------------------------------------------------------------------
+029  
+030  * The ID code of the Dock is used as a reference in naming the global variable
+031  $id = $value  ->  get ID code
+032  * Get a list of tradeable wares for the Dock
+033  $ware.array = $value  ->  get tradeable ware array from station
+034  * -----------------------------------------------------------------------------------
+035  
+036  * Call the Sub which created the global variable used for the dynamic menu
+037  gosub Write.Menu.Global.Sub:
+038  * -----------------------------------------------------------------------------------
+039  
+040  * While loop which runs whilst the LI.FDN.Menu.Dock.Details menu is open
+041  * open.mene as stored in the AL Plugin global variable
+042  if $is.dynamic
+043   while [TRUE]
+044    * wait
+045     = wait randomly from 1000 to 5000 ms
+046    * -----------------------------------------------------------------------------------
+047    * If the checks in this section fail exit the while loop
+048    * Check FDN plugin status
+049    skip if $al.Settings[0]
+050     return null
+051    * -----------------------------------------------------------------------------------
+052    
+053    * Check if Dock menu is open - Value should be 1 and is set in plugin.LI.FDN.Main.Menu
+054    $open.menu = $al.Settings[5]
+055    skip if $open.menu == 5
+056     return null
+057   end
+058   * -----------------------------------------------------------------------------------
+059   
+060   * Call the Sub which updates the global variable used for the dynamic menu
+061   gosub Update.Menu.Global.Sub:
+062   * -----------------------------------------------------------------------------------
+063  end
+064  return null
+065  * -----------------------------------------------------------------------------------
+066  
+067  * This is the Sub which created the global variable used for the dynamic menu up
+068  * sorted.ware.array format [Ware Type][sorted Ware array for for the Ware Type]
+069  Write.Menu.Global.Sub:
+070  
+071  * credits
+072  $pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null
+073  $txt = = read text: page=$PageID id=146
+074  $temp.array = = array alloc: size=4
+075  $temp.array[0] = 1
+076  $temp.array[1] = $txt
+077  $temp.array[2] = -1
+078  $credits = $value  ->  get money
+079  $credits = = convert number $credits to string
+080  $credits = = sprintf: pageid=$PageID textid=202, $credits, null, null, null, null
+081  $temp.array[3] = $credits
+082  set global variable: name=$pointer value=$temp.array
+083  * -----------------------------------------------------------------------------------
+084  
+085  $s = size of array $ware.array
+086  while $s > 0
+087   dec $s =
+088   $ware = $ware.array[$s]
+089   * -----------------------------------------------------------------------------------
+090   
+091   * Calls script plugin.LI.FDN.Wares.Summary which returns a formated array
+092   * For the ware
+093   $ware.summary = [THIS] -> call script plugin.LI.FDN.Wares.Summary : station=$value  ware=$ware
+094   * -----------------------------------------------------------------------------------
+095   
+096   * Create and update the global variable for the dynamic menu
+097   * Dock ID code and Ware are used to create unique global variable
+098   $pointer = = sprintf: pageid=$PageID textid=5000, $id, $ware, null, null, null
+099   set global variable: name=$pointer value=$ware.summary
+100   * -----------------------------------------------------------------------------------
+101  end
+102  endsub
+103  * -----------------------------------------------------------------------------------
+104  
+105  * This is the Sub which update the global variable created by Write.Menu.Global.Sub
+106  Update.Menu.Global.Sub:
+107  
+108  * credits
+109  $pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null
+110  $array = get global variable: name=$pointer
+111  $credits = $value  ->  get money
+112  $credits = = convert number $credits to string
+113  $credits = = sprintf: pageid=$PageID textid=202, $credits, null, null, null, null
+114  $array[3] = $credits
+115  * -----------------------------------------------------------------------------------
+116  
+117  $s = size of array $ware.array
+118  while $s > 0
+119   dec $s =
+120   $ware = $ware.array[$s]
+121   * -----------------------------------------------------------------------------------
+122   
+123   * Calls script plugin.LI.FDN.Wares.Summary which returns a formated array
+124   * For the ware
+125   $ware.summary = [THIS] -> call script plugin.LI.FDN.Wares.Summary : station=$value  ware=$ware
+126   * -----------------------------------------------------------------------------------
+127   
+128   * This is the section that update the values held in the global variable
+129   * FIRST - extract the values from the ware.summary array
+130   $txt = $ware.summary[0][1]
+131   $maintain = $ware.summary[0][3]
+132   $sell.cap = $ware.summary[0][5]
+133   $sell.at = $ware.summary[0][7]
+134   $storage = $ware.summary[0][9]
+135   * -----------------------------------------------------------------------------------
+136   
+137   * SECOND - Upadate the values in the global variable
+138   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $ware, null, null, null
+139   $ware.detail.array = get global variable: name=$pointer
+140   $ware.detail.array[0][1] = $txt
+141   $ware.detail.array[0][3] = $maintain
+142   $ware.detail.array[0][5] = $sell.cap
+143   $ware.detail.array[0][7] = $sell.at
+144   $ware.detail.array[0][9] = $storage
+145   * -----------------------------------------------------------------------------------
+146  end
+147  endsub
+148  * -----------------------------------------------------------------------------------
+149  return null
+150  
+151  
+152  

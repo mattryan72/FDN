@@ -1,0 +1,144 @@
+* Script: plugin.LI.FDN.Sell.Ware  (v1.0, engine 50)
+* Desc: FDN v8 - Supply Factory logic
+* Arg 0: dock (Value) 'dock'
+* Arg 1: ware (Value) 'ware'
+* Arg 2: amount (Value) 'amount'
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script is called by LI.FDN.Supply.Factory
+004  * It is used to buy a ware needed for production
+005  
+006  * Expected values:
+007  * - Factory
+008  * - Ware
+009  * - Amount
+010  
+011  * Returns values:
+012  * - N/A
+013  
+014  * To Do - Debug
+015  
+016  * Version: 1.0
+017  * Date: 22/05/2012
+018  * Tested: 22/05/2012
+019  * -----------------------------------------------------------------------------------
+020  
+021  * Fetch values saved in the AL Plugin global variable:
+022  * - DC
+023  $script = = get script name
+024  $al.Settings = get global variable: name='al.LI.FDN.event'
+025  if $al.Settings
+026   $PageID = $al.Settings[1]
+027   $DebugID = 0 + $PageID
+028   $exclude.array = $al.Settings[8]
+029  else
+030   return null
+031  end
+032  * -----------------------------------------------------------------------------------
+033  
+034  $sector.array = null -> call script plugin.LI.FDN.Sector.Array : search=3
+035  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+036  $ware.settings = $dock  ->  get local variable: name=$pointer
+037  $sell.at = $ware.settings[6]
+038  * -----------------------------------------------------------------------------------
+039  
+040  $s = size of array $sector.array
+041  while $s > 0
+042   dec $s =
+043   
+044   $ware.settings = $dock  ->  get local variable: name=$pointer
+045   $virtual.stock = $ware.settings[0]
+046   $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
+047   $stock = $virtual.stock + $physical.stock
+048   $sell = $ware.settings[5]
+049   $amount = $stock - $sell
+050   * -----------------------------------------------------------------------------------
+051   
+052   if $al.Settings[7]
+053    $txt.debug = 'Dock Virtual Stock ' + $virtual.stock + ' for ' + $ware
+054    gosub Debug.Sub:
+055    $txt.debug = 'Dock Physical Stock ' + $physical.stock + ' for ' + $ware
+056    gosub Debug.Sub:
+057    $txt.debug = 'Has ' + $amount + ' of ' + $ware + ' free to sell'
+058    gosub Debug.Sub:
+059   end
+060   * -----------------------------------------------------------------------------------
+061   
+062   if not $amount > 0
+063    return null
+064   end
+065   
+066   $sector = $sector.array[$s]
+067   $sell.Station = find station: resource $ware with best price: min.price=$sell.at, amount=null, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
+068   * -----------------------------------------------------------------------------------
+069   
+070   if $sell.Station
+071    $relation = $dock  ->  get relation to object $sell.Station
+072    if not $relation == Foe
+073     
+074     $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$sell.Station x=null y=null z=null
+075     $drone  ->  set homebase to $dock
+076     $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+077     * -----------------------------------------------------------------------------------
+078     
+079     if $amount > $drone.max
+080      $sell.amount = $drone.max
+081      
+082      if $al.Settings[7]
+083       $txt.debug = 'Drone has ' + $drone.max + ' of ' + $ware + ' to sell'
+084       gosub Debug.Sub:
+085      end
+086     else
+087      $sell.amount = $amount
+088      
+089      if $al.Settings[7]
+090       $txt.debug = 'Drone has ' + $sell.amount + ' of ' + $ware + ' to sell'
+091       gosub Debug.Sub:
+092      end
+093     end
+094     * -----------------------------------------------------------------------------------
+095     
+096      = $drone  ->  add $sell.amount units of $ware
+097     $sold = $drone  ->  sell $sell.amount units of $ware
+098     $drone  ->  destruct: show no explosion=[TRUE]
+099     * -----------------------------------------------------------------------------------
+100     if $sold > 0
+101      
+102      if $al.Settings[7]
+103       $txt.debug = 'Sold ' + $sold + ' for ' + $ware
+104       gosub Debug.Sub:
+105      end
+106      
+107      $amount = $amount - $sold
+108      * -----------------------------------------------------------------------------------
+109      if $al.Settings[7]
+110       $txt.debug = 'To sell amount is now ' + $amount + ' for ' + $ware
+111       gosub Debug.Sub:
+112      end
+113      
+114       = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$sold  station=$dock  action='remove'
+115      * -----------------------------------------------------------------------------------
+116     end
+117    end
+118    
+119   end
+120   
+121   * wait
+122    = wait randomly from 500 to 1000 ms
+123   * -----------------------------------------------------------------------------------
+124  end
+125  return null
+126  * -----------------------------------------------------------------------------------
+127  
+128  * Debug Massage handling
+129  Debug.Sub:
+130  $d.time = = playing time
+131  $d.time = = format time: $d.time
+132  $txt = $d.time + ';' + $script + ';' + $dock + ';' + $txt.debug
+133  write to log file $DebugID  append=[TRUE]  value=$txt
+134  endsub
+135  * -----------------------------------------------------------------------------------
+136  return null
+137  
+138  

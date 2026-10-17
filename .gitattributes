@@ -1,0 +1,9 @@
+*.xml text eol=crlf
+*.txt text eol=crlf
+*.md text eol=lf
+*.py text eol=lf
+*.spk binary
+*.zip binary
+*.cat binary
+*.dat binary
+*.pck binary

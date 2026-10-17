@@ -1,0 +1,80 @@
+* Script: plugin.LI.FDN.Supply.Dock.Check  (v1.0, engine 50)
+* Desc: FDNv8 - Checks dock to be supplied
+
+001  * Author: Logain Abler
+002  * -----------------------------------------------------------------------------------
+003  * This script is called by LI.FDN.Menu.Supply.Start script if there is a valid
+004  * dock array stored in the AL Plugin variable
+005  * The script contains the checks made on the docks before calling LI.FDN.Menu.Dock.Factory
+006  * The script will also remove any non-existing Docks from the stored array
+007  
+008  * Expected values:
+009  * - N/A the Factory array is stored in the AL Plugin variable
+010  
+011  * Returns values:
+012  * - N/A
+013  
+014  * To Do - Debug
+015  
+016  * Version: 1.0
+017  * Date: 22/05/2012
+018  * Tested: 22/05/2012
+019  * -----------------------------------------------------------------------------------
+020  
+021  * Fetch values saved in the AL Plugin global variable:
+022  * - dock array - holds all the know player factories
+023  $script = = get script name
+024  $al.Settings = get global variable: name='al.LI.FDN.event'
+025  if $al.Settings
+026   $PageID = $al.Settings[1]
+027   $DebugID = 0 + $PageID
+028   $dc = $al.Settings[2]
+029   $dock.array = $al.Settings[4]
+030   $debug = $al.Settings[7]
+031  else
+032   return null
+033  end
+034  * -----------------------------------------------------------------------------------
+035  
+036  $s = size of array $dock.array
+037  
+038  * if DC
+039  if $dc  ->  exists
+040   * this call the supply script for the dc which kicks off the sell part for the dc
+041   START  = null -> call script plugin.LI.FDN.Supply.Dock : dock=$dc  flag=1
+042  end
+043  
+044  while $s > 0
+045   dec $s =
+046   $dock = $dock.array[$s]
+047   if $dock  ->  exists
+048    * -----------------------------------------------------------------------------------
+049    
+050    * Call plugin.LI.FDN.Supply.Dock:
+051    START  = null -> call script plugin.LI.FDN.Supply.Dock : dock=$dock  flag=null
+052    * ----------------------------------------------------------------------------------
+053    
+054   else
+055    * if factory does not exist remove from array
+056    remove element from array $dock.array at index $s
+057    * -----------------------------------------------------------------------------------
+058   end
+059   * -----------------------------------------------------------------------------------
+060   
+061    = wait randomly from 1000 to 2000 ms
+062   * -----------------------------------------------------------------------------------
+063  end
+064  return null
+065  * -----------------------------------------------------------------------------------
+066  
+067  * Debug Massage handling
+068  Debug.Sub:
+069  $d.time = = playing time
+070  $d.time = = format time: $d.time
+071  $txt = $d.time + ';' + $script + ';' + $txt.debug
+072  write to log file $DebugID  append=[TRUE]  value=$txt
+073  endsub
+074  * -----------------------------------------------------------------------------------
+075  return null
+076  
+077  

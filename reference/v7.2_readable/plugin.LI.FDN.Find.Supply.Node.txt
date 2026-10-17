@@ -1,0 +1,171 @@
+* Script: plugin.LI.FDN.Find.Supply.Node  (v7, engine 44)
+* Desc: 
+
+001  * Auther: Logain Abler
+002  * --------------------
+003  
+004  * Version 2
+005  * This script finds and returns all FDN Nodes in INN range of the caller.
+006  * It is used by all the supply scripts
+007  * By default it will place any linked Node last so it is called first.
+008  
+009  * Used by scripts:
+010  * plugin.LI.FDN.Supply.Dock
+011  * plugin.LI.FDN.Supply.Station
+012  * plugin.LI.FDN.Supply.Ship
+013  * plugin.LI.FDN.Supply.Node
+014  
+015  
+016  * Al Settings
+017  $al.Settings = get global variable: name='al.LI.FDN.event'
+018  if $al.Settings
+019   $PageID = $al.Settings[1]
+020   $node.Array = $al.Settings[2]
+021  end
+022  
+023  
+024  $sector = [THIS]  ->  get sector
+025  $sub = = [THIS]  ->  get subtype
+026  
+027  * Is the caller a Node - Node distance is 8 other is 5
+028  if find $sub in array: $node.Array
+029   $distance = 8
+030  else
+031   $distance = 5
+032  end
+033  
+034  $n.pointer = = read text: page=$PageID id=4000
+035  
+036  * Get Linked Node based on Caller Class
+037  if [THIS]  ->  is of class Dock 2007
+038   $d.pointer = = read text: page=$PageID id=4000
+039   $dock.Settings = [THIS]  ->  get local variable: name=$d.pointer
+040   $linked.node = $dock.Settings[5]
+041  else
+042   $s.pointer = = read text: page=$PageID id=4001
+043   $station.Settings = [THIS]  ->  get local variable: name=$s.pointer
+044   $linked.node = $station.Settings[3]
+045  end
+046  
+047  
+048  * Find all Docks i Range
+049  $flags = [Find.Multiple]
+050  $dock.Array = find station in galaxy: startsector=$sector class or type=Dock 2007 race=Player flags=$flags refobj=null serial=null max.jumps=$distance num=100
+051  $s = size of array $dock.Array
+052  $temp.Array = = array alloc: size=0
+053  
+054  
+055  * If Dock is a Node
+056  while $s > 0
+057   dec $s =
+058   $dock = $dock.Array[$s]
+059   $dock.sub = = $dock  ->  get subtype
+060   if find $dock.sub in array: $node.Array
+061    $n.pointer = = read text: page=$PageID id=4000
+062    $node.Settings = $dock  ->  get local variable: name=$n.pointer
+063    if $node.Settings[0]
+064     $dock.sec = $dock  ->  get sector
+065     * Check if in Adv Sat coverage
+066     $adv.Sat = find ship: sector=$dock.sec class or type=Advanced Satellite (object class) race=Player flags=null refobj=null maxdist=null maxnum=null refpos=null
+067     if $adv.Sat
+068      append $dock to array $temp.Array
+069     end
+070    end
+071   end
+072  end
+073  
+074  
+075  * Find All Nodes within Range of first search
+076  $s = size of array $temp.Array
+077  while $s > 0
+078   dec $s =
+079   $node = $temp.Array[$s]
+080   $sec = $node  ->  get sector
+081   $nodes.in.range.Array = $node -> call script plugin.LI.FDN.Find.INN : sector=$sec
+082   $sr = size of array $nodes.in.range.Array
+083   while $sr > 0
+084    dec $sr =
+085    $node.in.range = $nodes.in.range.Array[$sr]
+086    $n.pointer = = read text: page=$PageID id=4000
+087    $node.Settings = $node.in.range  ->  get local variable: name=$n.pointer
+088    if $node.Settings[0]
+089     skip if find $node.in.range in array: $temp.Array
+090      append $node.in.range to array $temp.Array
+091    end
+092   end
+093  end
+094  
+095  
+096  * Sort results by jump distance
+097  $temp2.Array = = sort array $temp.Array
+098  $s = size of array $temp2.Array
+099  $sort.Array = = array alloc: size=$s
+100  $cnt = 0
+101  while $cnt < $s
+102   $node = $temp2.Array[$cnt]
+103   $node.Sec = $node  ->  get sector
+104   $jump = get jumps from sector $node.Sec to sector $sector
+105   $sort.Array[$cnt] = $jump
+106   inc $cnt =
+107  end
+108  $return.Array = = sort array: data=$temp2.Array sort values=$sort.Array
+109  $return.Array = reverse array $return.Array
+110  
+111  
+112  * Part of the linked node check
+113  $found = [FALSE]
+114  if $linked.node  ->  exists
+115   gosub Linked.Node.Check:
+116   * If found add to end of array
+117   if $found
+118    append $linked.node to array $return.Array
+119   else
+120    * If not found assign last array element as linked node
+121    gosub Link.node:
+122   end
+123  else
+124   * If not exist assign last array element as linked no]de
+125   gosub Link.node:
+126  end
+127  
+128  $s = size of array $return.Array
+129  if $s > 0
+130   return $return.Array
+131  else
+132   return null
+133  end
+134  
+135  
+136  * This sub checks the search resultd for the linked Node and removes
+137  Linked.Node.Check:
+138  $s = size of array $return.Array
+139  while $s > 0
+140   dec $s =
+141   $node = $return.Array[$s]
+142   if $node == $linked.node
+143    $found = [TRUE]
+144    remove element from array $return.Array at index $s
+145    endsub
+146   end
+147  end
+148  endsub
+149  
+150  
+151  Link.node:
+152  $s = size of array $return.Array
+153  dec $s =
+154  $new.link = $return.Array[$s]
+155  if [THIS]  ->  is of class Dock 2007
+156   $dock.Settings[5] = $new.link
+157   [THIS]  ->  set local variable: name=$d.pointer value=$dock.Settings
+158  else
+159   $station.Settings[3] = $new.link
+160   [THIS]  ->  set local variable: name=$s.pointer value=$station.Settings
+161  end
+162  endsub
+163  
+164  return null
+165  
+166  
+167  
+168  
