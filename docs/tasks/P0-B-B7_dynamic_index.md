@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~6,536 tokens when built
+- Estimated size: ~6,583 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B7_dynamic_index.md`
 - Save the answer as: `notes/P0-B-B7.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B7 (medium) Menu.Dock.Details_D 26; Config.Menu 172; Main.Menu 261-266. The dock updater reads `is.dynamic[1]`, but the Config 'Dock Details Menu' toggle flips [2], so the toggle does nothing. Fix direction: use index 2 everywhere.
+- B7 (medium, confirmed in P0-B) Menu.Dock.Details_D L026 reads `$al.Settings[6][1]` but must read `[6][2]`. Config.Menu L172 and Main.Menu's 'dynamic.dock' handler (L261-266) already use [2]. 'dynamic.dock.list' (Main.Menu L268-274) toggles [1] for the removed dock-list UI (its Config row L151-164 is commented out); the handlers are NOT swapped. Fix: one line in Menu.Dock.Details_D, nothing else.
 
 ### Global `al.LI.FDN.event` settings array (v8.04 meanings, from REFERENCE A / ANALYSIS 1.3)
 | Idx | v8.04 meaning | Written by (per analysis) |

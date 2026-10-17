@@ -25,13 +25,13 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 |---|---|
 | B1 | confirmed in P0-A; P0-B-B1 (optional), P1-01, P1-02 |
 | B2 | confirmed in P0-A; P0-B-B2 (optional), P1-04 |
-| B3 | P0-B-B3, P1-01, P1-02, P1-03, P1-06 |
-| B4 | P0-B-B4, P0-C1 (test), P1-05, P1-07a |
+| B3 | confirmed in P0-B; P1-01, P1-02, P1-03, P1-06 |
+| B4 | partly confirmed in P0-B (needs C1 T1); P1-05, P1-07a |
 | B5 | needs your decision; P1-04 keeps -1 with a TODO, P4-04 has the optional sweep |
 | B6 | P1-12, P4-03 |
-| B7 | P0-B-B7, P1-10a |
+| B7 | confirmed in P0-B (one-line fix); P1-10a |
 | B8 | P1-09a, P1-10a, P1-10b, P3-09 |
-| B9 | P0-B-B9, P1-11 |
+| B9 | confirmed in P0-B; P0-C1 T8 (regex test), P1-11 |
 | B10 | P2-06 (split into Scan + Sectors) |
 | B11 | P1-03, P2-11a/b |
 | B12 | P1-05, P1-07a/b |
@@ -49,32 +49,32 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 | [P0-A](P0-A_data_dictionary.md) | Check the saved-data dictionary against the code | no | 5,804 |
 | [P0-B-B1](P0-B-B1_lock_collision.md) | B1: is the factory-run lock really broken? | no | 5,389 |
 | [P0-B-B2](P0-B-B2_create_null_pointer.md) | B2: does action='create' write the record under a null name? | no | 4,123 |
-| [P0-B-B3](P0-B-B3_dc_owner_checks.md) | B3: missing DC / owner checks | no | 7,901 |
-| [P0-B-B4](P0-B-B4_null_sell_cap.md) | B4: can a missing record make FDN sell all stock? | no | 5,575 |
-| [P0-B-B7](P0-B-B7_dynamic_index.md) | B7: dock dynamic toggle uses the wrong index | no | 6,536 |
-| [P0-B-B9](P0-B-B9_reset_regex.md) | B9: master reset regex and scope | no | 2,675 |
-| [P0-C1](P0-C1_semantics_tests.md) | Write tiny test scripts for MSCI behaviour (tests 1-4 and engine version) | yes | 4,120 |
+| [P0-B-B3](P0-B-B3_dc_owner_checks.md) | B3: missing DC / owner checks | no | 8,011 |
+| [P0-B-B4](P0-B-B4_null_sell_cap.md) | B4: can a missing record make FDN sell all stock? | no | 5,657 |
+| [P0-B-B7](P0-B-B7_dynamic_index.md) | B7: dock dynamic toggle uses the wrong index | no | 6,583 |
+| [P0-B-B9](P0-B-B9_reset_regex.md) | B9: master reset regex and scope | no | 2,720 |
+| [P0-C1](P0-C1_semantics_tests.md) | Write tiny test scripts for MSCI behaviour (tests 1-4, engine version, regex) | yes | 4,234 |
 | [P0-C2](P0-C2_drone_tests.md) | Write test scripts for the temporary trade drone (tests 5 and 6) | yes | 4,260 |
-| [P0-D](P0-D_changelog_draft.md) | Draft the v9.01 CHANGELOG skeleton | no | 2,329 |
+| [P0-D](P0-D_changelog_draft.md) | Draft the v9.01 CHANGELOG skeleton | no | 2,437 |
 
 ## Phase 1: bug fixes in place
 
 | Card | What | Code? | Tokens |
 |---|---|---|---|
-| [P1-01](P1-01_Supply.Start_B1_B3.md) | Supply.Start: real run-lock (B1), DC check (B3), slower scan (P1) | yes | 4,682 |
-| [P1-02](P1-02_Supply.Factory.Check_B1_B13.md) | Supply.Factory.Check: lock release (B1), no reverse array (B13), owner check (B3) | yes | 5,204 |
-| [P1-03](P1-03_Supply.Factory_B3_B11.md) | Supply.Factory: no lost product (B3), no duplicate buys (B11) | yes | 4,927 |
+| [P1-01](P1-01_Supply.Start_B1_B3.md) | Supply.Start: real run-lock (B1), DC check (B3), slower scan (P1) | yes | 4,793 |
+| [P1-02](P1-02_Supply.Factory.Check_B1_B13.md) | Supply.Factory.Check: lock release (B1), no reverse array (B13), owner check (B3) | yes | 5,314 |
+| [P1-03](P1-03_Supply.Factory_B3_B11.md) | Supply.Factory: no lost product (B3), no duplicate buys (B11) | yes | 5,069 |
 | [P1-04](P1-04_Update.Ware_B2.md) | Update.Ware: build the record name before 'create' (B2) | yes | 4,902 |
-| [P1-05](P1-05_Supply.Dock_B4_B12.md) | Supply.Dock: safe sell cap (B4), re-check after waits (B12) | yes | 5,222 |
-| [P1-06](P1-06_Supply.Dock.Check_B3.md) | Supply.Dock.Check: drop dead or lost docks (B3) | yes | 3,839 |
-| [P1-07a](P1-07a_Sell.Ware_B4_B12_B15.md) | Sell.Ware: guard records, re-check, safer drone (B4, B12, B15) | yes | 5,035 |
+| [P1-05](P1-05_Supply.Dock_B4_B12.md) | Supply.Dock: safe sell cap (B4), re-check after waits (B12) | yes | 5,307 |
+| [P1-06](P1-06_Supply.Dock.Check_B3.md) | Supply.Dock.Check: drop dead or lost docks (B3) | yes | 3,949 |
+| [P1-07a](P1-07a_Sell.Ware_B4_B12_B15.md) | Sell.Ware: guard records, re-check, safer drone (B4, B12, B15) | yes | 5,125 |
 | [P1-07b](P1-07b_Buy.Ware_B12_B15.md) | Buy.Ware: re-check, clamp, safer drone (B12, B15) | yes | 4,964 |
 | [P1-08](P1-08_al.event_B14_B16.md) | al.LI.FDN.event: START the scheduler (B14), schema version (B16) | yes | 3,502 |
 | [P1-09a](P1-09a_Main.Menu_B8_B24.md) | Main.Menu: one updater per view (B8), remove dead view-3 code (B24) | yes | 4,943 |
 | [P1-09b](P1-09b_Main.Menu_B18_B19_B26.md) | Main.Menu: safe ware edits (B18, B19), confirm Remove Ware (B26) | yes | 5,287 |
-| [P1-10a](P1-10a_Dock.Details_D_B7_B8.md) | Menu.Dock.Details_D: read index 2 (B7), exit on new token (B8) | yes | 5,024 |
+| [P1-10a](P1-10a_Dock.Details_D_B7_B8.md) | Menu.Dock.Details_D: read index 2 (B7), exit on new token (B8) | yes | 5,121 |
 | [P1-10b](P1-10b_DC.Details_D_B8.md) | Menu.DC.Details_D: first-draw rows and token exit (B8) | yes | 5,067 |
-| [P1-11](P1-11_Reset_B9.md) | Reset: exact regex and safe scope (B9) | yes | 4,027 |
+| [P1-11](P1-11_Reset_B9.md) | Reset: exact regex and safe scope (B9) | yes | 4,117 |
 | [P1-12](P1-12_Setup_B6.md) | Setup: guard the Plugin Configuration call (B6) | yes | 3,445 |
 | [P1-13a](P1-13a_Move.Ware_B20.md) | Move.Ware: small fix B20 | yes | 4,541 |
 | [P1-13b](P1-13b_Menu.Ware.Details_B21.md) | Menu.Ware.Details: small fix B21 | yes | 6,037 |
@@ -141,7 +141,7 @@ If a card is out of date (for example a script grew a lot in Phase 1), edit the 
 |---|---|---|---|
 | [P5-01](P5-01_test_plan.md) | Write the v9.01 test checklist | no | 1,747 |
 | [P5-02](P5-02_version_bumps.md) | Version bump list | no | 1,652 |
-| [P5-03](P5-03_readme.md) | Write the readme (forum BBCode and Markdown) | no | 2,321 |
+| [P5-03](P5-03_readme.md) | Write the readme (forum BBCode and Markdown) | no | 2,429 |
 | [P5-04](P5-04_spk_spec.md) | Plugin Manager package spec | no | 1,670 |
-| [P5-05](P5-05_final_changelog.md) | Final CHANGELOG for v9.01 | no | 2,087 |
-| [P5-06](P5-06_forum_post.md) | Forum post for the FDN thread | no | 2,075 |
+| [P5-05](P5-05_final_changelog.md) | Final CHANGELOG for v9.01 | no | 2,195 |
+| [P5-06](P5-06_forum_post.md) | Forum post for the FDN thread | no | 2,183 |

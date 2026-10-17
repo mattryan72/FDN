@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~5,575 tokens when built
+- Estimated size: ~5,657 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B4_null_sell_cap.md`
 - Save the answer as: `notes/P0-B-B4.md`
 
@@ -16,7 +16,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B4 (high, verify) Supply.Dock 146-156 (Sell.Ware.Sub); Sell.Ware 44-49. If a ware has no record, `$sell = null`, and `null >= 0` is probably TRUE in MSCI (null acts as 0). Sell.Ware then computes amount = stock - null = stock and sells the whole stock. Records are only created when a menu shows the ware. Fix direction: skip when the record is null; sell cap active only if DATATYPE_INT and >= 0.
+- B4 (high, partly confirmed in P0-B; depends on test C1 T1) Supply.Dock 145-158 (Sell.Ware.Sub); Sell.Ware 44-49 (and 36-37, same exposure). If a ware has no record, `$sell = null`; if `null >= 0` is TRUE in MSCI, Sell.Ware computes amount = stock - null = stock and sells the whole stock. Records are also created by Update.Ware's 'add' path (L052 gosub Add.Ware.Sub) when stock is added to a dock with no record, but the explicit action='create' calls (Supply.Dock L100, Main.Menu L475) do nothing because of B2, so the DC record Supply.Dock L098-102 thinks it created can still be missing. Fix direction: skip when the record is null; sell cap active only if DATATYPE_INT and >= 0.
 
 ## Key facts
 

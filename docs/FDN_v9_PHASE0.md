@@ -28,11 +28,13 @@
 | `P0-B-B4_null_sell_cap` | B4 | `Supply.Dock`, `Sell.Ware` |
 | `P0-B-B7_dynamic_index` | B7 | `Menu.Dock.Details_D`, `Config.Menu`, a Main.Menu range |
 | `P0-B-B9_reset_regex` | B9 | `Reset` |
-| `P0-C1_semantics_tests` | Tiny test scripts T1-T4 and T7 (null compare, reverse array, array references, destroyed objects, engine version) | primer + `Supply.Start` as a syntax example |
+| `P0-C1_semantics_tests` | Tiny test scripts T1-T4, T7 and T8 (null compare, reverse array, array references, destroyed objects, engine version, regex `^` / `\.` support) | primer + `Supply.Start` as a syntax example |
 | `P0-C2_drone_tests` | Test scripts T5-T6 for the trade drone (create ship checks, does destruct fire signals) | primer + the drone lines of `Buy.Ware` / `Sell.Ware` |
 | `P0-D_changelog_draft` | Drafts the v9.01 CHANGELOG skeleton | `CHANGELOG.md` |
 
 **Progress:** P0-A done 2026-10-17 (checked; see `notes/P0-A_findings.md`). It confirmed B1 and B2, so cards P0-B-B1 and P0-B-B2 are optional now; it also corrected the [11] range and found B29.
+
+**Progress:** P0-B done 2026-10-17 for B3, B4, B7 and B9 (checked; see `notes/P0-B_findings.md`): B3, B7 and B9 confirmed; B4 partly confirmed and waits on test C1 T1 (`null >= 0`). The B7 fix is one line. C1 now also has T8 (does X3 regex support `^` and `\.`?) for the B9 fix.
 
 You run the test scripts and record the log results in `notes/NOTES_semantics.md`. Check every answer with `docs/CHECKING_ANSWERS.md`.
 

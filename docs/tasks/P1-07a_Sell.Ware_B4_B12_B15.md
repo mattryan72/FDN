@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~5,035 tokens when built
+- Estimated size: ~5,125 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-07a_Sell.Ware_B4_B12_B15.md`
 - Save the answer as: `notes/P1-07a.md`
 
@@ -17,7 +17,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
-- B4 (high, verify) Supply.Dock 146-156 (Sell.Ware.Sub); Sell.Ware 44-49. If a ware has no record, `$sell = null`, and `null >= 0` is probably TRUE in MSCI (null acts as 0). Sell.Ware then computes amount = stock - null = stock and sells the whole stock. Records are only created when a menu shows the ware. Fix direction: skip when the record is null; sell cap active only if DATATYPE_INT and >= 0.
+- B4 (high, partly confirmed in P0-B; depends on test C1 T1) Supply.Dock 145-158 (Sell.Ware.Sub); Sell.Ware 44-49 (and 36-37, same exposure). If a ware has no record, `$sell = null`; if `null >= 0` is TRUE in MSCI, Sell.Ware computes amount = stock - null = stock and sells the whole stock. Records are also created by Update.Ware's 'add' path (L052 gosub Add.Ware.Sub) when stock is added to a dock with no record, but the explicit action='create' calls (Supply.Dock L100, Main.Menu L475) do nothing because of B2, so the DC record Supply.Dock L098-102 thinks it created can still be missing. Fix direction: skip when the record is null; sell cap active only if DATATYPE_INT and >= 0.
 - B12 (medium) Supply.Dock 37-45, 56-137; Sell.Ware 41-124; Buy.Ware 49-111. Loops `wait` but never re-check that the dock, factory or DC still exists or is player-owned after the wait. Fix: re-validate after each wait.
 - B15 (medium) Sell.Ware 74-98; Buy.Ware 74-80. The temporary 'Argon Mercury Super Freighter XL' trade drone is fragile: no check that `create ship` worked; ship type compiled as a type index (differs under XRM); no docking/transport/price/money/stock checks; Buy.Ware does not clamp to cargo; destruct may fire SIGNAL_KILLED (verify); overlapping tasks. Matt's decision R-T1: KEEP the drone, make it robust.
 
@@ -51,5 +51,5 @@ Created by Update.Ware (Add.Ware.Sub) and Wares.Summary (Build.Ware.Array.Sub), 
 
 ## Instruction
 
-Phase 1, task P1-07a. Fix plugin.LI.FDN.Sell.Ware: B4 guard against a null record or null sell cap (return without selling). B12 re-validate the dock and DC every loop after waits. B15 minimal drone hardening as in the drone rules above. Only remove from the dock what was actually sold.
+Phase 1, task P1-07a. Fix plugin.LI.FDN.Sell.Ware: B4 guard against a null record or null sell cap (return without selling), both at L036-037 and L044-049. B12 re-validate the dock and DC every loop after waits. B15 minimal drone hardening as in the drone rules above. Only remove from the dock what was actually sold.
 Start with "Assumptions" and "Questions for Matt" (short), then follow the answer format in CORE RULES.
