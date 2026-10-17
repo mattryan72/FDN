@@ -33,6 +33,7 @@ Any station run by FL's Station Manager is dropped from FDN: removed from [3]/[4
 - Phase 4 = compatibility and upgrade. Never break the save-game rules in CORE RULES.
 - Never invent commands; FL patch commands need a citation or VERIFY.
 - Use the engine numbers from NOTES_semantics.md if included; otherwise mark VERIFY.
+- T9 status (2026-10-17): only the negative sample is done (task 448 Task.Stationmanage FALSE on a normal station); the positive sample is pending, so the detection is not yet confirmed.
 - Use the T9 result in NOTES_semantics.md for the detection. If T9 found nothing reliable, keep returning FALSE and say it is a known issue.
 - Must return FALSE on AP without running any FL-only command (check [23] == 3 first).
 

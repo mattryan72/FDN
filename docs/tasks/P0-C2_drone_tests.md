@@ -19,6 +19,8 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ### Why FDN uses a temporary trade drone (decision R-T1: keep it, make it robust)
 MSCI has no station-to-station trade command. FDN creates a player ship already docked at the NPC station, sets its homebase to the DC or dock, buys or sells, and destroys it straight away with nothing waiting in between. v9 keeps this but adds checks. Unknowns to test: does `create ship` return null for a bad type; do the docking/transport checks work on the new ship; does destroying it fire SIGNAL_KILLED, show a message or count as a ship lost.
 
+**Results (FL, 2026-10-17, NOTES_semantics T5/T6):** the valid-type drone spawns and passes docking, transport and cargo checks; a null type returns a player Mammoth (no failure), so validate the type before `create ship`; destruct fires SIGNAL_KILLED (handler ran). Still open: on-screen message and Statistics "ships lost".
+
 ## Key facts
 
 - The pasted Buy.Ware and Sell.Ware lines show the real v8 drone code (`create ship: type=Argon Mercury Super Freighter XL owner=Player addto=...`, `set homebase to`, `buy`/`sell`, `destruct: show no explosion=[TRUE]`). Copy command spellings from there.

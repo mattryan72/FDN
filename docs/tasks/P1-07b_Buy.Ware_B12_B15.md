@@ -21,7 +21,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - B15 (medium) Sell.Ware 74-98; Buy.Ware 74-80. The temporary 'Argon Mercury Super Freighter XL' trade drone is fragile: no check that `create ship` worked; ship type compiled as a type index (differs under XRM); no docking/transport/price/money/stock checks; Buy.Ware does not clamp to cargo; destruct may fire SIGNAL_KILLED (verify); overlapping tasks. Matt's decision R-T1: KEEP the drone, make it robust.
 
 ### Phase 1 drone rules (minimal; Phase 2 replaces this with lib.LI.FDN.Trade)
-- Keep the drone (decision R-T1). After `create ship`, skip the trade if `$drone` is null or not `-> exists` (log it).
+- Keep the drone (decision R-T1). After `create ship`, skip the trade if `$drone` is null or not `-> exists` (log it). Test T5: a null type does not fail (it spawned a Mammoth), so never pass a type that may be null; v8 compiles the type as a constant, which is fine for Phase 1.
 - Name it "FDN Trade Drone" and set local `FDN.Trade.Drone` = playing time on it before trading (text IDs 310 and 4102 come later; plain strings are fine for now with a TODO).
 - Nothing waits between create ship and destruct. Treat a null buy/sell return as 0.
 - Destruct on every path, behind `if $drone -> exists`.
