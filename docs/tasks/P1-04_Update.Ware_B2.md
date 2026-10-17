@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,697 tokens when built
+- Estimated size: ~4,880 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-04_Update.Ware_B2.md`
 - Save the answer as: `notes/P1-04.md`
 

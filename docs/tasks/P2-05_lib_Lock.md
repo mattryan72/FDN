@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~2,647 tokens when built
+- Estimated size: ~2,831 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-05_lib_Lock.md`
 - Save the answer as: `notes/P2-05.md`
 

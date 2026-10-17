@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~5,082 tokens when built
+- Estimated size: ~5,265 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-09b_Main.Menu_B18_B19_B26.md`
 - Save the answer as: `notes/P1-09b.md`
 

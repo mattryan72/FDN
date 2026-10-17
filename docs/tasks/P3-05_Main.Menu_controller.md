@@ -2,7 +2,7 @@
 
 - Phase: 3 (branch `phase3-menus`)
 - Writes code: yes
-- Estimated size: ~4,576 tokens when built
+- Estimated size: ~4,760 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P3-05_Main.Menu_controller.md`
 - Save the answer as: `notes/P3-05.md`
 

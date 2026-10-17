@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: yes
-- Estimated size: ~3,519 tokens when built
+- Estimated size: ~3,702 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-04_Upgrade.md`
 - Save the answer as: `notes/P4-04.md`
 

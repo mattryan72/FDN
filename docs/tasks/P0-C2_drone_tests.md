@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: yes
-- Estimated size: ~4,076 tokens when built
+- Estimated size: ~4,260 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-C2_drone_tests.md`
 - Save the answer as: `notes/P0-C2.md`
 

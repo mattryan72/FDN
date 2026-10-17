@@ -2,7 +2,7 @@
 
 - Phase: 5 (branch `phase5-release`)
 - Writes code: no
-- Estimated size: ~1,468 tokens when built
+- Estimated size: ~1,652 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P5-02_version_bumps.md`
 - Save the answer as: `notes/P5-02.md`
 

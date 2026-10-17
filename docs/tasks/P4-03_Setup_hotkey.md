@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: yes
-- Estimated size: ~3,407 tokens when built
+- Estimated size: ~3,591 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-03_Setup_hotkey.md`
 - Save the answer as: `notes/P4-03.md`
 

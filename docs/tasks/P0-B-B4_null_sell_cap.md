@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~5,391 tokens when built
+- Estimated size: ~5,575 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B4_null_sell_cap.md`
 - Save the answer as: `notes/P0-B-B4.md`
 

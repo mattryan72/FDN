@@ -2,7 +2,7 @@
 
 - Phase: 3 (branch `phase3-menus`)
 - Writes code: yes
-- Estimated size: ~5,813 tokens when built
+- Estimated size: ~5,996 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P3-07_Menu.Stations.md`
 - Save the answer as: `notes/P3-07.md`
 

@@ -2,7 +2,7 @@
 
 - Phase: 5 (branch `phase5-release`)
 - Writes code: no
-- Estimated size: ~1,486 tokens when built
+- Estimated size: ~1,670 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P5-04_spk_spec.md`
 - Save the answer as: `notes/P5-04.md`
 

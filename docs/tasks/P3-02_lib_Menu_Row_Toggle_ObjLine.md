@@ -2,7 +2,7 @@
 
 - Phase: 3 (branch `phase3-menus`)
 - Writes code: yes
-- Estimated size: ~5,941 tokens when built
+- Estimated size: ~6,125 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P3-02_lib_Menu_Row_Toggle_ObjLine.md`
 - Save the answer as: `notes/P3-02.md`
 

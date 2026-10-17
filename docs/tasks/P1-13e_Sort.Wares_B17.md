@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,290 tokens when built
+- Estimated size: ~4,474 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-13e_Sort.Wares_B17.md`
 - Save the answer as: `notes/P1-13e.md`
 

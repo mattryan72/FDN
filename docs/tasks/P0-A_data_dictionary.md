@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~5,565 tokens when built
+- Estimated size: ~5,749 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-A_data_dictionary.md`
 - Save the answer as: `notes/P0-A.md`
 

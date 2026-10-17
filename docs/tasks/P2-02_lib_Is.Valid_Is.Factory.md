@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~4,179 tokens when built
+- Estimated size: ~4,363 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-02_lib_Is.Valid_Is.Factory.md`
 - Save the answer as: `notes/P2-02.md`
 

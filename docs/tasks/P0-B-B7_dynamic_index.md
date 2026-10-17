@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~6,314 tokens when built
+- Estimated size: ~6,497 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B7_dynamic_index.md`
 - Save the answer as: `notes/P0-B-B7.md`
 

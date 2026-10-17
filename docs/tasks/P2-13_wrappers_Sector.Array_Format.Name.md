@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~3,271 tokens when built
+- Estimated size: ~3,454 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-13_wrappers_Sector.Array_Format.Name.md`
 - Save the answer as: `notes/P2-13.md`
 

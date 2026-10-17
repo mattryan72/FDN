@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~5,162 tokens when built
+- Estimated size: ~5,346 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B1_lock_collision.md`
 - Save the answer as: `notes/P0-B-B1.md`
 

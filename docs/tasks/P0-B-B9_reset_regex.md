@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~2,492 tokens when built
+- Estimated size: ~2,675 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B9_reset_regex.md`
 - Save the answer as: `notes/P0-B-B9.md`
 

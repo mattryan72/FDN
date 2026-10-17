@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: yes
-- Estimated size: ~2,876 tokens when built
+- Estimated size: ~3,060 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-01_lib_Game.md`
 - Save the answer as: `notes/P4-01.md`
 

@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~3,934 tokens when built
+- Estimated size: ~4,118 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B2_create_null_pointer.md`
 - Save the answer as: `notes/P0-B-B2.md`
 

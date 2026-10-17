@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,357 tokens when built
+- Estimated size: ~4,541 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-13a_Move.Ware_B20.md`
 - Save the answer as: `notes/P1-13a.md`
 

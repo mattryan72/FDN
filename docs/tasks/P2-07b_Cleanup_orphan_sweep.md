@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~2,874 tokens when built
+- Estimated size: ~3,057 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-07b_Cleanup_orphan_sweep.md`
 - Save the answer as: `notes/P2-07b.md`
 

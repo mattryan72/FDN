@@ -2,7 +2,7 @@
 
 - Phase: 3 (branch `phase3-menus`)
 - Writes code: yes
-- Estimated size: ~5,013 tokens when built
+- Estimated size: ~5,197 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P3-09_Menu.Refresh.md`
 - Save the answer as: `notes/P3-09.md`
 

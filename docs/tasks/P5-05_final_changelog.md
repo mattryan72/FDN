@@ -2,7 +2,7 @@
 
 - Phase: 5 (branch `phase5-release`)
 - Writes code: no
-- Estimated size: ~1,709 tokens when built
+- Estimated size: ~1,893 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P5-05_final_changelog.md`
 - Save the answer as: `notes/P5-05.md`
 

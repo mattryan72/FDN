@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: yes
-- Estimated size: ~3,937 tokens when built
+- Estimated size: ~4,120 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-C1_semantics_tests.md`
 - Save the answer as: `notes/P0-C1.md`
 

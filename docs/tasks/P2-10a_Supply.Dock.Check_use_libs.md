@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~3,679 tokens when built
+- Estimated size: ~3,863 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-10a_Supply.Dock.Check_use_libs.md`
 - Save the answer as: `notes/P2-10a.md`
 

@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~3,893 tokens when built
+- Estimated size: ~4,076 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-01_lib_Cfg.Get_Log.md`
 - Save the answer as: `notes/P2-01.md`
 

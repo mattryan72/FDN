@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: no
-- Estimated size: ~3,177 tokens when built
+- Estimated size: ~3,361 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-07_text_file.md`
 - Save the answer as: `notes/P4-07.md`
 

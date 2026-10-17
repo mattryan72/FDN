@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~3,805 tokens when built
+- Estimated size: ~3,989 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-11_Reset_B9.md`
 - Save the answer as: `notes/P1-11.md`
 

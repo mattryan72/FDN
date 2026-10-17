@@ -2,7 +2,7 @@
 
 - Phase: 0 (branch `phase0-setup`)
 - Writes code: no
-- Estimated size: ~7,717 tokens when built
+- Estimated size: ~7,901 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P0-B-B3_dc_owner_checks.md`
 - Save the answer as: `notes/P0-B-B3.md`
 

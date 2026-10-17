@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: no
-- Estimated size: ~1,609 tokens when built
+- Estimated size: ~1,793 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-02_FL_feature_flag.md`
 - Save the answer as: `notes/P4-02.md`
 

@@ -30,6 +30,13 @@ X3: Albion Prelude 3.3 / Farnham's Legacy rework of FDN v8.04 by Logain Abler.
 
 Don't paste `FDN_v9_MASTER_PROMPT.md`, the whole reference or the whole analysis into the AI any more; they are the full reference for you.
 
+## Using Cline
+Cline can edit the repo directly, so:
+- **Commit or stash before every session.** Cline deleted untracked files in another project and they couldn't be recovered. `prompts/` is gitignored (untracked); `python tools/build_prompt.py --all` rebuilds everything in it.
+- Fresh chat for every card. Ask for a plan first and check its anchors and line numbers against the real code before letting it edit.
+- Check its reports yourself with `git status` and `git diff`. If it loops on an error, start a clean session that names the exact lines to change.
+- Full checklist: `docs/CHECKING_ANSWERS.md`.
+
 ## Key decisions
 - The docked trade drone is kept (it uses the game's native trade mechanics) and hardened via `lib.LI.FDN.Trade` – see `docs/FDN_v9_REFERENCE.md` §G.
 - Save compatibility: keep `al.LI.FDN.event`, `al.plugin.LI.FDN.register`, `plugin.LI.FDN.Main.Menu`, settings 0–11, text page 9910.

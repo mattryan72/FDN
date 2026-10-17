@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~6,133 tokens when built
+- Estimated size: ~6,317 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-07a_lib_Trade.md`
 - Save the answer as: `notes/P2-07a.md`
 

@@ -2,7 +2,7 @@
 
 - Phase: 4 (branch `phase4-compat`)
 - Writes code: no
-- Estimated size: ~1,685 tokens when built
+- Estimated size: ~1,869 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P4-06_station_exclusions.md`
 - Save the answer as: `notes/P4-06.md`
 

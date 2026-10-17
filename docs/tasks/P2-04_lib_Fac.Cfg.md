@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~3,267 tokens when built
+- Estimated size: ~3,451 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-04_lib_Fac.Cfg.md`
 - Save the answer as: `notes/P2-04.md`
 

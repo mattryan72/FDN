@@ -2,7 +2,7 @@
 
 - Phase: 3 (branch `phase3-menus`)
 - Writes code: no
-- Estimated size: ~8,959 tokens when built
+- Estimated size: ~9,143 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P3-01_menu_design.md`
 - Save the answer as: `notes/P3-01.md`
 

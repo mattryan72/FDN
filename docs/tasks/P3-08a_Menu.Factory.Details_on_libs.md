@@ -2,7 +2,7 @@
 
 - Phase: 3 (branch `phase3-menus`)
 - Writes code: yes
-- Estimated size: ~4,108 tokens when built
+- Estimated size: ~4,291 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P3-08a_Menu.Factory.Details_on_libs.md`
 - Save the answer as: `notes/P3-08a.md`
 

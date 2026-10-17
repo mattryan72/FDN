@@ -21,6 +21,17 @@ If a conclusion rests on one line deep inside a long script (for example "line 1
 - Compare the change list with the code: every listed change should be there, and nothing unlisted.
 - Commit the answer in `notes/` and the edited `source_readable/` file together, so you can always see what changed and why.
 
+## Using Cline
+
+Cline (in VS Code on the aibox) can edit files in the repo itself, so it needs more care than pasting into a chat.
+
+1. **Before every session, commit or stash your work** (`git status` must show nothing you care about). In another project Cline deleted untracked files of yours and they could not be recovered. `prompts/` is gitignored, so files there are untracked too; that is fine, because `python tools/build_prompt.py --all` rebuilds all of them.
+2. **Fresh chat for every card.** Don't carry one long session across cards.
+3. **Plan first, then edit.** Ask for a plan (Plan mode) before it changes anything. Check the plan's anchors (the exact lines it will find/replace) and line numbers against the real file in `source_readable/` before you let it edit.
+4. **Check its report yourself.** After each step run `git status` and `git diff`. Only files named on the card should change, with no line-ending churn (whole-file diffs) and nothing deleted. Undo a bad step with `git restore <file>`.
+5. **If it loops on an error, stop it.** Start a clean session that names the exact lines to change (for example "in `source_readable/plugin.LI.FDN.Reset.txt`, replace line 028 with ...").
+6. Cline must never push, and only commits when you ask after your checks pass. Those rules are in `docs/CORE_PROMPT.md`, which every card includes.
+
 ## If it keeps going wrong
 
 - Start a new chat. Old chat history makes the prompt longer and less reliable.

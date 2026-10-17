@@ -2,7 +2,7 @@
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
-- Estimated size: ~4,727 tokens when built
+- Estimated size: ~4,911 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P1-03_Supply.Factory_B3_B11.md`
 - Save the answer as: `notes/P1-03.md`
 

@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~4,308 tokens when built
+- Estimated size: ~4,492 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-06_Scan_and_Sectors.md`
 - Save the answer as: `notes/P2-06.md`
 

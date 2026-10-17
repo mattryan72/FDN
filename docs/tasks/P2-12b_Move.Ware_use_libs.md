@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~4,528 tokens when built
+- Estimated size: ~4,712 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-12b_Move.Ware_use_libs.md`
 - Save the answer as: `notes/P2-12b.md`
 
