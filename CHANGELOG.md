@@ -11,14 +11,15 @@
 
 ### Fixed
 - [B1] Supply.Start: real run-lock on settings [12] (stores `playing time`, stale after 120 s, set on the array not a local copy); while locked only the factory pass is skipped. Supply.Factory.Check releases [12] on every exit (no array, empty array, end of loop); the direction toggle that v8 kept in [12] moved to [13].
-- [B2] 'create' null pointer (planned)
+- [B2] Update.Ware: record name built before 'create'; 'create' only writes a missing record.
 - [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Supply.Factory.Check: a factory must exist and be owned by the player (`get owner race` == Player); missing, sold, captured or given-away stations are removed from the stored array [3]. Other B3 sites (Supply.Factory, Dock.Check) are their own cards. Supply.Factory: DC validated once per task; products are only taken from the factory when the DC is valid, and only the amount Update.Ware reports as added (null falls back to v8 until P1-04); resource remove and buy are skipped while the DC is invalid; a missing DC ware record skips only that ware's buy.
+- [B30] Update.Ware: record re-read after it is created; non-Dock 'remove' no longer returns null (virtual stock defaults to 0).
 - [B4] Null sell cap sells all stock (planned)
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
 - [B7] Dynamic index 1 vs 2 (planned)
 - [B8] Stacked _D updaters (planned)
-- [B9] Reset regex scope (planned; registry-based reset, approved, see below)
+- [B9] Reset regex scope (planned; registry-based reset, approved, see below). Update.Ware adds each station that gets a new ware record to registry [29] (P1-04).
 - [B10] Sector.Array modes (planned)
 - [B11] Supply.Factory: Buy.Ware is STARTed at most once per 120 s per factory (factory FDN.Settings [3] = playing time of the last start, stale after 120 s). Sell side (Supply.Dock) planned.
 - [B12] No re-validation after waits (planned)
