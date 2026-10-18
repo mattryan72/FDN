@@ -40,6 +40,16 @@ If a request conflicts with these rules, stop and explain.
 7. Locks store `playing time` and go stale after a timeout.
 8. Every script starts with a comment header (name, version, args, returns, purpose) and returns explicitly.
 
+## MSCI coding rules (lessons from P1-01/P1-02)
+- `else` / `else if` inside `while` bodies are fine; Matt's build pipeline fixes the compiler's jumps. Do not restructure code to avoid them.
+- Always bracket the operands of `||` and `&&`: `if ($a == 1) || ($b == 2)`, never `if $a == 1 || $b == 2` (the compiler misreads it).
+- Never compare inside an object command. Assign first: `$owner = $obj -> get owner race` then `if $owner == Player`.
+- `while` conditions must not contain function calls, `->`, `++` or `--`. Compute into a variable before the loop and again at the end of the body.
+- Use only commands already in the FDN source or in NOTES; anything else gets `VERIFY:`.
+- Player messages: use `write to player logbook '...'` (`send incoming message` behaves differently on FL).
+- No relation constants (`Foe`, `Friend`, `Neutral`) unless you flag them `VERIFY:`.
+- Prefer small targeted edits over whole-file rewrites. After saving, re-read the full saved file and report it verbatim, so Matt can check what was really written.
+
 ## Answer format
 ```
 ### Script: <name>  (v<old> -> v<new>)  Task <card id>
