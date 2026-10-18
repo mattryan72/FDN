@@ -214,3 +214,62 @@ Matt: earlier FDN versions ran a task (script) per station that called wares whe
 - Central timer (v8, kept in v9): one loop, predictable cost, easy to pause; but latency up to one dock cycle, and a busy tick does all stations at once (v9 spreads load with `wait` every N stations in Scan and the supply loops).
 - Per-station tasks: reacts per station, but N scripts each waiting/polling cost more, survive in saves, and are hard to stop or upgrade cleanly (Reset/Upgrade would have to find and kill every task).
 - If latency becomes a complaint, prefer a shorter or adaptive central tick (or an event signal such as a factory product-complete signal, VERIFY) over per-station tasks.
+
+### P1-01 + P1-02 in-game test, FL (log09910.txt, game time 01:57:33-02:10:05, 2026-10-18)
+The scripts were Supply.Start (P1-01, 9d3b483) and Factory.Check (P1-02, FIXED text), built with jumpfix (`/workspace/review/jf_build/`) and installed as XML in `addon2\scripts`. The v8 files are in `FDN_v8_backup_20261018\`. The log is 2019 lines with Supply Debug ON. The test log has only T1-T9 lines (T7 engine version 60).
+- **Timer:** 31 `Start Supply Called` ticks, 25 s apart (one gap of 26 s). Each tick has `Factory Array found`.
+- **No lock problems (B1):**
+  - 0 `already running or recently started - skip` lines, so `[12]` was released after every pass.
+  - Each pass takes about 2 s, well inside the 25 s tick. Passes never interleave, and the script never loops or hangs.
+  - No script errors.
+- **Every factory once per pass:** 12 factories (`Supply Factort called flag = 1` once each, plus a `Check time` line) for 24 passes. Then 13 from 02:07:33, when a new Crystal Fab L alpha (Akeela's Beacon) joined the array.
+  - That is 02:07:33 = 01:57:33 + 2 × 300 s, so it is consistent with the P1 300 s scan throttle. The scan itself is not logged; VERIFY with Matt when the Crystal Fab was built.
+  - The two `Solar Power Plant XL alpha(Akeela's Beacon)` lines in each pass are two different stations: different remaining times 1 s apart, and both pass 5530 Energy Cells.
+- **Order alternates (B13 fixed):** the passes strictly alternate between "Cahoona Bakery first ... Wheat Farm (Aladna Hill) last" and the reverse, for all 31 passes.
+  - The Crystal Fab, appended at the end of the array, comes last in the Cahoona-first passes and first in the others. So Cahoona-first is forwards and the other is backwards.
+  - v8 visited in the same order every pass, because the reverse branch never ran.
+- **Resource top-ups still work:**
+  - `near completion` (< 45 s) fires many times per pass, then `requires N`, then `requires 0` on the next visit.
+  - `Prdouction stalled` fired once (Crystal Fab 480 = 480 at 02:07:35, asking for 1200 Cahoonas / 75 Wafers / 1800 EC). This is the first time the stalled branch was seen at all; v8 logs never showed it.
+  - The `$call.resource` flag logic works on both branches.
+- **Products to DC still work:** Energy Cells, Wheat, Cahoonas, Cloth Rimes, Wafers and Ore are passed as before.
+- **Dock pass:** `Dock Array found` at 01:59:13, 02:02:08, 02:05:03 and 02:07:58, 175 s apart (every 7th tick), as in v8. The dock pass ran on its own schedule, unaffected by the factory lock.
+- **Nothing removed, DC valid:**
+  - 0 `Clean from Factory Array` lines.
+  - 0 DC-invalid lines (`DC does not exist / not owned / not a Dock` and `cleared and paused`). Matt to confirm no FDN logbook entry.
+  - So the removal path and DC.Invalid were not exercised.
+- **Unrelated to P1, known:** `requires -N of Crystals` for the SPPs. This is harmless (cargo above 3 cycles, see the v8 log 2 notes).
+- **Verdict:** P1-01 and P1-02, built with jumpfix, work in game on FL. This also confirms in game that the jumpfix-encoded control flow is correct: the nested ifs inside `while [TRUE]`, the break bounds, the flag-based stalled/<45 s logic and the index stepping.
+- **Still untested:** removal of a sold/destroyed factory (forwards and backwards), DC loss (logbook entry + pause), and a stale (>120 s) lock. Suggested test:
+  1. Sell or destroy one managed factory and watch for `Clean from Factory Array` on the next 2 passes (one forwards, one backwards). Every other factory must still be visited once.
+  2. On a throwaway save, sell the DC: there must be exactly one logbook entry, and supply must stop.
+
+### P1-01 + P1-02 follow-up: factory removal and DC loss, FL (debug log, game time 02:10:28-02:18:48, 2026-10-18)
+849 lines, Supply Debug ON, same jumpfix builds. 21 `Start Supply Called` ticks, 25 s apart (24-26 s).
+- **Factory removal (P1-02, forwards):**
+  - Before removal there were 13 factories per pass (02:10:28, 02:10:53, 02:11:18).
+  - Matt **changed the owner** of one factory (not sold), so this exercised the `get owner race != Player` branch (Factory.Check L105-112), not `-> exists`. That factory was one of the two `Solar Power Plant XL alpha(Akeela's Beacon)`: the one at array position 3, next to SPP Argon Prime gamma.
+  - It was removed in the **forwards** (Cahoona-first) pass at 02:11:44: `Clean from Factory Array` appears once, between SPP Argon Prime gamma and SPP Aladna Hill.
+  - The next entry (SPP Aladna Hill) was still visited, so there was no skip after `remove element`.
+  - The other Akeela SPP (position 10) kept being visited. Its timer continues (12/145 at 02:11:18 → 5530 EC passed, 130/145 at 02:11:45).
+- **After removal:** exactly 12 factories, each once, in all 8 passes from 02:11:43 to 02:15:28, both directions. There were no repeat Clean lines, no out-of-range or null visits, and no errors.
+- **Alternation and lock:**
+  - Passes alternate strictly: backwards (Crystal Fab first) at 02:10:28, then forwards, through to the backwards pass at 02:15:28.
+  - Each pass ended within 1-2 s.
+  - 0 `already running` skips.
+- **Dock pass:** 02:10:53 and 02:13:48, 175 s apart, continuing the 02:07:58 sequence.
+- **DC loss (P1-01, B3):**
+  - The last factory pass ran at 02:15:28-29.
+  - At 02:15:53 there is exactly one `DC does not exist - cleared and paused`, the `-> exists` branch. That is as expected: Matt destroyed the DC.
+  - The 7 ticks from 02:16:18 to 02:18:48 log only `Start Supply Called`, then return silently at `if not $dc` (Supply.Start L069-078). There is no Factory Array, no Dock Array and no repeat DC message, so supply has stopped and the message was not repeated.
+  - The due dock pass (02:16:43) correctly did not run.
+  - The logbook entry is not in this log; Matt to confirm it appears once.
+- **Not covered:**
+  - Removal during a **backwards** pass.
+  - Two removals in one pass.
+  - A destroyed factory (the `-> exists` branch of the factory check; this test only changed an owner).
+  - The `not owned` (captured/sold) and `not a Dock` DC branches.
+  - A stale (>120 s) lock.
+  - Resuming after picking a new DC.
+  - The 300 s scan.
+- **Verdict:** forwards factory removal (owner-change branch) and DC loss (exists branch) work as designed.
