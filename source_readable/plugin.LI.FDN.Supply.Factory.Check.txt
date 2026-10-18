@@ -1,172 +1,216 @@
-* Script: plugin.LI.FDN.Supply.Factory.Check  (v2, engine 50)
-* Desc: FDNv8 - Checks factory to be supplied
+* Script: plugin.LI.FDN.Supply.Factory.Check  (v3, engine 50)
+* Desc: FDNv9 - Checks factory to be supplied
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is called by LI.FDN.Menu.Supply.Start script if there is a valid
+* factory array stored in the AL Plugin variable
+* The script contains the checks made on the factory before calling LI.FDN.Menu.Supply.Factory
+* The script will also remove any non-existing or non-player-owned factories from the stored array
+* v9.01 B3:  ownership check added (sold, captured or given-away stations are dropped)
+* v9.01 B13: walks the array by index (direction alternates) instead of reverse array,
+*            so removals always hit the stored array [3]
+* v9.01 B1:  [12] is the run-lock set by Supply.Start; this script releases it on every exit
+*            [13] is the direction toggle (new index, [12] was misused for this in v8)
+* v9.01 P7:  text 4001 read once before the loop, not inside it
+* NOTE: no else / else if inside the while body - flags and separate ifs are used instead
+*
+* Expected values:
+* - N/A the Factory array is stored in the AL Plugin variable
+*
+* Returns values:
+* - N/A
+*
+* To Do - N/A
+*
+* Version: 3.0
+* Date: 18/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * This script is called by LI.FDN.Menu.Supply.Start script if there is a valid
-004  * factory array stored in the AL Plugin variable
-005  * The script contains the checks made on the factory before calling LI.FDN.Menu.Supply.Factory
-006  * The script will also remove any non-existing factories from the stored array
-007  
-008  * Expected values:
-009  * - N/A the Factory array is stored in the AL Plugin variable
-010  
-011  * Returns values:
-012  * - N/A
-013  
-014  * To Do - N/A
-015  
-016  * Version: 2.0
-017  * Date: 27/07/2012
-018  * Tested: 27/07/2012
-019  * -----------------------------------------------------------------------------------
-020  
-021  * Fetch values saved in the AL Plugin global variable:
-022  * - factory array - holds all the know player factories
-023  $script = = get script name
-024  $al.Settings = get global variable: name='al.LI.FDN.event'
-025  if $al.Settings
-026   $PageID = $al.Settings[1]
-027   $DebugID = 0 + $PageID
-028   $factory.array = $al.Settings[3]
-029  else
-030   return null
-031  end
-032  * -----------------------------------------------------------------------------------
-033  
-034  * v2 change - Check to reverse array every other call
-035  if not $al.Settings[12]
-036   $al.Settings[12] = 1
-037  else
-038   $factory.array = reverse array $factory.array
-039   $al.Settings[12] = null
-040  end
-041  set global variable: name='al.LI.FDN.event' value=$al.Settings
-042  * -----------------------------------------------------------------------------------
-043  
-044  $s = size of array $factory.array
-045  * v2 - modify wait depending on number of factories
-046  if $s > 500
-047   $wait.1 = 20
-048   $wait.2 = 50
-049  else if $s > 300
-050   $wait.1 = 50
-051   $wait.2 = 100
-052  else
-053   $wait.1 = 100
-054   $wait.2 = 200
-055  end
-056  * -----------------------------------------------------------------------------------
-057  
-058  * start of While Loop - Loop is for Factories
-059  while $s > 0
-060   dec $s =
-061   $factory = $factory.array[$s]
-062   * check if factory exists
-063   if $factory  ->  exists
-064    * fetch local variable that hold the faction settings
-065    $pointer = = read text: page=$PageID id=4001
-066    if not $factory  ->  get local variable: name=$pointer
-067     $settings.array = = array alloc: size=6
-068     $factory  ->  set local variable: name=$pointer value=$settings.array
-069    end
-070    $settings.array = $factory  ->  get local variable: name=$pointer
-071    * -----------------------------------------------------------------------------------
-072    
-073    * check if this is a new factory and flag as found
-074    * I use this to only manage the setting on first find and not every search
-075    * so player can still change settings with auto manage on
-076    if not $settings.array[2]
-077     $settings.array[2] = 1
-078     * check auto manage setting if set turn on at factory
-079     if $al.Settings[9]
-080      $settings.array[0] = 1
-081      $settings.array[1] = 1
-082     end
-083     $factory  ->  set local variable: name=$pointer value=$settings.array
-084    end
-085    * -----------------------------------------------------------------------------------
-086    
-087    * if product is managed call plugin.LI.FDN.Supply.Factory:
-088    * factory
-089    if $settings.array[0]
-090     * debug
-091     if $al.Settings[7]
-092      $txt.debug = ' Supply Factort called flag = 1'
-093      gosub Debug.Sub:
-094     end
-095     * call the supply factory script, flag one for the factory to pass its product to the DC
-096     START  = null -> call script plugin.LI.FDN.Supply.Factory : factory=$factory  flag=1
-097     * -----------------------------------------------------------------------------------
-098    end
-099    * -----------------------------------------------------------------------------------
-100    
-101    * if product is managed call plugin.LI.FDN.Supply.Factory:
-102    * factory
-103    if $settings.array[1]
-104     * check.time and full.time is used to see if the factory is stalled
-105     $check.time = = $factory  ->  get remaining production cycle time
-106     $full.time = = $factory  ->  get production cycle time: account for secondary resources=[FALSE]
-107     * -----------------------------------------------------------------------------------
-108     
-109     * debug
-110     if $al.Settings[7]
-111      $txt.debug = ' Check time = ' + $check.time + ' Full Time = ' + $full.time
-112      gosub Debug.Sub:
-113     end
-114     * If stalled
-115     if $check.time == $full.time
-116      * debug
-117      if $al.Settings[7]
-118       $txt.debug = ' Prdouction stalled - Supply Resource called'
-119       gosub Debug.Sub:
-120      end
-121      * call the supply factory script to supply resources to the factory
-122      START  = null -> call script plugin.LI.FDN.Supply.Factory : factory=$factory  flag=null
-123      * -----------------------------------------------------------------------------------
-124     else
-125      * if productuion time left is less than 45 seconds call plugin.LI.FDN.Supply.Factory
-126      if $check.time < 45
-127       * debug
-128       if $al.Settings[7]
-129        $txt.debug = ' Prdouction near completion - Supply Resource called'
-130        gosub Debug.Sub:
-131       end
-132       * call the supply factory script to supply resources to the factory
-133       START  = null -> call script plugin.LI.FDN.Supply.Factory : factory=$factory  flag=null
-134       * -----------------------------------------------------------------------------------
-135      end
-136     end
-137    end
-138    
-139   else
-140    * if factory does not exist remove from array
-141    remove element from array $factory.array at index $s
-142    * debug
-143    if $al.Settings[7]
-144     $txt.debug = ' Clean from Factory Array'
-145     gosub Debug.Sub:
-146    end
-147   end
-148   * wait
-149    = wait randomly from $wait.1 to $wait.2 ms
-150  end
-151  
-152  * v2 - clear is.running flag
-153  $al.Settings[12] = null
-154  set global variable: name='al.LI.FDN.event' value=$al.Settings
-155  
-156  return null
-157  * -----------------------------------------------------------------------------------
-158  
-159  * Debug Massage handling
-160  Debug.Sub:
-161  $d.time = = playing time
-162  $d.time = = format time: $d.time
-163  $txt = $d.time + ';' + $script + ';' + $txt.debug
-164  write to log file $DebugID  append=[TRUE]  value=$txt
-165  endsub
-166  * -----------------------------------------------------------------------------------
-167  return null
-168  
-169  
+* Fetch values saved in the AL Plugin global variable:
+* - factory array - holds all the know player factories
+$script = = get script name
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if $al.Settings
+ $PageID = $al.Settings[1]
+ $DebugID = 0 + $PageID
+ $factory.array = $al.Settings[3]
+else
+ return null
+end
+* -----------------------------------------------------------------------------------
+
+* v9.01 B1: nothing to check - release the run-lock before every early return
+if not $factory.array
+ $al.Settings[12] = null
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ return null
+end
+$size.of.array = size of array $factory.array
+if not $size.of.array > 0
+ $al.Settings[12] = null
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ return null
+end
+* -----------------------------------------------------------------------------------
+
+* v9.01 B13: [13] set = walk backwards this pass and clear it; [13] null = walk forwards and set it
+$iterate.backwards = [FALSE]
+if $al.Settings[13]
+ $iterate.backwards = [TRUE]
+ $al.Settings[13] = null
+end
+if not $iterate.backwards
+ $al.Settings[13] = 1
+end
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+$s = 0
+if $iterate.backwards
+ $s = $size.of.array - 1
+end
+* -----------------------------------------------------------------------------------
+
+* v2 - modify wait depending on number of factories
+if $size.of.array > 500
+ $wait.1 = 20
+ $wait.2 = 50
+else if $size.of.array > 300
+ $wait.1 = 50
+ $wait.2 = 100
+else
+ $wait.1 = 100
+ $wait.2 = 200
+end
+* -----------------------------------------------------------------------------------
+
+* v9.01 P7: name of the factory local variable that holds the FDN settings - read once
+$pointer = = read text: page=$PageID id=4001
+* -----------------------------------------------------------------------------------
+
+* start of While Loop - Loop is for Factories
+while [TRUE]
+ * v9.01 B13: bound checks - forwards uses the shrinking $size.of.array
+ if not $iterate.backwards
+  if not $s < $size.of.array
+   break
+  end
+ end
+ if $iterate.backwards
+  if not $s >= 0
+   break
+  end
+ end
+ $factory = $factory.array[$s]
+ $removed = [FALSE]
+ * v9.01 B3: factory must exist AND be owned by the player
+ $valid = [FALSE]
+ if $factory -> exists
+  $owner = $factory -> get owner race
+  if $owner == Player
+   $valid = [TRUE]
+  end
+ end
+ if not $valid
+  * missing, sold, captured or given away - remove from the stored array
+  remove element from array $factory.array at index $s
+  dec $size.of.array =
+  $removed = [TRUE]
+  * debug
+  if $al.Settings[7]
+   $txt.debug = ' Clean from Factory Array'
+   gosub Debug.Sub:
+  end
+ end
+ if $valid
+  * fetch local variable that hold the faction settings
+  if not $factory -> get local variable: name=$pointer
+   $settings.array = array alloc: size=6
+   $factory -> set local variable: name=$pointer value=$settings.array
+  end
+  $settings.array = $factory -> get local variable: name=$pointer
+  * check if this is a new factory and flag as found
+  * I use this to only manage the setting on first find and not every search
+  * so player can still change settings with auto manage on
+  if not $settings.array[2]
+   $settings.array[2] = 1
+   * check auto manage setting if set turn on at factory
+   if $al.Settings[9]
+    $settings.array[0] = 1
+    $settings.array[1] = 1
+   end
+   $factory -> set local variable: name=$pointer value=$settings.array
+  end
+  * if product is managed call plugin.LI.FDN.Supply.Factory: factory
+  if $settings.array[0]
+   * debug
+   if $al.Settings[7]
+    $txt.debug = ' Supply Factort called flag = 1'
+    gosub Debug.Sub:
+   end
+   * call the supply factory script, flag one for the factory to pass its product to the DC
+   START null -> call script plugin.LI.FDN.Supply.Factory : factory=$factory flag=1
+  end
+  * if resources are managed call plugin.LI.FDN.Supply.Factory: factory
+  if $settings.array[1]
+   * check.time and full.time is used to see if the factory is stalled
+   $check.time = $factory -> get remaining production cycle time
+   $full.time = $factory -> get production cycle time: account for secondary resources=[FALSE]
+   * debug
+   if $al.Settings[7]
+    $txt.debug = ' Check time = ' + $check.time + ' Full Time = ' + $full.time
+    gosub Debug.Sub:
+   end
+   * v9.01: flags instead of else - stalled, or less than 45 seconds of production left
+   $call.resource = [FALSE]
+   if $check.time == $full.time
+    $call.resource = [TRUE]
+    if $al.Settings[7]
+     $txt.debug = ' Prdouction stalled - Supply Resource called'
+     gosub Debug.Sub:
+    end
+   end
+   if not $call.resource
+    if $check.time < 45
+     $call.resource = [TRUE]
+     if $al.Settings[7]
+      $txt.debug = ' Prdouction near completion - Supply Resource called'
+      gosub Debug.Sub:
+     end
+    end
+   end
+   if $call.resource
+    * call the supply factory script to supply resources to the factory
+    START null -> call script plugin.LI.FDN.Supply.Factory : factory=$factory flag=null
+   end
+  end
+ end
+ * v9.01 B13: next index - backwards always steps down (a removal only shifts entries already checked);
+ * forwards only steps up when nothing was removed (the next entry has moved into slot $s)
+ if $iterate.backwards
+  dec $s =
+ end
+ if not $iterate.backwards
+  if not $removed
+   inc $s =
+  end
+ end
+ * wait
+ = wait randomly from $wait.1 to $wait.2 ms
+end
+
+* v9.01 B1: release the run-lock on exit
+$al.Settings[12] = null
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+
+return null
+* -----------------------------------------------------------------------------------
+
+* Debug Massage handling
+Debug.Sub:
+$d.time = = playing time
+$d.time = = format time: $d.time
+$txt = $d.time + ';' + $script + ';' + $txt.debug
+write to log file $DebugID  append=[TRUE]  value=$txt
+endsub
+* -----------------------------------------------------------------------------------
+return null

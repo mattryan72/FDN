@@ -10,9 +10,9 @@
 - B5, B9 and the FL Station Manager exclusion approved by Matt on 2026-10-17 (see Behaviour changes).
 
 ### Fixed
-- [B1] Supply.Start: real run-lock on settings [12] (stores `playing time`, stale after 120 s, set on the array not a local copy); lock only takes effect after P1-02; v8 Factory.Check still clears [12], and it remains the reverse toggle until P1-02 moves it to [13].
+- [B1] Supply.Start: real run-lock on settings [12] (stores `playing time`, stale after 120 s, set on the array not a local copy); while locked only the factory pass is skipped. Supply.Factory.Check releases [12] on every exit (no array, empty array, end of loop); the direction toggle that v8 kept in [12] moved to [13].
 - [B2] 'create' null pointer (planned)
-- [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Other B3 sites (Supply.Factory, Factory.Check, Dock.Check) are their own cards.
+- [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Supply.Factory.Check: a factory must exist and be owned by the player (`get owner race` == Player); missing, sold, captured or given-away stations are removed from the stored array [3]. Other B3 sites (Supply.Factory, Dock.Check) are their own cards.
 - [B4] Null sell cap sells all stock (planned)
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
@@ -22,13 +22,14 @@
 - [B10] Sector.Array modes (planned)
 - [B11] Duplicate Buy/Sell tasks (planned)
 - [B12] No re-validation after waits (planned)
-- [B13] Reverse array copy (planned)
+- [B13] Supply.Factory.Check: no more `reverse array` (it returned a copy, so removals missed the stored array on reversed passes). The script walks the stored array [3] in place and alternates direction each call via settings [13]: forwards from 0, bound = shrinking size, index only advances when nothing was removed; backwards from size-1, always steps down.
 - [B14] Wait in AL path (planned)
 - [B15] Fragile temp-drone trades; drone kept and hardened per R-T1 (planned)
 - [B16] Settings schema unversioned (planned)
 
 ### Changed
 - [P1] Supply.Start: `Sector.Array` refresh now throttled to at most every 300 s via timestamp settings `[16]`; a null `[16]` means never-scanned so the first tick still runs it. Throttle uses a `$do.scan` flag and never blocks supply - when throttled, the existing arrays are reused for this cycle (no wait added).
+- [P7] Supply.Factory.Check: settings-variable name (text 4001) read once before the loop instead of once per factory.
 
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:
