@@ -12,7 +12,7 @@
 ### Fixed
 - [B1] Supply.Start: real run-lock on settings [12] (stores `playing time`, stale after 120 s, set on the array not a local copy); while locked only the factory pass is skipped. Supply.Factory.Check releases [12] on every exit (no array, empty array, end of loop); the direction toggle that v8 kept in [12] moved to [13].
 - [B2] 'create' null pointer (planned)
-- [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Supply.Factory.Check: a factory must exist and be owned by the player (`get owner race` == Player); missing, sold, captured or given-away stations are removed from the stored array [3]. Other B3 sites (Supply.Factory, Dock.Check) are their own cards.
+- [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Supply.Factory.Check: a factory must exist and be owned by the player (`get owner race` == Player); missing, sold, captured or given-away stations are removed from the stored array [3]. Other B3 sites (Supply.Factory, Dock.Check) are their own cards. Supply.Factory: DC validated once per task; products are only taken from the factory when the DC is valid, and only the amount Update.Ware reports as added (null falls back to v8 until P1-04); resource remove and buy are skipped while the DC is invalid; a missing DC ware record skips only that ware's buy.
 - [B4] Null sell cap sells all stock (planned)
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
@@ -20,7 +20,7 @@
 - [B8] Stacked _D updaters (planned)
 - [B9] Reset regex scope (planned; registry-based reset, approved, see below)
 - [B10] Sector.Array modes (planned)
-- [B11] Duplicate Buy/Sell tasks (planned)
+- [B11] Supply.Factory: Buy.Ware is STARTed at most once per 120 s per factory (factory FDN.Settings [3] = playing time of the last start, stale after 120 s). Sell side (Supply.Dock) planned.
 - [B12] No re-validation after waits (planned)
 - [B13] Supply.Factory.Check: no more `reverse array` (it returned a copy, so removals missed the stored array on reversed passes). The script walks the stored array [3] in place and alternates direction each call via settings [13]: forwards from 0, bound = shrinking size, index only advances when nothing was removed; backwards from size-1, always steps down.
 - [B14] Wait in AL path (planned)
