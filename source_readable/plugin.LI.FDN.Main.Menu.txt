@@ -6,7 +6,7 @@
 003  * This is the main menu for FDN and has 3 dynamic viewa
 004  * Menu View 1 = Distribution Centre Details (default)
 005  * Menu View 2 = Factory View
-006  * Menu View 3 = Dock View - REMOVED
+006  * Menu View 3 = Dock List (v9.01 P1-05a, plugin.LI.FDN.Menu.AP.Dock.List)
 007  * Menu View 4 = Factory Details
 008  * Menu View 5 = Dock Details
 009  * Menu View 6 = Ware Details
@@ -60,6 +60,8 @@
 057     gosub DC.Details.View.Sub:
 058    else if $menu.view == 2
 059     gosub Factory.List.View.Sub:
+else if $menu.view == 3
+ gosub Dock.List.View.Sub:
 060    else if $menu.view == 4
 061     gosub Factory.Details.View.Sub:
 062    else if $menu.view == 5
@@ -97,7 +99,12 @@
 094     else if $menu.view == 4
 095      $menu.view = 2
 096     else if $menu.view == 5
+     * v9.01 P1-05a: back to the Docks list if Dock Details was opened from it
+     if $dock.called.by == 3
+      $menu.view = 3
+     else
 097      $menu.view = 2
+     end
 098     else if $menu.view == 6
 099      $menu.view = $called.by
 100     else if $menu.view == 7
@@ -186,6 +193,8 @@
 183     $menu.view = 7
 184     
 185    else if $command == 'open.dock'
+    * v9.01 P1-05a
+    $dock.called.by = $menu.view
 186     $menu.view = 5
 187     
 188    else if $command == 'open.ware'
@@ -320,6 +329,9 @@
 317    else if $return == 'switch.menu'
 318     if $menu.view == 1
 319      $menu.view = 2
+    * v9.01 P1-05a: third view
+    else if $menu.view == 2
+     $menu.view = 3
 320     else
 321      $menu.view = 1
 322     end
@@ -341,6 +353,11 @@
 338  Ware.User.Input.Sub:
 339  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
 340  $ware.settings = $value  ->  get local variable: name=$pointer
+* v9.01 P1-05a: create the record if missing, or the setting is silently lost (create is safe since P1-04)
+if not $ware.settings
+  = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=null  station=$value  action='create'
+ $ware.settings = $value  ->  get local variable: name=$pointer
+end
 341  
 342  if $command == 'can.buy'
 343   if $ware.settings[3]
@@ -436,6 +453,15 @@
 433   $factory.show.array = $return.array[1]
 434  end
 435  endsub
+
+Dock.List.View.Sub:
+* v9.01 P1-05a: Menu View 3 = Dock List
+if $is.AP == [TRUE]
+ $menu = null -> call script plugin.LI.FDN.Menu.AP.Dock.List : menu=$menu
+else
+ $menu = null -> call script plugin.LI.FDN.Menu.Dock.List : menu=$menu
+end
+endsub
 436  
 437  
 438  Factory.Details.View.Sub:
@@ -470,13 +496,16 @@
 467  Add.Ware.Sub:
 468  $txt = = read text: page=$PageID id=197
 469  $ware = null  ->  get user input: type=Var/Ware, title=$txt
+* v9.01 P1-05a: nothing to add if the player cancelled
+if not $ware
+ endsub
+end
 470  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
 471  $ware.array = $value  ->  get local variable: name=$pointer
 472  if not $ware.array
-473   $amount = $value  ->  get amount of ware $ware in cargo bay
-474   if not $amount > 0
+* v9.01 P1-05a: v8 skipped create when the dock already held the ware, so it could never get a record.
+* Update.Ware 'create' only creates when missing and only does its add/remove 1 when there is no stock.
 475     = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=null  station=$value  action='create'
-476   end
 477  end
 478  endsub
 479  
@@ -546,7 +575,10 @@
 543  if $menu.view == 1
 544   $txt = = read text: page=$PageID id=112
 545  else if $menu.view == 2
-546   $txt = = read text: page=$PageID id=111
+* v9.01 P1-05a: from Stations the next view is Docks (text 113)
+546   $txt = = read text: page=$PageID id=113
+else if $menu.view == 3
+ $txt = = read text: page=$PageID id=111
 547  else if $menu.view == 4
 548   $txt = $dc
 549  else if $menu.view == 5
@@ -568,12 +600,14 @@
 565   $txt = = read text: page=$PageID id=111
 566  else if $menu.view == 2
 567   $txt = = read text: page=$PageID id=112
+else if $menu.view == 3
+ $txt = = read text: page=$PageID id=113
 568  else if $menu.view == 7
 569   $txt = = read text: page=$PageID id=103
 570  else
 571   $txt = = read text: page=$PageID id=133
 572  end
-573  if $menu.view == 1 OR $menu.view == 2 OR $menu.view == 5
+573  if ($menu.view == 1) OR ($menu.view == 2) OR ($menu.view == 3) OR ($menu.view == 5)
 574   $return = open custom info menu: title=$txt description=null option array=$menu maxoptions=2
 575  else
 576   $return = open custom menu: title=$txt description=null option array=$menu

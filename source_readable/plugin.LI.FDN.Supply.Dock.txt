@@ -1,5 +1,5 @@
 * Script: plugin.LI.FDN.Supply.Dock  (v1.0, engine 50)
-* Desc: FDNv8 - Supply Dock
+* Desc: FDN v9.01 - Supply Dock
 * Arg 0: dock (Value) 'dock'
 * Arg 1: flag (Value) 'flag'
 
@@ -16,10 +16,12 @@
 011  
 012  * To Do - N/A
 013  
-014  * Version: 1.0
+014  * Version: 1.1
 015  * Date: 23/05/2012
 016  * Tested: 23/05/2012
 017  * -----------------------------------------------------------------------------------
+* v9.01 P1-05: B4 safe sell cap (record + INT >= 0), B12 dock/DC re-check after waits,
+*              P8 wait every 10 wares in the dock supply loop, debug lines (debug on only)
 018  
 019  * Fetch values saved in the AL Plugin global variable:
 020  * - DC
@@ -47,6 +49,8 @@
 042     * -----------------------------------------------------------------------------------
 043     
 044      = wait randomly from 500 to 1000 ms
+     * v9.01 B12: stop if the dock or DC died or changed owner during the wait
+     gosub Check.Alive.Sub:
 045    end
 046    return null
 047   end
@@ -58,6 +62,13 @@
 053   if not $dock == $dc
 054    $ware.array = $dock  ->  get tradeable ware array from station
 055    $s = size of array $ware.array
+    * v9.01 P8: counter for a short wait every 10 wares
+    $ware.count = 0
+   * v9.01 P1-05: debug - one line per dock pass
+   if $al.Settings[7]
+    $txt.debug = 'Dock pass, ' + $s + ' wares'
+    gosub Debug.Sub:
+   end
 056    while $s > 0
 057     dec $s =
 058     $ware = $ware.array[$s]
@@ -92,6 +103,11 @@
 087        if $surplus > 0
 088          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dc  action='add'
 089          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dock  action='remove'
+         * v9.01 P1-05: debug
+         if $al.Settings[7]
+          $txt.debug = 'Surplus ' + $surplus + ' of ' + $ware + ' to DC'
+          gosub Debug.Sub:
+         end
 090        end
 091       end
 092      end
@@ -128,17 +144,30 @@
 123         end
 124         
 125         * call the script to add the wares to the dock
-126          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dock  action='add'
+126         $added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dock  action='add'
 127         * -----------------------------------------------------------------------------------
 128         
 129         * call the script to removes the wares from the dc
 130          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dc  action='remove'
+         * v9.01 P1-05: debug (dock added = what Update.Ware 'add' returned)
+         if $al.Settings[7]
+          $txt.debug = 'Supply ' + $required.at.dock + ' of ' + $ware + ' from DC, dock added ' + $added
+          gosub Debug.Sub:
+         end
 131         * -----------------------------------------------------------------------------------
 132        end
 133       end
 134      end
 135      
 136     end
+      * v9.01 P8: short wait every 10 wares (after the add/remove pairs, so each pair stays atomic)
+      $ware.count = $ware.count + 1
+      if $ware.count >= 10
+       $ware.count = 0
+        = wait randomly from 500 to 1000 ms
+       * v9.01 B12: stop if the dock or DC died or changed owner during the wait
+       gosub Check.Alive.Sub:
+      end
 137    end
 138     = wait randomly from 500 to 1000 ms
 139   end
@@ -149,19 +178,65 @@
 144  * sell ware Sub, checks if the ware can be sold and if so call the sell ware script
 145  Sell.Ware.Sub:
 146  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-147  $ware.settings = $dock  ->  get local variable: name=$pointer
-148  $sell = $ware.settings[5]
-149  if $sell >= 0
-150   $virtual.stock = $ware.settings[0]
-151   $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
-152   $stock = $virtual.stock + $physical.stock
-153   if $stock > $sell
-154    $amount = $stock - $sell
-155    START  = null -> call script plugin.LI.FDN.Sell.Ware : dock=$dock  ware=$ware  amount=$amount
-156   end
-157  end
+$ware.settings = $dock  ->  get local variable: name=$pointer
+* v9.01 B4: sell cap only when the record exists and [5] is an integer >= 0 (skip this ware otherwise)
+if $ware.settings
+ $sell = $ware.settings[5]
+ if is datatyp[ $sell ] == DATATYPE_INT
+  if $sell >= 0
+   $virtual.stock = $ware.settings[0]
+   $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
+   $stock = $virtual.stock + $physical.stock
+   if $stock > $sell
+    $amount = $stock - $sell
+    * v9.01 P1-05: debug
+    if $al.Settings[7]
+     $txt.debug = 'Sell cap ' + $sell + ', stock ' + $stock + ', selling ' + $amount + ' of ' + $ware
+     gosub Debug.Sub:
+    end
+    START  = null -> call script plugin.LI.FDN.Sell.Ware : dock=$dock  ware=$ware  amount=$amount
+   end
+  end
+ end
+end
 158  endsub
 159  * -----------------------------------------------------------------------------------
+
+* v9.01 B12: called after a wait; ends the WHOLE script (return inside a sub) if the dock or DC
+* no longer exists or is not player owned. Nothing to release: this task holds no lock.
+Check.Alive.Sub:
+if not $dock  ->  exists
+ if $al.Settings[7]
+  $txt.debug = 'Dock gone - pass stopped'
+  gosub Debug.Sub:
+ end
+ return null
+end
+$owner = $dock  ->  get owner race
+if not $owner == Player
+ if $al.Settings[7]
+  $txt.debug = 'Dock not player owned - pass stopped'
+  gosub Debug.Sub:
+ end
+ return null
+end
+if not $dc  ->  exists
+ if $al.Settings[7]
+  $txt.debug = 'DC gone - pass stopped'
+  gosub Debug.Sub:
+ end
+ return null
+end
+$owner = $dc  ->  get owner race
+if not $owner == Player
+ if $al.Settings[7]
+  $txt.debug = 'DC not player owned - pass stopped'
+  gosub Debug.Sub:
+ end
+ return null
+end
+endsub
+* -----------------------------------------------------------------------------------
 160  
 161  * Debug Massage handling
 162  Debug.Sub:

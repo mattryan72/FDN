@@ -14,7 +14,7 @@
 - [B2] Update.Ware: record name built before 'create'; 'create' only writes a missing record.
 - [B3] Supply.Start: DC validated every tick (exists / owner race == Player / Dock class 2007); on failure clears settings [2], writes a logbook entry for the player and pauses. Supply.Factory.Check: a factory must exist and be owned by the player (`get owner race` == Player); missing, sold, captured or given-away stations are removed from the stored array [3]. Other B3 sites (Supply.Factory, Dock.Check) are their own cards. Supply.Factory: DC validated once per task; products are only taken from the factory when the DC is valid, and only the amount Update.Ware reports as added (null falls back to v8 until P1-04); resource remove and buy are skipped while the DC is invalid; a missing DC ware record skips only that ware's buy.
 - [B30] Update.Ware: record re-read after it is created; non-Dock 'remove' no longer returns null (virtual stock defaults to 0).
-- [B4] Null sell cap sells all stock (planned)
+- [B4] Supply.Dock: sell cap used only when the ware record exists and [5] is an integer >= 0; otherwise that ware is skipped.
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
 - [B7] Dynamic index 1 vs 2 (planned)
@@ -22,7 +22,7 @@
 - [B9] Reset regex scope (planned; registry-based reset, approved, see below). Update.Ware adds each station that gets a new ware record to registry [29] (P1-04).
 - [B10] Sector.Array modes (planned)
 - [B11] Supply.Factory: Buy.Ware is STARTed at most once per 120 s per factory (factory FDN.Settings [3] = playing time of the last start, stale after 120 s). Sell side (Supply.Dock) planned.
-- [B12] No re-validation after waits (planned)
+- [B12] Supply.Dock: after each wait in the ware loops the task stops if the dock or DC no longer exists or is not player owned.
 - [B13] Supply.Factory.Check: no more `reverse array` (it returned a copy, so removals missed the stored array on reversed passes). The script walks the stored array [3] in place and alternates direction each call via settings [13]: forwards from 0, bound = shrinking size, index only advances when nothing was removed; backwards from size-1, always steps down.
 - [B14] Wait in AL path (planned)
 - [B15] Fragile temp-drone trades; drone kept and hardened per R-T1 (planned)
@@ -31,6 +31,9 @@
 ### Changed
 - [P1] Supply.Start: `Sector.Array` refresh now throttled to at most every 300 s via timestamp settings `[16]`; a null `[16]` means never-scanned so the first tick still runs it. Throttle uses a `$do.scan` flag and never blocks supply - when throttled, the existing arrays are reused for this cycle (no wait added).
 - [P7] Supply.Factory.Check: settings-variable name (text 4001) read once before the loop instead of once per factory.
+- [P8] Supply.Dock: the dock supply loop waits 0.5-1 s every 10 wares (the DC sell loop already waits per ware).
+- [P1-05] Supply.Dock: debug log lines (debug on only) for each dock pass, supply from the DC (requested and added), surplus to the DC, sell cap and early stop after a wait.
+- [P1-05a] Main Menu: new Docks view (view 3, plugin.LI.FDN.Menu.AP.Dock.List; TC: plugin.LI.FDN.Menu.Dock.List) lists every tracked player dock except the DC and opens Dock Details; "Switch to" cycles DC -> Stations -> Docks; back from Dock Details returns to the Docks list. Ware settings and Add ware now create a missing ware record (settings were silently lost before).
 
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:

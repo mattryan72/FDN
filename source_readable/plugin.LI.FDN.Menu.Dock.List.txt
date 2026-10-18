@@ -1,0 +1,122 @@
+* Script: plugin.LI.FDN.Menu.Dock.List  (v1.0)
+* Desc: FDN v9.01 - Dock List Menu (TC)
+* Arg 0: menu (Value) 'menu'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* v9.01 P1-05a: builds Menu View 3 (Dock List) and returns the menu array to the Main Menu
+* Lists every dock in settings [4] that exists, is player owned and is not the DC,
+* grouped by sector like the Stations list (Menu.AP.Factory.List)
+* Selecting a row returns 'open.dock' so the Main Menu opens Dock Details (view 5)
+
+* Expected values:
+* - menu
+* Returns values:
+* - menu
+* -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if $al.Settings
+ $PageID = $al.Settings[1]
+ $DebugID = 0 + $PageID
+ $dc = $al.Settings[2]
+ $all.docks = $al.Settings[4]
+else
+ return $menu
+end
+$script = = get script name
+* -----------------------------------------------------------------------------------
+
+$txt = = read text: page=$PageID id=200
+add custom menu heading to array $menu: title=$txt
+* -----------------------------------------------------------------------------------
+
+* valid docks and their sectors (each sector once)
+$valid.docks = = array alloc: size=0
+$sector.array = = array alloc: size=0
+$s = size of array $all.docks
+while $s > 0
+ dec $s =
+ $dock = $all.docks[$s]
+ if $dock  ->  exists
+  $owner = $dock  ->  get owner race
+  if $owner == Player
+   if not $dock == $dc
+    append $dock to array $valid.docks
+    $sector = $dock  ->  get sector
+    if not find $sector in array: $sector.array
+     append $sector to array $sector.array
+    end
+   end
+  end
+ end
+end
+$sector.array = = sort array $sector.array
+$sector.array = reverse array $sector.array
+* -----------------------------------------------------------------------------------
+
+* one group per sector, docks of that sector inside
+$dock.count = 0
+$s = size of array $sector.array
+while $s > 0
+ dec $s =
+ $sector = $sector.array[$s]
+ add custom menu info line to array $menu: text=$sector
+ $sd = size of array $valid.docks
+ while $sd > 0
+  dec $sd =
+  $dock = $valid.docks[$sd]
+  $dock.sector = $dock  ->  get sector
+  if $dock.sector == $sector
+   inc $dock.count =
+   gosub Dock.Row.Sub:
+  end
+ end
+end
+* -----------------------------------------------------------------------------------
+
+add section to custom menu: $menu
+$txt = = sprintf: pageid=$PageID textid=2001, $dock.count, null, null, null, null
+add custom menu info line to array $menu: text=$txt
+
+if $al.Settings[7]
+ $txt.debug = 'Docks view, ' + $dock.count + ' docks'
+ gosub Debug.Sub:
+end
+return $menu
+* -----------------------------------------------------------------------------------
+
+* one selectable row per dock, same 8-column layout as the factory rows
+Dock.Row.Sub:
+$name = null -> call script plugin.LI.FDN.Format.Name : object=$dock
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$name = $pre + $name
+
+$temp.array = = array alloc: size=8
+$temp.array[0] = 1
+$temp.array[1] = ''
+$temp.array[2] = 5
+$temp.array[3] = $name
+$temp.array[4] = -200
+$temp.array[5] = ' '
+$temp.array[6] = -1
+$temp.array[7] = ' '
+
+$return.array = = array alloc: size=2
+$return.array[0] = 'open.dock'
+$return.array[1] = $dock
+
+$format = = create new array, arguments=$temp.array, $return.array, null, null, null
+append $format to array $menu
+endsub
+* -----------------------------------------------------------------------------------
+
+* Debug Massage handling
+Debug.Sub:
+$d.time = = playing time
+$d.time = = format time: $d.time
+$txt = $d.time + ';' + $script + ';' + $txt.debug
+write to log file $DebugID  append=[TRUE]  value=$txt
+endsub
+* -----------------------------------------------------------------------------------
+return $menu
