@@ -15,10 +15,10 @@
 008  * - action
 009  
 010  * Returns values:
-011  * - N/A
+011  * - 'add' = amount actually added (physical + virtual); 'remove' = amount actually removed; 0 if amount <= 0; null for 'create' or if FDN settings are missing
 012  
-013  * Version: 1.0
-014  * Date: 09/06/2012
+013  * Version: 1.1
+014  * Date: 18/10/2026
 015  * Tested: 09/06/2012
 016  * -----------------------------------------------------------------------------------
 017  
@@ -35,28 +35,37 @@
 028  
 029  * return.remove is passed back but only used by the suppy factory script
 030  $return.remove = 0
+* v9.01 B2: build the record name before 'create' uses it (it was null on the create path)
+$pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
 031  
 032  * if the script is call just to add the virtual ref
 033  if $action == 'create'
-034   gosub Add.Ware.Sub:
-035   return null
+ * v9.01 B2: create only when missing - an unconditional create would wipe an existing record
+ $ware.array = $station  ->  get local variable: name=$pointer
+ if not $ware.array
+  gosub Add.Ware.Sub:
+ end
+ return null
 036  end
 037  * -----------------------------------------------------------------------------------
 038  
 039  * check for valid amount
 040  if $amount > 0
+ * v9.01: no virtual stock unless a Dock record says so - null made the non-Dock 'remove' maths null
+ $virtual.stock = 0
 041   
 042   * check if dock - only dock class station have virtual storage
 043   if $station  ->  is of class Dock 2007
 044    * -----------------------------------------------------------------------------------
 045    
-046    $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-047    $ware.array = $station  ->  get local variable: name=$pointer
+  $ware.array = $station  ->  get local variable: name=$pointer
 048    * -----------------------------------------------------------------------------------
 049    
 050    * if no ware array is found for virtula add one
 051    if not $ware.array
 052     gosub Add.Ware.Sub:
+   * v9.01 B30: re-read the record just created, or [0] reads null and a virtual add/remove is lost
+   $ware.array = $station  ->  get local variable: name=$pointer
 053    end
 054    * -----------------------------------------------------------------------------------
 055    
@@ -122,7 +131,10 @@
 115   * -----------------------------------------------------------------------------------
 116   
 117   * update the virtual ware ref
-118   $station  ->  set local variable: name=$pointer value=$ware.array
+  * v9.01 B2: only a Dock has a record - now that $pointer is always set, never write a null record under a real name (non-Dock 'remove')
+  if $ware.array
+   $station  ->  set local variable: name=$pointer value=$ware.array
+  end
 119  end
 120  
 121  * return.remove is passed back but only used by the suppy factory script
@@ -140,6 +152,7 @@
 133  $array[4] = $price
 134  $array[5] = -1
 135  $array[6] = $price
+* v9.01 B5: -1 = use the global surplus default in settings [28]; surplus behaviour unchanged here
 136  $array[7] = -1
 137  $array[8] = null
 138  $array[9] = null
@@ -152,6 +165,16 @@
 145    = $station  ->  add 1 units of $ware
 146    = $station  ->  add -1 units of $ware
 147  end
+* v9.01 B9: remember this station in the registry (settings [29]) so Reset can find it; lib.LI.FDN.Reg.Add replaces this in Phase 2
+$registry = $al.Settings[29]
+if not $registry
+ $registry = = array alloc: size=0
+ $al.Settings[29] = $registry
+end
+if not find $station in array: $registry
+ append $station to array $registry
+end
+set global variable: name='al.LI.FDN.event' value=$al.Settings
 148  endsub
 149  * -----------------------------------------------------------------------------------
 150  
