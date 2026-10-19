@@ -16,6 +16,7 @@
 - [B3] Supply.Dock.Check: early return when settings [2] is null (Supply.Start owns DC validation); docks that do not exist or are not player-owned are removed from the stored array [4], with debug reason lines ' Clean from Dock Array - does not exist / not player owned'.
 - [B30] Update.Ware: record re-read after it is created; non-Dock 'remove' no longer returns null (virtual stock defaults to 0).
 - [B4] Supply.Dock: sell cap used only when the ware record exists and [5] is an integer >= 0; otherwise that ware is skipped.
+- [B4][B12][B15] Sell.Ware: return without selling when the ware record is missing, sell-at price is not an int, or the sell cap is not an int >= 0; dock and DC re-checked after each wait; trade drone only used if create ship worked, named 'FDN Trade Drone' and tagged FDN.Trade.Drone, null sell treated as 0, destructed behind an exists check.
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
 - [B7] Dynamic index 1 vs 2 (planned)

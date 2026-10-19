@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Sell.Ware  (v1.0, engine 50)
-* Desc: FDN v8 - Supply Factory logic
+* Script: plugin.LI.FDN.Sell.Ware  (v2, engine 50)
+* Desc: FDNv9 - Sell ware from dock
 * Arg 0: dock (Value) 'dock'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: amount (Value) 'amount'
@@ -23,6 +23,7 @@
 017  * Date: 22/05/2012
 018  * Tested: 22/05/2012
 019  * -----------------------------------------------------------------------------------
+* v9.01 B4 B12 B15: guard against null record / non-int sell cap, re-check dock and DC after the wait, safer trade drone
 020  
 021  * Fetch values saved in the AL Plugin global variable:
 022  * - DC
@@ -32,6 +33,8 @@
 026   $PageID = $al.Settings[1]
 027   $DebugID = 0 + $PageID
 028   $exclude.array = $al.Settings[8]
+ * v9.01 B12: fetch the DC so the loop can re-check it after the wait
+  $dc = $al.Settings[2]
 029  else
 030   return null
 031  end
@@ -41,6 +44,21 @@
 035  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
 036  $ware.settings = $dock  ->  get local variable: name=$pointer
 037  $sell.at = $ware.settings[6]
+ * v9.01 B4: never sell or search with a missing record or a non-int sell-at price (null min.price)
+ if not $ware.settings
+  if $al.Settings[7]
+   $txt.debug = 'No FDN ware record - nothing to sell'
+   gosub Debug.Sub:
+  end
+  return null
+ end
+ if not is datatyp[ $sell.at ] == DATATYPE_INT
+  if $al.Settings[7]
+   $txt.debug = 'Sell at price not set for ' + $ware + ' - nothing to sell'
+   gosub Debug.Sub:
+  end
+  return null
+ end
 038  * -----------------------------------------------------------------------------------
 039  
 040  $s = size of array $sector.array
@@ -48,10 +66,33 @@
 042   dec $s =
 043   
 044   $ware.settings = $dock  ->  get local variable: name=$pointer
+ * v9.01 B4: re-read the record each pass; sell cap only when [5] is an integer >= 0 (-1 means selling off)
+   if not $ware.settings
+    if $al.Settings[7]
+     $txt.debug = 'No FDN ware record - nothing to sell'
+     gosub Debug.Sub:
+    end
+    return null
+   end
+   $sell = $ware.settings[5]
+   if not is datatyp[ $sell ] == DATATYPE_INT
+    if $al.Settings[7]
+     $txt.debug = 'Sell cap not set for ' + $ware + ' - nothing to sell'
+     gosub Debug.Sub:
+    end
+    return null
+   end
+   if not $sell >= 0
+    if $al.Settings[7]
+     $txt.debug = 'Sell cap off for ' + $ware + ' - nothing to sell'
+     gosub Debug.Sub:
+    end
+    return null
+   end
 045   $virtual.stock = $ware.settings[0]
 046   $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
 047   $stock = $virtual.stock + $physical.stock
-048   $sell = $ware.settings[5]
+ * v9.01 B4: $sell is read and guarded above (record re-read each pass)
 049   $amount = $stock - $sell
 050   * -----------------------------------------------------------------------------------
 051   
@@ -78,6 +119,11 @@
 072    if not $relation == Foe
 073     
 074     $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$sell.Station x=null y=null z=null
+ * v9.01 B15: only trade if the drone was actually created; name it and tag it so leftover drones are findable (TODO: text IDs 310/4102)
+     if $drone -> exists
+      $drone  ->  set name to 'FDN Trade Drone'
+      $d.time = = playing time
+      $drone  ->  set local variable: name='FDN.Trade.Drone' value=$d.time
 075     $drone  ->  set homebase to $dock
 076     $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
 077     * -----------------------------------------------------------------------------------
@@ -101,7 +147,14 @@
 095     
 096      = $drone  ->  add $sell.amount units of $ware
 097     $sold = $drone  ->  sell $sell.amount units of $ware
-098     $drone  ->  destruct: show no explosion=[TRUE]
+ * v9.01 B15: a null sell return is treated as 0; destruct on every path behind an exists check, no wait between create and destruct
+     if not $sold
+      $sold = 0
+     end
+     if $drone -> exists
+      $drone  ->  destruct: show no explosion=[TRUE]
+     end
+ * v9.01 B15: only remove from the dock what was actually sold ($sold > 0)
 099     * -----------------------------------------------------------------------------------
 100     if $sold > 0
 101      
@@ -120,17 +173,47 @@
 114       = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$sold  station=$dock  action='remove'
 115      * -----------------------------------------------------------------------------------
 116     end
-117    end
+     else
+      if $al.Settings[7]
+       $txt.debug = 'Drone create failed - nothing sold'
+       gosub Debug.Sub:
+      end
+     end
+117   end
 118    
 119   end
 120   
 121   * wait
 122    = wait randomly from 500 to 1000 ms
+ * v9.01 B12: re-check dock and DC after the wait
+ gosub Check.Alive.Sub:
 123   * -----------------------------------------------------------------------------------
 124  end
 125  return null
 126  * -----------------------------------------------------------------------------------
 127  
+* v9.01 B12: dock and DC must still exist and be player-owned; a return inside a sub ends the script
+Check.Alive.Sub:
+$ok = [FALSE]
+if $dock -> exists
+ $owner = $dock -> get owner race
+ if $owner == Player
+  if $dc -> exists
+   $owner = $dc -> get owner race
+   if $owner == Player
+    $ok = [TRUE]
+   end
+  end
+ end
+end
+if not $ok
+ if $al.Settings[7]
+  $txt.debug = 'Dock or DC no longer valid - stop selling'
+  gosub Debug.Sub:
+ end
+ return null
+end
+endsub
 128  * Debug Massage handling
 129  Debug.Sub:
 130  $d.time = = playing time
