@@ -1,4 +1,4 @@
-# P1-09a: Main.Menu: one updater per view (B8), remove dead view-3 code (B24)
+# P1-09a: Main.Menu: one updater per view (B8), remove dead Escape and header branches (B24)
 
 - Phase: 1 (branch `phase1-bugfix`)
 - Writes code: yes
@@ -18,10 +18,10 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 ### Bug notes from the analysis (line numbers are Script Editor lines)
 - B8 (medium) Main.Menu 413, 446; DC.Details_D 33-44; Dock.Details_D. (a) A new _D updater task is STARTed on every menu redraw, so updaters stack up. (b) The view reads FDND.* globals right after START, before the updater may have written them (empty rows on first draw, verify). (c) DC_D runs Write.Menu.Global before its `if $dc` check. Fix direction: one refresh task with a token in [20]; build first draw synchronously.
-- B24 (low) Main.Menu 47, 92, 540-560. Dead view-3 branches and unreachable header branches. Fix: delete.
+- B24 (low) Main.Menu 092-093, 547-554. View 3 is live again since P1-05a (Dock List), so its code is NOT dead: keep 006, 047, 082, 573 and the unnumbered view-3 lines after 059, 096, 185, 319, 435, 546 and 567. Still dead: 092-093 (`if $menu.view == 3` in the Escape chain; line 082 already returns for views 1, 2 and 3), and the view 4-7 branches 547-554 in Menu.View.Header.Sub (only called for views 1-3, line 047). Fix: delete those two; line 094 then becomes `if $menu.view == 4`.
 
 ### Menu views
-1 DC, 2 stations, 4 factory, 5 dock, 6 ware, 7 config (3 was removed). Settings [5] = open view, [20] = menu refresh token (new).
+1 DC, 2 stations, 3 dock list (back since P1-05a), 4 factory, 5 dock, 6 ware, 7 config. Settings [5] = open view, [20] = menu refresh token (new).
 
 ## Key facts
 
@@ -29,9 +29,10 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - Mark every change with a comment `* v9.01 B#`.
 - Never edit XML; source text only. Never invent commands: use ones in the pasted script or mark `VERIFY:`.
 - If NOTES_semantics.md was included, follow its test results; if not, mark those engine points `VERIFY:`.
+- Lines with no number are v9.01 additions already in the file (from P1-05/P1-05a). Keep them unless the task says otherwise. To change one, quote it exactly and anchor it to the nearest numbered line (e.g. `Insert after line 059:`).
 - You only have some line ranges of this script (marked in the FILE block). Do NOT output the whole script. For each change output `Replace lines NNN-NNN with:` and the new lines, or `Insert after line NNN:`. Keep line numbers from the pasted file.
 
 ## Instruction
 
-Phase 1, task P1-09a. Fix plugin.LI.FDN.Main.Menu (only the pasted ranges): B8 START the *_D updater only when ENTERING view 1 or 5, not on every redraw; increment `$al.Settings[20]` (menu token) each time you start one so old updaters can exit. B24 delete the dead view-3 branches and unreachable header branches. Use the replace-block output described in the key facts.
+Phase 1, task P1-09a. Fix plugin.LI.FDN.Main.Menu (only the pasted ranges): B8 START the *_D updater only when ENTERING view 1 or 5, not on every redraw; increment `$al.Settings[20]` (menu token) each time you start one so old updaters can exit. B24 delete only the dead code listed in the B24 note (092-093 and 547-554); view 3 (Dock List) is live, so keep every other view-3 line. Use the replace-block output described in the key facts.
 Start with "Assumptions" and "Questions for Matt" (short), then follow the answer format in CORE RULES.

@@ -108,29 +108,50 @@ def parse_paste_line(item):
 
 
 def cut_lines(text, ranges, path):
-    """Keep the unnumbered header plus Script Editor lines NNN in the ranges."""
+    """Keep the unnumbered header plus Script Editor lines NNN in the ranges.
+
+    Unnumbered lines after 001 (v9.01 additions) are kept when they sit between
+    two numbered lines that are both kept, so a pasted range shows the real code.
+    """
+    def in_range(n):
+        for i, (a, b) in enumerate(ranges):
+            if a <= n <= b:
+                return i
+        return None
+
     out = []
     seen_numbered = False
     found = set()
     last_kept = None
+    pending = []  # unnumbered lines since the last numbered line
+    prev_kept = False
+    prev_range = None
     for line in text.split("\n"):
         m = re.match(r"^(\d{3,4})\s", line)
         if not m:
             if not seen_numbered:
                 out.append(line)  # header lines before 001
+            else:
+                pending.append(line)
             continue
         seen_numbered = True
         n = int(m.group(1))
-        for i, (a, b) in enumerate(ranges):
-            if a <= n <= b:
-                if last_kept is not None and n != last_kept + 1:
-                    out.append("... (lines %03d-%03d not included) ..." % (last_kept + 1, n - 1))
-                elif last_kept is None and n > 1:
-                    out.append("... (lines 001-%03d not included) ..." % (n - 1))
-                out.append(line)
-                last_kept = n
-                found.add(i)
-                break
+        i = in_range(n)
+        if i is not None:
+            if prev_kept and i == prev_range:
+                if n != last_kept + 1:
+                    out.append("... (v8 lines %03d-%03d were deleted in v9.01) ..." % (last_kept + 1, n - 1))
+                out.extend(pending)  # v9.01 lines inside the range
+            elif last_kept is not None and n != last_kept + 1:
+                out.append("... (lines %03d-%03d not included) ..." % (last_kept + 1, n - 1))
+            elif last_kept is None and n > 1:
+                out.append("... (lines 001-%03d not included) ..." % (n - 1))
+            out.append(line)
+            last_kept = n
+            found.add(i)
+        prev_kept = i is not None
+        prev_range = i
+        pending = []
     missing = [ranges[i] for i in range(len(ranges)) if i not in found]
     if missing:
         raise CardError("%s: line range(s) %s not found" % (path, missing))
