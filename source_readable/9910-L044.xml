@@ -117,6 +117,7 @@
   <t id="200">Sectors:</t>
   <t id="201">\033CWare:\033X</t>
   <t id="202">Cr: %s</t>
+  <t id="300">\033RConfirm Remove Ware\033X - FDN will forget this ware and delete any virtual stock</t>
 
   <t id="8">Laser:</t>
   <t id="9">Shield:</t>

@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Main.Menu  (v1.0, engine 50)
-* Desc: FDNv8 - Main Menu
+* Script: plugin.LI.FDN.Main.Menu  (v2, engine 50)
+* Desc: FDNv9 - Main Menu
 
 001  * Auth0r: Logain Abler
 002  * --------------------
@@ -570,8 +570,36 @@ end
 506  
 507  Remove.Ware.Sub:
 508  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+* v9.01 B26: re-check stock before deleting - the UI only offers Remove at 0 stock, but supply could have landed in between (physical + virtual, as Menu.Ware.Details L071-073)
+$remove.virtual = 0
+if $value -> is of class Dock 2007
+ $ware.settings = $value -> get local variable: name=$pointer
+ if $ware.settings
+  $remove.virtual = $ware.settings[0]
+ end
+end
+* v9.01 B26: an old v8 record can hold null in [0] - treat it as 0
+if not $remove.virtual
+ $remove.virtual = 0
+end
+$remove.physical = $value -> get amount of ware $ware in cargo bay
+$remove.total = $remove.physical + $remove.virtual
+if $remove.total > 0
+ write to player logbook 'FDN: Remove Ware cancelled - stock is no longer empty'
+ endsub
+end
+* v9.01 B26: confirm before the record and any virtual stock are deleted (pattern from master.reset, L324-330)
+$txt = = read text: page=$PageID id=300
+$confirm = null -> get user input: type=Var/Boolean, title=$txt
+if $confirm == [TRUE]
 509  $value  ->  set local variable: name=$pointer value=null
 510  $value  ->  remove product from factory or dock: $ware
+ * v9.01 B26: FL also needs the dock tradeable list cleared - FL-only command lives in its own script so TC/AP never run it
+ $engine = = script engine version
+ if $engine >= 60
+  = null -> call script plugin.LI.FDN.FL.Remove.Tradeable : station=$value  ware=$ware
+ end
+end
 511  endsub
 512  
 513  

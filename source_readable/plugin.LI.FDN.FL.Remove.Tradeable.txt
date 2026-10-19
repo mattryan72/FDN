@@ -1,0 +1,8 @@
+* Script: plugin.LI.FDN.FL.Remove.Tradeable  (v1, engine 50)
+* Desc: FDNv9 - FL only: remove a ware from a dock's tradeable list
+* Arg 0: station (Value) 'station'
+* Arg 1: ware (Value) 'ware'
+
+* v9.01 B26: Farnham's Legacy keeps dock tradeables in a separate list that remove product does not clear. FL-only command - only call this when script engine version >= 60.
+$station -> remove tradeable from dock: ware=$ware
+return null
