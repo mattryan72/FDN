@@ -1,12 +1,13 @@
-* Script: plugin.LI.FDN.Supply.Dock.Check  (v1.0, engine 50)
-* Desc: FDNv8 - Checks dock to be supplied
+* Script: plugin.LI.FDN.Supply.Dock.Check  (v2, engine 50)
+* Desc: FDNv9 - Checks dock to be supplied
 
 001  * Author: Logain Abler
 002  * -----------------------------------------------------------------------------------
 003  * This script is called by LI.FDN.Menu.Supply.Start script if there is a valid
 004  * dock array stored in the AL Plugin variable
 005  * The script contains the checks made on the docks before calling LI.FDN.Menu.Dock.Factory
-006  * The script will also remove any non-existing Docks from the stored array
+006  * The script will also remove any non-existing or non-player-owned Docks from the stored array
+* v9.01 B3: ownership check added (sold, captured or given-away stations are dropped)
 007  
 008  * Expected values:
 009  * - N/A the Factory array is stored in the AL Plugin variable
@@ -35,6 +36,11 @@
 032   return null
 033  end
 034  * -----------------------------------------------------------------------------------
+* v9.01 B3: Supply.Start validated the DC this tick and pauses FDN if it failed; no DC, nothing to do
+if not $dc
+ return null
+end
+
 035  
 036  $s = size of array $dock.array
 037  
@@ -47,17 +53,34 @@
 044  while $s > 0
 045   dec $s =
 046   $dock = $dock.array[$s]
+* v9.01 B3: dock must exist AND be owned by the player
+$valid = [FALSE]
 047   if $dock  ->  exists
+$owner = $dock -> get owner race
+if $owner == Player
+$valid = [TRUE]
+end
+end
+if not $valid
+* missing, sold, captured or given away - remove from the stored array
+056    remove element from array $dock.array at index $s
+* debug
+if $debug
+ if $dock -> exists
+  $txt.debug = ' Clean from Dock Array - not player owned'
+ else
+  $txt.debug = ' Clean from Dock Array - does not exist'
+ end
+ gosub Debug.Sub:
+end
+end
+if $valid
 048    * -----------------------------------------------------------------------------------
 049    
 050    * Call plugin.LI.FDN.Supply.Dock:
 051    START  = null -> call script plugin.LI.FDN.Supply.Dock : dock=$dock  flag=null
 052    * ----------------------------------------------------------------------------------
 053    
-054   else
-055    * if factory does not exist remove from array
-056    remove element from array $dock.array at index $s
-057    * -----------------------------------------------------------------------------------
 058   end
 059   * -----------------------------------------------------------------------------------
 060   
