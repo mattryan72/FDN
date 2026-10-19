@@ -22,7 +22,7 @@
 - [B4][B12][B15] Sell.Ware: return without selling when the ware record is missing, sell-at price is not an int, or the sell cap is not an int >= 0; dock and DC re-checked after each wait; trade drone only used if create ship worked, named 'FDN Trade Drone' and tagged FDN.Trade.Drone, null sell treated as 0, destructed behind an exists check.
 - [B4][B12][B15] Buy.Ware: return without buying when the ware record is missing or the buy-at price is not an int; factory and DC re-checked before the search loop and after each wait (Check.Alive.Sub); trade drone only used if create ship worked, named 'FDN Trade Drone' and tagged FDN.Trade.Drone, buy clamped to the drone's max cargo for the ware, null buy treated as 0, destructed behind an exists check.
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
-- [B6] Config-menu dependency (planned)
+- [B6] plugin.LI.FDN.Setup: guard the `plugin.config.addscript` call behind a check for the CPC registry global (`plugin.config`); log a debug line when CPC is absent. Stop branch unchanged (comment only). Hotkey fallback in Phase 4 - done in P1-12.
 - [B7] Dynamic index 1 vs 2 (planned)
 - [B8] Main.Menu: _D updaters (DC.Details_D, Dock.Details_D) are now STARTed only when entering view 1 or 5, not on every redraw; a token in settings [20] is incremented per start so an older updater exits via its own loop check. A one-time bump at menu open kills stale updaters from previous sessions.
 - [B7] Menu.Dock.Details_D: read the dock dynamic flag from `al.Settings[6][2]` (was `[6][1]`, the retired dock-list toggle Config never sets), so Dock Details rows actually go dynamic when "Dock Details" is enabled in Configuration - done in P1-10a.

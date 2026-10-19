@@ -1,9 +1,13 @@
-* Script: plugin.LI.FDN.Setup  (v1.0, engine 50)
-* Desc: FDNv8 - Setup
+* Script: plugin.LI.FDN.Setup  (v2, engine 50)
+* Desc: FDNv9 - Setup
 
 001  * Author: Logain Abler
 002  * -----------------------------------------------------------------------------------
 003  * setup handles the srart and stop actions for FDN
+* v9.01 B6 - CPC (Community Plugin Configuration) is an optional dependency.
+* The addscript call is guarded by the CPC registry global 'plugin.config'
+* (CPC's init.community.config creates it on every game load); if it is missing,
+* FDN skips registration and a hotkey fallback comes in Phase 4 (P4-03).
 004  
 005  * Expected values:
 006  * - dock
@@ -32,16 +36,28 @@
 029  * Create debug log
 030  $txt = 'FDN Debug Log:'
 031  write to log file $DebugID  append=[FALSE]  value=$txt
+* v9.01 B6 - copy of the debug flag and own script name; Setup restarts the log above, so these are set before any Debug.Sub use
+$debug = $al.Settings[7]
+$this.script = = get script name
 032  
 033  * Setup
 034  if $status == [TRUE]
 035   * add fdn menu to config
+ * v9.01 B6 - only call plugin.config.addscript if CPC is present (global 'plugin.config' exists)
+ $config.Global = get global variable: name='plugin.config'
 036   $section = = read text: page=$PageID id=101
 037   $txt = = read text: page=$PageID id=102
-038    = [THIS] -> call script plugin.config.addscript : Plugin Name=$txt  Author=null  Script Name='plugin.LI.FDN.Main.Menu'  Display author=[FALSE]  Add to section=$section  Menu=null
+ if $config.Global
+038   = [THIS] -> call script plugin.config.addscript : Plugin Name=$txt  Author=null  Script Name='plugin.LI.FDN.Main.Menu'  Display author=[FALSE]  Add to section=$section  Menu=null
+ else
+  if $debug
+   $txt.debug = ' B6: CPC not found - FDN menu not registered'
+   gosub Debug.Sub:
+  end
+ end
 039   * -----------------------------------------------------------------------------------
 040  else
-041   * remove fdn from config
+041   * remove fdn from config - v9.01 B6: no code change; fragile text-match, dead when CPC absent
 042   $config.Array = get global variable: name='config.scripts'
 043   if $config.Array
 044    $s = size of array $config.Array
@@ -58,6 +74,14 @@
 055  end
 056  
 057  return null
+* v9.01 B6 - standard debug sub (pattern from P1-11 Reset)
+Debug.Sub:
+$d.time = = playing time
+$d.time = = format time: $d.time
+$txt = $d.time + ';' + $this.script + ';' + $txt.debug
+write to log file $DebugID  append=[TRUE]  value=$txt
+endsub
+
 058  
 059  
 060  
