@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.DC.Details_D  (v1.0, engine 50)
-* Desc: FDNv8 - Dynamic updates for the DC Details menu
+* Script: plugin.LI.FDN.Menu.DC.Details_D  (v2, engine 50)
+* Desc: FDNv9 - Dynamic updates for the DC Details menu
 
 001  * Author: Logain Abler
 002  * -----------------------------------------------------------------------------------
@@ -29,6 +29,8 @@
 026   $dc = $al.Settings[2]
 027   $open.menu = $al.Settings[5]
 028   $is.dynamic = $al.Settings[6][0]
+* v9.01 B8: remember our start token so a newer updater can retire this one
+$my.token = $al.Settings[20]
 029  end
 030  * -----------------------------------------------------------------------------------
 031  
@@ -38,14 +40,13 @@
 035  * Get a list of tradeable wares for the DC
 036  $ware.array = $dc  ->  get tradeable ware array from station
 037  * -----------------------------------------------------------------------------------
-038  
-039  * Call the Sub which created the global variable used for the dynamic menu
-040  gosub Write.Menu.Global.Sub:
-041  * -----------------------------------------------------------------------------------
+
 042  
 043  * Only call the while loop for update if there is a DC
 044  if $dc
 045   
+* v9.01 B8: build the menu globals only when there is a DC; must run before the dynamic gate so static views still get their first-draw rows
+gosub Write.Menu.Global.Sub:
 046   * If dynamic start While Loop
 047   if $is.dynamic
 048    * While loop which runs whilst the LI.FDN.Menu.DC.Details menu is open
@@ -57,11 +58,19 @@
 054      = wait randomly from 1000 to 1500 ms
 055     * -----------------------------------------------------------------------------------
 056     
+* v9.01 B8: re-read the event global each pass and exit if it is gone
+$al.Settings = get global variable: name='al.LI.FDN.event'
+skip if $al.Settings
+ return null
 057     * If the checks in this section fail exit the while loop
 058     * Check FDN plugin status
 059     skip if $al.Settings[0]
 060      return null
 061     * -----------------------------------------------------------------------------------
+* v9.01 B8: a new updater was STARTed (token changed), so this one must stop
+$my.current.token = $al.Settings[20]
+skip if $my.current.token == $my.token
+ return null
 062     
 063     * Check if DC menu is open - Value should be 1 and is set in plugin.LI.FDN.Main.Menu
 064     $open.menu = $al.Settings[5]
