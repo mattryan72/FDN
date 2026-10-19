@@ -21,7 +21,8 @@
 - [B5] Surplus default of -1 (planned; configurable default, approved, see below)
 - [B6] Config-menu dependency (planned)
 - [B7] Dynamic index 1 vs 2 (planned)
-- [B8] Stacked _D updaters (planned)
+- [B8] Main.Menu: _D updaters (DC.Details_D, Dock.Details_D) are now STARTed only when entering view 1 or 5, not on every redraw; a token in settings [20] is incremented per start so an older updater exits via its own loop check. A one-time bump at menu open kills stale updaters from previous sessions.
+- [B24] Main.Menu: removed dead `if $menu.view == 3` branch from the Escape chain (unreachable after L082) and dead view 4–7 branches from `Menu.View.Header.Sub` (only called for views 1–3).
 - [B9] Reset regex scope (planned; registry-based reset, approved, see below). Update.Ware adds each station that gets a new ware record to registry [29] (P1-04).
 - [B10] Sector.Array modes (planned)
 - [B11] Supply.Factory: Buy.Ware is STARTed at most once per 120 s per factory (factory FDN.Settings [3] = playing time of the last start, stale after 120 s). Sell side (Supply.Dock) planned.

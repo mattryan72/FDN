@@ -35,13 +35,27 @@
 032  $return = null
 033  $called.by = null
 034  $factory.show.array = null
+ * v9.01 B8: view that the _D updater is currently running for (null before first entry); START only when entering, not on every redraw
+$updater.view = null
 035  $menu.view = 1
+ * v9.01 B8: bump token on every menu open so any _D updater left over from a previous session exits immediately (token != remembered, or [5] no longer matches)
+$menu.token = $al.Settings[20]
+if not is datatyp[ $menu.token ] == DATATYPE_INT
+ $menu.token = 0
+end
+$menu.token = $menu.token + 1
+$al.Settings[20] = $menu.token
+set global variable: name='al.LI.FDN.event' value=$al.Settings
 036  
 037  * Start Menu
 038  while [TRUE]
 039   $cap = null
 040   $trade = null
 041   $dc = $al.Settings[2]
+ * v9.01 B8: leaving a view clears the updater marker so re-entering START's a fresh updater
+ if not $menu.view == $updater.view
+  $updater.view = null
+ end
 042   $is.dynamic = $al.Settings[6]
 043   
 044   $txt = = read text: page=$PageID id=102
@@ -94,9 +108,7 @@ else if $menu.view == 3
 089     return null
 090    else
 091     
-092     if $menu.view == 3
-093      $menu.view = 1
-094     else if $menu.view == 4
+094     if $menu.view == 4
 095      $menu.view = 2
 096     else if $menu.view == 5
      * v9.01 P1-05a: back to the Docks list if Dock Details was opened from it
@@ -430,7 +442,17 @@ end
 410  
 411  DC.Details.View.Sub:
 412  * Menu View 1 = DC Details
-413  START  = null -> call script plugin.LI.FDN.Menu.DC.Details_D :
+ * v9.01 B8: only START when ENTERING view 1, not every redraw; bump token so an older DC_D can exit
+if not $updater.view == 1
+ $menu.token = $al.Settings[20]
+ if not is datatyp[ $menu.token ] == DATATYPE_INT
+  $menu.token = 0
+ end
+ $menu.token = $menu.token + 1
+ $al.Settings[20] = $menu.token
+ START  = null -> call script plugin.LI.FDN.Menu.DC.Details_D :
+ $updater.view = 1
+end
 414  if $is.AP == [TRUE]
 415   $menu = null -> call script plugin.LI.FDN.Menu.AP.DC.Details : menu=$menu
 416  else
@@ -472,7 +494,17 @@ endsub
 443  
 444  Dock.Details.View.Sub:
 445  * Menu View 5 = Dock Details
-446  START  = null -> call script plugin.LI.FDN.Menu.Dock.Details_D : value=$value
+ * v9.01 B8: only START when ENTERING view 5, not every redraw; bump token so an older Dock_D can exit
+if not $updater.view == 5
+ $menu.token = $al.Settings[20]
+ if not is datatyp[ $menu.token ] == DATATYPE_INT
+  $menu.token = 0
+ end
+ $menu.token = $menu.token + 1
+ $al.Settings[20] = $menu.token
+ START  = null -> call script plugin.LI.FDN.Menu.Dock.Details_D : value=$value
+ $updater.view = 5
+end
 447  if $is.AP == [TRUE]
 448   $menu = null -> call script plugin.LI.FDN.Menu.AP.Dock.Details : menu=$menu  value=$value
 449  else
@@ -579,14 +611,6 @@ end
 546   $txt = = read text: page=$PageID id=113
 else if $menu.view == 3
  $txt = = read text: page=$PageID id=111
-547  else if $menu.view == 4
-548   $txt = $dc
-549  else if $menu.view == 5
-550   $txt = $value
-551  else if $menu.view == 6
-552   $txt = $value
-553  else if $menu.view == 7
-554   $txt = = read text: page=$PageID id=103
 555  end
 556  $pre.txt = = read text: page=$PageID id=114
 557  $txt = $pre.txt + $txt
