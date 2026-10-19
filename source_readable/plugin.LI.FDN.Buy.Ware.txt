@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Buy.Ware  (v1.0, engine 50)
-* Desc: FDN v8 - Supply Factory logic
+* Script: plugin.LI.FDN.Buy.Ware  (v2, engine 50)
+* Desc: FDNv9 - Buy ware for factory
 * Arg 0: factory (Value) 'factory'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: amount (Value) 'amount'
@@ -23,6 +23,7 @@
 017  * Date: 22/05/2012
 018  * Tested: 22/05/2012
 019  * -----------------------------------------------------------------------------------
+* v9.01 B4 B12 B15: guard against a null ware record / non-int buy-at price, re-check factory and DC after the wait, safer trade drone
 020  
 021  * Fetch values saved in the AL Plugin global variable:
 022  * - DC
@@ -40,8 +41,18 @@
 034  end
 035  * -----------------------------------------------------------------------------------
 036  
+ * v9.01 B12: factory and DC must still exist and be player-owned
+ gosub Check.Alive.Sub:
 037  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
 038  $ware.settings = $dc  ->  get local variable: name=$pointer
+ * v9.01 B4: never buy with a missing ware record (null would make [3] unreadable)
+ if not $ware.settings
+  if $debug
+   $txt.debug = 'No FDN ware record for ' + $ware
+   gosub Debug.Sub:
+  end
+  return null
+ end
 039  * if can buy
 040  if $ware.settings[3]
 041   
@@ -50,6 +61,14 @@
 044   $sector.array = null -> call script plugin.LI.FDN.Sector.Array : search=3
 045   * Get buy at price
 046   $buy.at = $ware.settings[4]
+ * v9.01 B4: never search with a null max.price
+  if not is datatyp[ $buy.at ] == DATATYPE_INT
+   if $debug
+    $txt.debug = 'Buy at price not set for ' + $ware
+    gosub Debug.Sub:
+   end
+   return null
+  end
 047   
 048   $s = size of array $sector.array
 049   while $s > 0
@@ -78,10 +97,29 @@
 072      * DEBUG Message End------------------------------------------------------------------
 073      * Create drone at the station
 074      $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$buy.Station x=null y=null z=null
+ * v9.01 B15: only trade if the drone was actually created; name it and tag it so leftover drones are findable (TODO: text IDs 310/4102)
+      if $drone -> exists
+       $drone  ->  set name to 'FDN Trade Drone'
+       $d.time = = playing time
+       $drone  ->  set local variable: name='FDN.Trade.Drone' value=$d.time
 075      * Set drone Homebase to DC
 076      $drone  ->  set homebase to $dc
+ * v9.01 B15: clamp the buy to what this drone can carry
+      $buy.amount = $amount
+      $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+      if not is datatyp[ $drone.max ] == DATATYPE_INT
+       * cannot carry the ware at all (e.g. wrong ship type) - do not buy anything
+       $drone.max = 0
+      end
+      if $drone.max < $buy.amount
+       $buy.amount = $drone.max
+      end
 077      * Buy wares from station
-078      $bought = $drone  ->  buy $amount units of $ware
+ * v9.01 B15: a null buy return is treated as 0 (v8 would have logged/added null)
+078      $bought = $drone  ->  buy $buy.amount units of $ware
+      if not $bought
+       $bought = 0
+      end
 079      * Remove drone
 080      $drone  ->  destruct: show no explosion=[TRUE]
 081      * DEBUG Message Start----------------------------------------------------------------
@@ -111,10 +149,23 @@
 105        * DEBUG Message End------------------------------------------------------------------
 106       end
 107      end
+       else
+        if $debug
+         $txt.debug = 'Drone create failed - nothing bought'
+         gosub Debug.Sub:
+        end
+       end
 108     end
 109    end
 110     = wait randomly from 300 to 600 ms
+ * v9.01 B12: re-check factory and DC after the wait
+   gosub Check.Alive.Sub:
 111   end
+ * v9.01 B15: loop finished with wares still missing (no seller found or none could buy)
+  if $debug
+   $txt.debug = 'No seller found for remaining ' + $amount + ' of ' + $ware
+   gosub Debug.Sub:
+  end
 112   
 113  else
 114   * debug
@@ -136,6 +187,28 @@
 130  endsub
 131  * -----------------------------------------------------------------------------------
 132  * -----------------------------------------------------------------------------------
+ * v9.01 B12: factory and DC must still exist and be player-owned; a return inside a sub ends the script
+ Check.Alive.Sub:
+ $ok = [FALSE]
+ if $factory -> exists
+  $owner = $factory -> get owner race
+  if $owner == Player
+   if $dc -> exists
+    $owner = $dc -> get owner race
+    if $owner == Player
+     $ok = [TRUE]
+    end
+   end
+  end
+ end
+ if not $ok
+  if $debug
+   $txt.debug = 'Factory or DC no longer valid - stop buying'
+   gosub Debug.Sub:
+  end
+  return null
+ end
+ endsub
 133  return null
 134  
 135  
