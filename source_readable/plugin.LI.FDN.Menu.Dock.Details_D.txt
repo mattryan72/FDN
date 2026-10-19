@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.Dock.Details_D  (v1.0, engine 50)
-* Desc: FDNv8 - Dynamic updates for the Dock Details menu
+* Script: plugin.LI.FDN.Menu.Dock.Details_D  (v2, engine 50)
+* Desc: FDNv9 - Dynamic updates for the Dock Details menu
 * Arg 0: value (Value) 'value'
 
 001  * Author: Logain Abler
@@ -27,7 +27,10 @@
 023  if $al.Settings
 024   $PageID = $al.Settings[1]
 025   $open.menu = $al.Settings[5]
-026   $is.dynamic = $al.Settings[6][1]
+ * v9.01 B7: dock dynamic flag lives in [6][2] ([6][1] is the retired dock-list toggle, never set by Config); copy to a local first (no array element in an expression)
+026   $is.dynamic = $al.Settings[6][2]
+ * v9.01 B8: remember the menu token so this updater can exit when Main.Menu starts a new one; copy to a local first
+$my.token = $al.Settings[20]
 027  end
 028  * -----------------------------------------------------------------------------------
 029  
@@ -47,23 +50,31 @@
 043   while [TRUE]
 044    * wait
 045     = wait randomly from 1000 to 5000 ms
+ * v9.01 B8: re-read the global each pass so we see Main.Menu's token bump and FDN state changes (skip the return only when it is set)
+   $al.Settings = get global variable: name='al.LI.FDN.event'
+   skip if $al.Settings
+    return null
 046    * -----------------------------------------------------------------------------------
 047    * If the checks in this section fail exit the while loop
 048    * Check FDN plugin status
 049    skip if $al.Settings[0]
 050     return null
+ * v9.01 B8: a new updater was STARTed (token no longer matches) so this one must stop; copy to local first, single-condition checks only
+   $my.current.token = $al.Settings[20]
+   skip if $my.current.token == $my.token
+    return null
 051    * -----------------------------------------------------------------------------------
 052    
 053    * Check if Dock menu is open - Value should be 1 and is set in plugin.LI.FDN.Main.Menu
 054    $open.menu = $al.Settings[5]
 055    skip if $open.menu == 5
 056     return null
-057   end
 058   * -----------------------------------------------------------------------------------
 059   
 060   * Call the Sub which updates the global variable used for the dynamic menu
 061   gosub Update.Menu.Global.Sub:
 062   * -----------------------------------------------------------------------------------
+ end
 063  end
 064  return null
 065  * -----------------------------------------------------------------------------------
@@ -139,7 +150,8 @@
 135   * -----------------------------------------------------------------------------------
 136   
 137   * SECOND - Upadate the values in the global variable
-138   $pointer = = sprintf: pageid=$PageID textid=5001, $id, $ware, null, null, null
+ * v9.01 B8: per-ware pointer must use textid=5000 to match Write.Menu.Global.Sub and the reader (Menu.Dock.Details L101); 5001 is only for the credits block, so writes went to a global nobody read and live rows never updated
+138   $pointer = = sprintf: pageid=$PageID textid=5000, $id, $ware, null, null, null
 139   $ware.detail.array = get global variable: name=$pointer
 140   $ware.detail.array[0][1] = $txt
 141   $ware.detail.array[0][3] = $maintain

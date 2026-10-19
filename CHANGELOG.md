@@ -25,6 +25,8 @@
 - [B6] Config-menu dependency (planned)
 - [B7] Dynamic index 1 vs 2 (planned)
 - [B8] Main.Menu: _D updaters (DC.Details_D, Dock.Details_D) are now STARTed only when entering view 1 or 5, not on every redraw; a token in settings [20] is incremented per start so an older updater exits via its own loop check. A one-time bump at menu open kills stale updaters from previous sessions.
+- [B7] Menu.Dock.Details_D: read the dock dynamic flag from `al.Settings[6][2]` (was `[6][1]`, the retired dock-list toggle Config never sets), so Dock Details rows actually go dynamic when "Dock Details" is enabled in Configuration - done in P1-10a.
+- [B8] Menu.Dock.Details_D: remember `$al.Settings[20]` at start and re-read `al.LI.FDN.event` each pass, exiting when FDN is off, when `[5]` is no longer 5, or when the token has changed (new updater). The update sub now runs INSIDE the while loop (it sat after the closing `end`, so it never ran on later passes), and the per-ware pointer in Update.Menu.Global.Sub uses textid=5000 to match the Write sub and the reader (was 5001, a global nobody read) - done in P1-10a.
 - [B24] Main.Menu: removed dead `if $menu.view == 3` branch from the Escape chain (unreachable after L082) and dead view 4–7 branches from `Menu.View.Header.Sub` (only called for views 1–3).
 - [B9] Reset regex scope (planned; registry-based reset, approved, see below). Update.Ware adds each station that gets a new ware record to registry [29] (P1-04).
 - [B10] Sector.Array modes (planned)
