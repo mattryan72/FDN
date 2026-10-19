@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.Ware.Details  (v1.0, engine 50)
-* Desc: FDNv8 - Ware details menu
+* Script: plugin.LI.FDN.Menu.Ware.Details  (v2, engine 50)
+* Desc: FDNv9 - Ware details menu
 * Arg 0: menu (Value) 'menu'
 * Arg 1: value (Value) 'value'
 * Arg 2: ware (Value) 'ware'
@@ -19,6 +19,7 @@
 013  * Version: 1.0
 014  * Date: 24/05/2012
 015  * Tested: 24/05/2012
+* v9.01 B21 (P1-13b): sector line now shows the station's own sector ($value), and the dead sprintf on L052 is gone
 016  * -----------------------------------------------------------------------------------
 017  * -----------------------------------------------------------------------------------
 018  * Start
@@ -41,7 +42,7 @@
 035  $temp.array[0] = 1
 036  $temp.array[1] = $txt
 037  $temp.array[2] = -1
-038  $txt = $dc  ->  get sector
+038  $txt = $value  ->  get sector
 039  $temp.array[3] = $txt
 040  add custom menu info line to array $menu: text=$temp.array
 041  add custom menu info line to array $menu: text=' '
@@ -55,7 +56,6 @@
 049  
 050  $temp.array = = array alloc: size=4
 051  $temp.array[0] = 1
-052  $txt = = sprintf: pageid=$PageID textid=9000, $ware, null, null, null, null
 053  $txt = $ware + ':'
 054  $temp.array[1] = $txt
 055  $temp.array[2] = -1
