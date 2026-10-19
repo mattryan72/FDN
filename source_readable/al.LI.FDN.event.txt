@@ -1,5 +1,5 @@
-* Script: al.LI.FDN.event  (v1.0, engine 50)
-* Desc: FDNv8 - AL Event
+* Script: al.LI.FDN.event  (v2, engine 50)
+* Desc: FDNv9 - AL Event
 * Arg 0: al.PluginID (Var/String) 'Plugin ID'
 * Arg 1: al.Event (Var/String) 'AL Event'
 
@@ -36,6 +36,8 @@
 031   al engine: set plugin $al.PluginID timer interval to 25 s
 032   
 033    = [THIS] -> call script plugin.LI.FDN.Setup :
+ * v9.01 B16: run the settings upgrade after Setup (Setup resets the log); wait-free
+ = [THIS] -> call script plugin.LI.FDN.Upgrade :
 034   
 035  else if $al.Event == 'start'
 036   $al.Settings[0] = [TRUE]
@@ -47,7 +49,8 @@
 042   
 043  else if $al.Event == 'timer'
 044   if $al.Settings[0]
-045     = [THIS] -> call script plugin.LI.FDN.Supply.Start :
+ * v9.01 B14: START the scheduler so this AL handler stays wait-free (Supply.Start keeps its own [12] run-lock)
+    START  = [THIS] -> call script plugin.LI.FDN.Supply.Start :
 046   end
 047  else if $al.Event == 'isenabled'
 048   $al.Ret = $al.Settings[0]

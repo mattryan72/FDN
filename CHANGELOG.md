@@ -27,9 +27,9 @@
 - [B11] Supply.Factory: Buy.Ware is STARTed at most once per 120 s per factory (factory FDN.Settings [3] = playing time of the last start, stale after 120 s). Sell side (Supply.Dock) planned.
 - [B12] Supply.Dock: after each wait in the ware loops the task stops if the dock or DC no longer exists or is not player owned.
 - [B13] Supply.Factory.Check: no more `reverse array` (it returned a copy, so removals missed the stored array on reversed passes). The script walks the stored array [3] in place and alternates direction each call via settings [13]: forwards from 0, bound = shrinking size, index only advances when nothing was removed; backwards from size-1, always steps down.
-- [B14] Wait in AL path (planned)
+- [B14] al.LI.FDN.event: the timer handler now STARTs `plugin.LI.FDN.Supply.Start` instead of calling it synchronously, so the AL event stays wait-free (Supply.Start keeps its own [12] run-lock).
 - [B15] Fragile temp-drone trades; drone kept and hardened per R-T1 (planned)
-- [B16] Settings schema unversioned (planned)
+- [B16] al.LI.FDN.event: calls new `plugin.LI.FDN.Upgrade` on init/reinit, after Setup (Setup resets the log); Upgrade stamps schema version [14]=901 and seeds the B9 registry [29] from DC + factories + docks when null. Phase 4 completes the migration.
 
 ### Changed
 - [P1] Supply.Start: `Sector.Array` refresh now throttled to at most every 300 s via timestamp settings `[16]`; a null `[16]` means never-scanned so the first tick still runs it. Throttle uses a `$do.scan` flag and never blocks supply - when throttled, the existing arrays are reused for this cycle (no wait added).

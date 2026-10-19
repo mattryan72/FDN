@@ -1,0 +1,101 @@
+* Script: plugin.LI.FDN.Upgrade  (v1, engine 50)
+* Desc: FDNv9 - Upgrade settings schema
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is called by al.LI.FDN.event on 'init' and 'reinit' before Setup runs.
+* It migrates the al.LI.FDN.event settings array from older FDN versions to v9.01.
+* Phase 1 stub: stamps the schema version [14] = 901 and seeds the B9 station registry
+* [29] with the current DC plus every factory and dock, if it is still null.
+* The full migration (record fixes, registry prune, etc.) arrives in Phase 4.
+* This script must stay wait-free: al.LI.FDN.event calls it synchronously.
+*
+* Expected values: none - settings are read from the 'al.LI.FDN.event' global.
+*
+* Returns value(s):
+* - null always (the migration is done in place on the settings array; the log shows what was written)
+*
+* To Do: Phase 4 completes the migration ([28], B5 record fix, registry prune).
+*
+* Version: 1.0
+* Date: 19/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+$script = = get script name
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+$DebugID = 0 + $PageID
+
+* v9.01 B16: stamp the schema version on first run (fresh install or old save)
+if not $al.Settings[14]
+ $al.Settings[14] = 901
+ if $al.Settings[7]
+  $txt.debug = 'B16: settings schema stamped to 901'
+  gosub Debug.Sub:
+ end
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+end
+
+* v9.01 B9/B16: seed the station registry [29] from the current DC and arrays, if null
+$registry = $al.Settings[29]
+if not $registry
+ $registry = = array alloc: size=0
+ $al.Settings[29] = $registry
+ * seed with the DC (may be null on a fresh install)
+ $dc = $al.Settings[2]
+ if $dc -> exists
+  append $dc to array $registry
+ end
+ * then every factory in [3]
+ $factory.array = $al.Settings[3]
+ if $factory.array
+  $count = size of array $factory.array
+  $i = 0
+  while $i < $count
+   $station = $factory.array[$i]
+   inc $i =
+   if not $station -> exists
+    continue
+   end
+   if not find $station in array: $registry
+    append $station to array $registry
+   end
+  end
+ end
+ * then every dock in [4]
+ $dock.array = $al.Settings[4]
+ if $dock.array
+  $count = size of array $dock.array
+  $i = 0
+  while $i < $count
+   $station = $dock.array[$i]
+   inc $i =
+   if not $station -> exists
+    continue
+   end
+   if not find $station in array: $registry
+    append $station to array $registry
+   end
+  end
+ end
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ if $al.Settings[7]
+  $count.registry = size of array $registry
+  $txt.debug = 'B9: station registry seeded with ' + $count.registry + ' stations'
+  gosub Debug.Sub:
+ end
+end
+
+return null
+* -----------------------------------------------------------------------------------
+
+* Debug Massage handling
+Debug.Sub:
+$d.time = = playing time
+$d.time = = format time: $d.time
+$txt = $d.time + ';' + $script + ';' + $txt.debug
+write to log file $DebugID  append=[TRUE]  value=$txt
+endsub
+* -----------------------------------------------------------------------------------
