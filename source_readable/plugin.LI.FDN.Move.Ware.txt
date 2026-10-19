@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Move.Ware  (v1.0, engine 50)
-* Desc: FDNv8 - Handles the user inputs for moving wares
+* Script: plugin.LI.FDN.Move.Ware  (v2, engine 50)
+* Desc: FDNv9 - Handles the user inputs for moving wares
 * Arg 0: ware (Value) 'ware'
 * Arg 1: source (Value) 'source'
 
@@ -17,6 +17,7 @@
 012  * Version: 1.0
 013  * Date: 09/06/2012
 014  * Tested: 09/06/2012
+* v9.01 B20 (P1-13a): null-check a cancelled destination prompt before any -> is of class / get free amount call
 015  * -----------------------------------------------------------------------------------
 016  
 017  * Fetch values saved in the AL Plugin global variable:
@@ -60,6 +61,16 @@
 055   $txt.debug = 'Selected: ' + $destination
 056   gosub Debug.Sub:
 057  end
+* v9.01 B20 (P1-13a): a cancelled destination prompt returns null - exit before any -> is of class / get free amount call
+$debug = $al.Settings[7]
+if not $destination
+ * Debug
+ if $debug
+  $txt.debug = 'Destination cancelled - exit move ware'
+  gosub Debug.Sub:
+ end
+ return null
+end
 058  * -----------------------------------------------------------------------------------
 059  
 060  * check that destination can accept ware
