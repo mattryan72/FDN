@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Supply.Factory  (v1.1, engine 50)
-* Desc: FDN v9.01 - Supply Factory logic
+* Script: plugin.LI.FDN.Supply.Factory  (v2, engine 50)
+* Desc: FDNv9 - Supply Factory logic
 * Arg 0: factory (Value) 'factory'
 * Arg 1: flag (Value) 'flag'
 
@@ -17,8 +17,8 @@
 * 
 * To Do - N/A
 * 
-* Version: 1.1
-* Date: 18/10/2026
+* Version: 2
+* Date: 20/10/2026
 * Tested: not tested
 * -----------------------------------------------------------------------------------
 * v9.01 B3/B11 changes (Supply.Factory):
@@ -34,6 +34,10 @@
 *   B11 Buying a shortfall STARTs plugin.LI.FDN.Buy.Ware at most once per 120 s per factory:
 *       FDN.Settings [3] holds the playing time of the last buy start; while
 *       'playing time' - [3] < 120 no further Buy.Ware is STARTed for this factory.
+*   B31 Supply.Resource.Sub: when the factory already holds more than 3 cycles of a
+*       resource in cargo, $required goes negative; clamp it to 0 after the $max clamp so
+*       the 'requires' debug line never shows a negative amount (the existing > 0 gate
+*       already prevented any remove or buy).
 * -----------------------------------------------------------------------------------
 
 * Fetch values saved in the AL Plugin global variable:
@@ -164,6 +168,10 @@ $required = ( $required * 3 ) - $current
 $max = $factory  ->  get max amount of ware $ware that can be stored in cargo bay
 if $max < $required
  $required = $max
+end
+* v9.01 B31: factory already holds more than 3 cycles - nothing is required (no negative amounts in the log)
+if $required < 0
+ $required = 0
 end
 
 * debug
