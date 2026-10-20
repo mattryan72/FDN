@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.Factory.Details  (v1.0, engine 50)
-* Desc: FDNv8 - Factory details menu
+* Script: plugin.LI.FDN.Menu.Factory.Details  (v2, engine 50)
+* Desc: FDNv9 - Factory details menu
 * Arg 0: menu (Value) 'menu'
 * Arg 1: value (Value) 'value'
 
@@ -10,7 +10,8 @@
 005  
 006  * 4xxx are pointer to locals variables
 007  * 4001 is the pointer for settings
-008  $pointer = = sprintf: pageid=$PageID textid=4001, $value, null, null, null, null
+008  * v9.01 B22: read text 4001 directly (no sprintf on a string with no %s) - P1-13c
+ $pointer = = read text: page=$PageID id=4001
 009  * If there is no variable create one
 010  if not $value  ->  get local variable: name=$pointer
 011   $settings.array = = array alloc: size=6
