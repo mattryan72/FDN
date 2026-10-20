@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Config.Menu  (v1.0, engine 50)
-* Desc: 
+* Script: plugin.LI.FDN.Config.Menu  (v2, engine 50)
+* Desc: FDNv9 - Config menu
 * Arg 0: menu (Value) 'menu'
 
 001  * Auther: Logain Abler
@@ -29,7 +29,7 @@
 025  
 026  
 027  $txt = = read text: page=$PageID id=103
-028  $menu = = create custom menu array: heading=$txt
+028   * v9.01 B23: use the menu passed in from Main.Menu (Config.View.Sub) - do not create a new one, which discarded Main.Menu's build and its heading text 102
 029  
 030  
 031  * DC menu header
