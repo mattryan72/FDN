@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Sort.Wares  (v1.0, engine 50)
-* Desc: FDNv8 - Sort wares by main type
+* Script: plugin.LI.FDN.Sort.Wares  (v2, engine 50)
+* Desc: FDNv9 - Sort wares by main type
 * Arg 0: station (Value) 'station'
 
 001  * Author: Logain Abler
@@ -15,6 +15,7 @@
 011  
 012  * Return values:
 013  * - return.array[Array[MainType][Array[sorted ware for main type]]]]
+* v9.01 B17: wares whose maintype is not in the 9 listed groups now go into an 'Other' group (text id=301) instead of being dropped from the menus
 014  
 015  * ToDo:
 016  * - ?
@@ -29,6 +30,8 @@
 025  * -----------------------------------------------------------------------------------
 026  
 027  * Create temp arrays to hold the wares
+* v9.01 B17: catch-all for maintypes not in the groups below - v8 dropped these wares from the menus
+$tOther.Array = = array alloc: size=0
 028  $tlaser.Array = = array alloc: size=0
 029  $tshield.Array = = array alloc: size=0
 030  $tmissile.Array = = array alloc: size=0
@@ -74,12 +77,18 @@
 070     else
 071      append $ware to array $tequip.Array
 072     end
+* v9.01 B17: maintype not in the groups above - keep it, do not drop it
+ else
+  append $ware to array $tOther.Array
 073    end
 074   end
 075  end
 076  * -----------------------------------------------------------------------------------
 077  
 078  * sort the tenp arrays
+* v9.01 B17: sort/reverse the catch-all group like the others
+$tOther.Array = = sort array $tOther.Array
+$tOther.Array = reverse array $tOther.Array
 079  $tequip.Array = = sort array $tequip.Array
 080  $tequip.Array = reverse array $tequip.Array
 081  $ttech.Array = = sort array $ttech.Array
@@ -101,6 +110,8 @@
 097  * -----------------------------------------------------------------------------------
 098  
 099  * create  an array[main type][ware array for the main type]
+* v9.01 B17: 'Other' group key is new text id=301 (id=300 already used by B26 confirm-remove)
+$other.Array = = create new array, arguments=301, $tOther.Array, null, null, null
 100  $laser.Array = = create new array, arguments=8, $tlaser.Array, null, null, null
 101  $shield.Array = = create new array, arguments=9, $tshield.Array, null, null, null
 102  $missile.Array = = create new array, arguments=10, $tmissile.Array, null, null, null
@@ -124,6 +135,11 @@
 120  append $missile.Array to array $main.ware.Array
 121  append $shield.Array to array $main.ware.Array
 122  append $laser.Array to array $main.ware.Array
+* v9.01 B17: 'Other' group appended last, only when it actually has wares (no empty heading)
+$tOther.size = size of array $tOther.Array
+if $tOther.size > 0
+ append $other.Array to array $main.ware.Array
+end
 123  * -----------------------------------------------------------------------------------
 124  
 125  * return the main.ware.array
