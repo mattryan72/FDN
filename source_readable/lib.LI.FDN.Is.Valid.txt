@@ -1,0 +1,48 @@
+* Script: lib.LI.FDN.Is.Valid  (v1, engine 50)
+* Desc: FDNv9 - TRUE if an object exists, is player owned and - when asked - is a Dock
+* Arg 0: obj (Value) 'obj'
+* Arg 1: need.dock (Boolean) 'need.dock'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Single owner of the B3/B12 object validation
+* copied across the supply and menu scripts:
+* - object exists, owner race == Player, and is a Dock when need.dock is true.
+* The datatype check runs before any -> command: calling an object command on a number
+* or string can throw a script error, so bad input never reaches -> exists (P2-01 lesson).
+
+* Arguments:
+* - obj (Value): Station, dock or factory object to validate
+* - need.dock (Boolean): true = the object must also be of class Dock 2007; false/null = existence and ownership only
+
+* Returns values:
+* - [TRUE] if valid, [FALSE] if it exists but fails an ownership or Dock test;
+*   null for bad input (not a station, or it does not exist)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+if not is datatyp[ $obj ] == DATATYPE_STATION
+ * station datatype check before any -> call (a number or string would throw a script error)
+ return null
+end
+$exists = $obj  ->  exists
+if not $exists
+ return null
+end
+* object commands copied to locals before any condition (P1 lesson)
+$owner.race = $obj  ->  get owner race
+if not $owner.race == Player
+ return [FALSE]
+end
+if $need.dock
+ * v9.01 B3/B12: Dock test only when asked, class name as in Sector.Array L69 (Dock 2007)
+ $is.dock = $obj  ->  is of class Dock 2007
+ if not $is.dock
+  return [FALSE]
+ end
+end
+return [TRUE]

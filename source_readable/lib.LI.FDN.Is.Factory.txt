@@ -1,0 +1,50 @@
+* Script: lib.LI.FDN.Is.Factory  (v1, engine 50)
+* Desc: FDNv9 - TRUE if a station is a managed factory per the D10 rule
+* Arg 0: station (Value) 'station'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Single owner of the D10 'managed factory'
+* test, kept exactly as Sector.Array has it at L59-66 and L114-123:
+* Factory 2006, not a Complex Hub, is detectable == 0.
+* The detectable rule mirrors D10 as-is: Sector.Array excludes factories that are part
+* of a complex; behaviour is unchanged here either way (owner-blind, see below).
+* Owner-blind on purpose: Sector.Array's test never checks ownership. Callers that need
+* a player-owned object validate with lib.LI.FDN.Is.Valid first.
+
+* Arguments:
+* - station (Value): Station to test against the D10 managed factory rule
+
+* Returns values:
+* - [TRUE] if it is a managed factory per D10, [FALSE] for any other existing object;
+*   null for bad input (not a station, or it does not exist)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+if not is datatyp[ $station ] == DATATYPE_STATION
+ * station datatype check before any -> call (a number or string would throw a script error)
+ return null
+end
+$exists = $station  ->  exists
+if not $exists
+ return null
+end
+* object commands copied to locals before any condition (P1 lesson), class names as in Sector.Array L59-60
+$is.factory = $station  ->  is of class Factory 2006
+if not $is.factory
+ return [FALSE]
+end
+$is.hub = $station  ->  is of class Complex Hub
+if $is.hub
+ return [FALSE]
+end
+*detectable rule kept exactly as D10 (Sector.Array L61-62) - mirrors Sector.Array, which excludes factories that are part of a complex
+$detectable = $station  ->  is detectable
+if $detectable == 0
+ return [TRUE]
+end
+return [FALSE]
