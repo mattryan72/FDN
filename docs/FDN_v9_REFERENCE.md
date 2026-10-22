@@ -50,7 +50,7 @@
 | Script | Args | Returns | Replaces |
 |---|---|---|---|
 | `lib.LI.FDN.Cfg.Get` | — | settings array or null | D1 header |
-| `lib.LI.FDN.Log` | text (String), obj (Value, optional) | null; writes only if `[7]` | D2 Debug.Sub ×9 |
+| `lib.LI.FDN.Log` | text (String), caller (String) - caller does `$s.name = = get script name` and passes it (`get script name` inside the lib returns the lib's own name, P2-01 test) | null; writes only if `[7]`; line `time;caller;text` | D2 Debug.Sub ×9 |
 | `lib.LI.FDN.Game` | — | 1 TC / 2 AP / 3 FL (`script engine version` thresholds: FL 1.3 + UP 1.3.20 = 60 (T7); provisional `>= 60` FL, `>= 50` AP, else TC; VERIFY the AP 3.3 value and FL without the patch) | lib.BW.isAP uses |
 | `lib.LI.FDN.Is.Valid` | obj, need.dock (Boolean) | TRUE if it exists, owner race == Player (and is a Dock if asked) | B3, B12 |
 | `lib.LI.FDN.Is.Factory` | station | TRUE if managed factory (Factory, not Complex Hub, detectable rule; VERIFY intent of `is detectable == 0`) | D10 |

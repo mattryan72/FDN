@@ -27,7 +27,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 4. Carry over DC policy (Q1.1, default: copy): [1], [3], [4], [5], [6] from the old DC's record when the new record still has defaults.
 5. Old DC, if it still exists and is valid: it stays in `[4]` as a dock; clear [1] and [3] in its records; leave [2] unset; set [7] = 1 (surplus on, Q1.2).
 6. `[2]` = new; `Reg.Add(new)`; save the settings with `set global variable`.
-7. `lib.LI.FDN.Log('DC changed: <old> -> <new>; records created <n>, copied <n>')` and a player message (new text in 300-399; propose the XML line).
+7. Log via `lib.LI.FDN.Log` (text, caller): `$s.name = = get script name`, then `= [THIS] -> call script lib.LI.FDN.Log : text='DC changed: <old> -> <new>; records created <n>, copied <n>' caller=$s.name`, and a player message (new text in 300-399; propose the XML line).
 8. Release the lock; return 'ok'.
 
 ### Library contracts (REFERENCE D)
@@ -35,7 +35,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - `lib.LI.FDN.Is.Valid` | obj, need.dock (Boolean) | TRUE if it exists, owner race == Player (and is a Dock if asked)
 - `lib.LI.FDN.Ware.Rec` | station, ware, create (Boolean) | record array (created with v9 defaults if create) or null
 - `lib.LI.FDN.Reg.Add` | station | null; appends to registry [29]
-- `lib.LI.FDN.Log` | text, obj (optional) | writes only if [7]
+- `lib.LI.FDN.Log` | text (String), caller (String) | writes only if [7]; callers do `$s.name = = get script name` and pass it
 - `lib.LI.FDN.Is.FL.Managed` | station | FALSE unless FL and run by Station Manager (P4-06; a FALSE placeholder before Phase 4)
 
 ## Key facts

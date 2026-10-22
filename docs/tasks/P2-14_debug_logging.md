@@ -25,7 +25,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 - Noise: `Remove 0  of <ware>` lines (2 per factory per pass). The log grew about 9 KB a minute with 6 factories.
 
 ### Library contract
-- `lib.LI.FDN.Log` | args: text (String), obj (Value, optional) | returns null; writes to log file [1] only if [7] (debug) is on | keep the line format `time;script;text`
+- `lib.LI.FDN.Log` | args: text (String), caller (String) | returns null; writes to log file [1] only if [7] (debug) is on | keep the line format `time;caller;text`; callers do `$s.name = = get script name` and pass it
 
 ### Lines to add (all via lib.LI.FDN.Log, only when [7] is on; one line per decision, no new setting)
 Dock pass (Supply.Dock.Check / Supply.Dock):
@@ -59,7 +59,7 @@ DC change: logged by `plugin.LI.FDN.DC.Change` (P3-04b): `DC changed: <old> -> <
 - Phase 2 = shared libraries. Libraries are synchronous and wait-free, return null on bad input, and never call START.
 - Use only lib.LI.FDN.Log for output. No Debug.Sub, no new log file, no new setting: everything is under the existing "Supply Debug:" toggle [7].
 - Logging must not change behaviour: no extra waits, no extra record creation (read records with `Ware.Rec` create=FALSE for logging).
-- Keep lines short: object names via `$obj` (Log adds them), numbers as plain numbers.
+- Keep lines short: numbers as plain numbers; pass station names inside `text` (the lib has no object arg, so `$obj -> get name` goes into the string).
 - Source text only, never XML. Never invent commands: use ones in the pasted scripts or mark `VERIFY:`.
 
 ## Instruction
