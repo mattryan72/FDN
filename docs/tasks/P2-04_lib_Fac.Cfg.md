@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~3,451 tokens when built
+- Estimated size: ~3,760 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-04_lib_Fac.Cfg.md`
 - Save the answer as: `notes/P2-04.md`
 
@@ -11,7 +11,7 @@
 CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 - `docs/MSCI_PRIMER.md`
-- source_readable/plugin.LI.FDN.Supply.Factory.Check.txt lines 055-095
+- `docs/excerpts/v8_Supply.Factory.Check_D4.txt`
 
 ## Excerpts
 
@@ -22,7 +22,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 [0] manage product, [1] manage resources, [2] "already seen" flag (applies auto-manage once), [3] v9: busy-until time, [4]-[5] free.
 
 ### Duplicate / performance notes (ANALYSIS 3 and 5)
-- D4 factory settings get-or-create + auto-manage first-seen in Supply.Factory.Check 65-84, Menu.AP.Factory.List 187-204, Menu.Factory.List, Menu.Factory.Details 8-14 -> lib.LI.FDN.Fac.Cfg.
+- D4 factory settings get-or-create + auto-manage first-seen in Supply.Factory.Check (v8 065-084, see excerpt; v3 has no prefixes), Menu.AP.Factory.List 187-204, Menu.Factory.List 180-197, Menu.Factory.Details 8-14 (get-or-create only) -> lib.LI.FDN.Fac.Cfg.
 
 ## Key facts
 

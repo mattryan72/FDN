@@ -1,0 +1,33 @@
+* Excerpt: plugin.LI.FDN.Supply.Factory.Check, FDN v8.04 (reference only, not current source)
+* D4 block: factory settings get-or-create (FDN.Settings, text 4001) and first-seen auto-manage.
+* Lines keep their v8 Script Editor numbers. In v9.01 (v3) text 4001 is read once before the loop (P7),
+* and this block will be replaced by lib.LI.FDN.Fac.Cfg (P2-04).
+
+058  * start of While Loop - Loop is for Factories
+059  while $s > 0
+060   dec $s =
+061   $factory = $factory.array[$s]
+062   * check if factory exists
+063   if $factory  ->  exists
+064    * fetch local variable that hold the faction settings
+065    $pointer = = read text: page=$PageID id=4001
+066    if not $factory  ->  get local variable: name=$pointer
+067     $settings.array = = array alloc: size=6
+068     $factory  ->  set local variable: name=$pointer value=$settings.array
+069    end
+070    $settings.array = $factory  ->  get local variable: name=$pointer
+071    * -----------------------------------------------------------------------------------
+072    
+073    * check if this is a new factory and flag as found
+074    * I use this to only manage the setting on first find and not every search
+075    * so player can still change settings with auto manage on
+076    if not $settings.array[2]
+077     $settings.array[2] = 1
+078     * check auto manage setting if set turn on at factory
+079     if $al.Settings[9]
+080      $settings.array[0] = 1
+081      $settings.array[1] = 1
+082     end
+083     $factory  ->  set local variable: name=$pointer value=$settings.array
+084    end
+085    * -----------------------------------------------------------------------------------
