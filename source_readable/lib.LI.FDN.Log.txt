@@ -1,0 +1,51 @@
+* Script: lib.LI.FDN.Log  (v1, engine 50)
+* Desc: FDNv9 - Write one timestamped debug line to the FDN log file when [7] is on
+* Arg 0: text (String) 'text'
+* Arg 1: caller (String) 'caller'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Replaces the D2 Debug.Sub block duplicated in nine scripts:
+*   plugin.LI.FDN.Buy.Ware, Move.Ware, Sell.Ware, Supply.Dock.Check, Supply.Dock,
+*   Supply.Factory.Check (dead code per B29 - removed by P1-02, not a Log caller),
+*   Supply.Factory, Supply.Start, Update.Ware
+* One line per call: <playing time formatted>;<caller script name>;<text>, appended to log<PageID>.txt.
+* Old callers already gate on [7] before calling; the guard below is defensive only (D2).
+* The caller passes its own name: get script name inside a called lib returns this lib's own
+* name (P2-01 test 04/10), so it cannot be read from here. Callers do $s.name = = get script name.
+* Arguments:
+* - text (String): The message to append after the time and caller prefix
+* - caller (String): The calling script's own name ($s.name = = get script name)
+*
+* Returns values:
+* - N/A always null
+*
+* To Do - N/A (P2-14/P2-07a add the new decision lines via this lib)
+*
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ * array elements copied to locals before any condition (P1 lesson)
+ $debug.on = $al.Settings[7]
+ $PageID = $al.Settings[1]
+else
+ return null
+end
+* -----------------------------------------------------------------------------------
+
+if not $debug.on
+ * old callers already gate on [7] - this is defensive only, behaviour unchanged for them
+ return null
+end
+
+$d.time = = playing time
+$d.time = = format time: $d.time
+$txt.log = $d.time + ';' + $caller + ';' + $text
+* v9.01 D2: same file as the old Debug.Sub - 0 + PageID gives log<PageID>.txt (page 3 -> log3.txt)
+$debug.id = 0 + $PageID
+write to log file $debug.id append=[TRUE] value=$txt.log
+* -----------------------------------------------------------------------------------
+return null

@@ -1,0 +1,31 @@
+* Script: lib.LI.FDN.Cfg.Get  (v1, engine 50)
+* Desc: FDNv9 - Return the live al.LI.FDN.event settings array
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Single owner of the D1 header copied in 26 of 31 scripts:
+*
+ * $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+ * if not $al.Settings
+ *  return null
+ * end
+ * $PageID = $al.Settings[1]
+*
+* Arguments:
+* - N/A none
+*
+* Returns values:
+* - the live settings array (a shared reference: writing to an element changes the global immediately);
+*   null if FDN is not initialised or the global is not an array
+*
+* To Do - N/A
+*
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ return $al.Settings
+end
+return null

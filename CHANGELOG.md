@@ -45,6 +45,8 @@
 - [B16] al.LI.FDN.event: calls new `plugin.LI.FDN.Upgrade` on init/reinit, after Setup (Setup resets the log); Upgrade stamps schema version [14]=901 and seeds the B9 registry [29] from DC + factories + docks when null. Phase 4 completes the migration.
 
 ### Added
+- [D1] New `lib.LI.FDN.Cfg.Get` (no args): single owner of the settings fetch - returns the live `al.LI.FDN.event` array (shared reference) or null if FDN is not initialised, replacing the D1 header copied in 26 of 31 scripts; callers switch over in later Phase 2 cards - done in P2-01.
+- [D2] New `lib.LI.FDN.Log` (text, caller): one timestamped line `<time>;<caller script name>;<text>` appended to log<PageID>.txt when debug [7] is on; the caller passes its own name because `get script name` inside a called lib returns the lib's own name (P2-01 test). Replaces the Debug.Sub block duplicated in nine scripts. The dead Debug.Sub in Supply.Factory.Check per B29/P1-02 is not a Log caller - done in P2-01.
 - [D4] New `lib.LI.FDN.Fac.Cfg` (factory, auto.manage): get-or-create the station's FDN.Settings local (text 4001) and apply global auto-manage [9] only on first sight ([2]); with auto.manage off the seen flag is left alone so opening a factory's details cannot pre-empt Supply.Factory.Check. Replaces the block duplicated in four scripts; callers switch over in later Phase 2 cards - done in P2-04.
 
 ### Changed
