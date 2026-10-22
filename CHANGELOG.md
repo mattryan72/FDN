@@ -44,6 +44,9 @@
 - [B15] Fragile temp-drone trades; drone kept and hardened per R-T1 (planned)
 - [B16] al.LI.FDN.event: calls new `plugin.LI.FDN.Upgrade` on init/reinit, after Setup (Setup resets the log); Upgrade stamps schema version [14]=901 and seeds the B9 registry [29] from DC + factories + docks when null. Phase 4 completes the migration.
 
+### Added
+- [D4] New `lib.LI.FDN.Fac.Cfg` (factory, auto.manage): get-or-create the station's FDN.Settings local (text 4001) and apply global auto-manage [9] only on first sight ([2]); with auto.manage off the seen flag is left alone so opening a factory's details cannot pre-empt Supply.Factory.Check. Replaces the block duplicated in four scripts; callers switch over in later Phase 2 cards - done in P2-04.
+
 ### Changed
 - [P1] Supply.Start: `Sector.Array` refresh now throttled to at most every 300 s via timestamp settings `[16]`; a null `[16]` means never-scanned so the first tick still runs it. Throttle uses a `$do.scan` flag and never blocks supply - when throttled, the existing arrays are reused for this cycle (no wait added).
 - [P7] Supply.Factory.Check: settings-variable name (text 4001) read once before the loop instead of once per factory.

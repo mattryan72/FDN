@@ -1,0 +1,80 @@
+* Script: lib.LI.FDN.Fac.Cfg  (v1, engine 50)
+* Desc: FDNv9 - Get-or-create a station's FDN.Settings local and apply auto-manage on first sight
+* Arg 0: factory (Value) 'factory'
+* Arg 1: auto.manage (Value) 'auto.manage'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Replaces the D4 block duplicated in four scripts:
+*   plugin.LI.FDN.Supply.Factory.Check  v3 L125-142 (get-or-create + auto-manage first-seen)
+*   plugin.LI.FDN.Menu.AP.Factory.List  L186-204  (get-or-create + auto-manage first-seen)
+*   plugin.LI.FDN.Menu.Factory.List     L179-197  (get-or-create + auto-manage first-seen)
+*   plugin.LI.FDN.Menu.Factory.Details  L8-14     (get-or-create only, must NOT set the seen flag [2])
+* Pass auto.manage=1 to apply the global auto-manage setting [9] on a factory's first sight;
+* pass null or 0 for get-or-create only. With auto.manage off the already-seen flag ([2]) is
+* left alone, so opening a factory's details page cannot stop Supply.Factory.Check from
+* applying auto-manage later (v8 behaviour: Menu.Factory.Details never set [2]).
+* v9.01 D4: factory settings get-or-create + first-seen auto-manage moved to one library
+*
+* Arguments:
+* - factory (Value): Factory or dock object whose FDN.Settings local is needed
+* - auto.manage (Value): 1 = apply global auto-manage [9] on first sight, null/0 = get-or-create only
+*
+* Returns values:
+* - $settings.array: the station's live FDN.Settings array (size 6) after any first-seen changes;
+*   null if factory is missing or FDN settings could not be read
+*
+* To Do - N/A
+*
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ $PageID = $al.Settings[1]
+else
+ return null
+end
+* -----------------------------------------------------------------------------------
+
+$factory.exists = [FALSE]
+if $factory -> exists
+ $factory.exists = [TRUE]
+end
+if not $factory.exists
+ return null
+end
+* -----------------------------------------------------------------------------------
+
+* v9.01 D4: local variable name holding the station settings (text 4001)
+$pointer = = read text: page=$PageID id=4001
+if not $pointer
+ return null
+end
+* get-or-create the FDN.Settings local, same as v8 excerpt 065-070
+if not $factory -> get local variable: name=$pointer
+ $settings.array = = array alloc: size=6
+ $factory -> set local variable: name=$pointer value=$settings.array
+end
+$settings.array = $factory -> get local variable: name=$pointer
+* -----------------------------------------------------------------------------------
+
+* first sight only - flag [2] so the player can change settings afterwards even with auto-manage on (excerpt 073-084)
+* v9.01 D4: only when the caller asked for it; array elements copied to locals before any condition
+if $auto.manage
+ $seen = $settings.array[2]
+ if not $seen
+  $settings.array[2] = 1
+  * global auto-manage setting [9]: start this factory fully managed
+  $auto.manage.global = $al.Settings[9]
+  if $auto.manage.global
+   $settings.array[0] = 1
+   $settings.array[1] = 1
+  end
+  $factory -> set local variable: name=$pointer value=$settings.array
+ end
+end
+
+return $settings.array
+* -----------------------------------------------------------------------------------

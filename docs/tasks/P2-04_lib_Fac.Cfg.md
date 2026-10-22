@@ -16,7 +16,7 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 ## Excerpts
 
 ### Library contracts (REFERENCE D; all synchronous, wait-free, return null on bad input)
-- `lib.LI.FDN.Fac.Cfg` | args: factory | settings array, get-or-create, applies auto-manage once | D4
+- `lib.LI.FDN.Fac.Cfg` | args: factory, auto.manage (1 = apply [9] on first sight via [2], null/0 = get-or-create only) | settings array, get-or-create | D4
 
 ### Factory settings: station local `FDN.Settings` (text 4001), array size 6
 [0] manage product, [1] manage resources, [2] "already seen" flag (applies auto-manage once), [3] v9: busy-until time, [4]-[5] free.
