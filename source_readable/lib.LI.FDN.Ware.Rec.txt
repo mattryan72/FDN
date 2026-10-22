@@ -24,11 +24,11 @@
 * - the 12-element record array when one exists, or was created when create is true;
 *   null for bad input, or when no record exists and create is not true
 
-* To Do - P2-05b: call lib.LI.FDN.Reg.Add(station) on the create path (B9 registry)
+* To Do - N/A
 
 * Version: 1.0
 * Date: 22/10/2026
-* Tested: not tested
+* Tested: TC 22/10/2026
 * -----------------------------------------------------------------------------------
 
 $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
@@ -74,5 +74,6 @@ $rec[8] = null
 $rec[9] = null
 $rec[11] = null
 $station  ->  set local variable: name=$pointer value=$rec
-* TODO P2-05b: call lib.LI.FDN.Reg.Add here (B9) - adds the station to registry [29]; added when that lib exists, left out so this lib can be tested on its own today
+* v9.01 B9: remember this station in the registry (P2-05b) - create path only, so an existing record never re-adds
+$null = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$station
 return $rec

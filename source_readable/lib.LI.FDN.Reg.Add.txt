@@ -1,0 +1,51 @@
+* Script: lib.LI.FDN.Reg.Add  (v1, engine 50)
+* Desc: FDNv9 - Add a station to the B9 registry in settings [29]
+* Arg 0: station (Value) 'station'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Single owner of the v9.01 B9 registry add
+* copied from Update.Ware Add.Ware.Sub L168-177: appends the station to settings [29]
+* so Reset can find every station FDN has ever touched, even after it left [3]/[4].
+* Creates [29] if null; never duplicates (find first); dead-station pruning happens in
+* Reset and Upgrade, not here. No waits, no START.
+
+* Arguments:
+* - station (Value): Station to add to the registry
+
+* Returns values:
+* - N/A always null
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: TC 22/10/2026
+* -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if not is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ return null
+end
+if not is datatyp[ $station ] == DATATYPE_STATION
+ * station datatype check before any -> call, same as Is.Valid.txt L28-31 (copy)
+ return null
+end
+$exists = $station  ->  exists
+if not $exists
+ return null
+end
+* B9: registry [29] - create if null, same block as Update.Ware L169-173 (copy),
+* datatype guard instead of the bare truthiness test so a string cannot pass
+$registry = $al.Settings[29]
+if not is datatyp[ $registry ] == DATATYPE_ARRAY
+ $registry = = array alloc: size=0
+ $al.Settings[29] = $registry
+end
+* append only if not already there - Update.Ware L174-176 (copy)
+if not find $station in array: $registry
+ append $station to array $registry
+end
+* writes to [29] must persist - save as every pasted example does (Update.Ware L177, Reset L108)
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+
+return null
