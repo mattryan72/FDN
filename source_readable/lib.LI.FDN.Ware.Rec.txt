@@ -1,0 +1,78 @@
+* Script: lib.LI.FDN.Ware.Rec  (v1, engine 50)
+* Desc: FDNv9 - Get or create the ware record array for a station's ware
+* Arg 0: station (Value) 'station'
+* Arg 1: ware (Value) 'ware'
+* Arg 2: create (Boolean) 'create'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Single owner of the D3 ware record create
+* (the identical 12-element default array in Update.Ware Add.Ware.Sub and Wares.Summary
+* Build.Ware.Array.Sub), plus one place that builds the record name from text 4000.
+* The record is the station local FDN.Ware.<ware> (name sprintf'd from text 4000).
+* Get-or-create: an existing record is read back and returned untouched - this lib never
+* overwrites player settings, so a create against an existing record resets nothing (B18).
+* Bad input (settings missing, station not a DATATYPE_STATION or gone, ware null) returns
+* null. The ware check is `if not $ware` only - no datatype constant here, after the
+* datatype-name gotcha hit in TC (P2-02 lesson).
+
+* Arguments:
+* - station (Value): Station whose record to read or create
+* - ware (Value): Ware the record holds
+* - create (Boolean): true = create with v9 defaults if none exists; false/null = never write anything
+
+* Returns values:
+* - the 12-element record array when one exists, or was created when create is true;
+*   null for bad input, or when no record exists and create is not true
+
+* To Do - P2-05b: call lib.LI.FDN.Reg.Add(station) on the create path (B9 registry)
+
+* Version: 1.0
+* Date: 22/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+if not is datatyp[ $station ] == DATATYPE_STATION
+ * station datatype check before any -> call (a number or string would throw a script error)
+ return null
+end
+$exists = $station  ->  exists
+if not $exists
+ return null
+end
+if not $ware
+ return null
+end
+* record name from text 4000, same sprintf the old create code used
+$pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+$rec = $station  ->  get local variable: name=$pointer
+if $rec
+ * v9.01 B2/B18: existing record returned untouched - never overwrite player settings
+ return $rec
+end
+if not $create
+ * create false/null never writes anything
+ return null
+end
+* build the default array, same values as Update.Ware Add.Ware.Sub / Wares.Summary Build.Ware.Array.Sub
+$price = $station  ->  get price of ware $ware
+$rec = = array alloc: size=12
+$rec[0] = 0
+$rec[1] = null
+$rec[2] = null
+$rec[3] = [FALSE]
+$rec[4] = $price
+$rec[5] = -1
+$rec[6] = $price
+* v9.01 B5: -1 = use the global surplus default in settings [28]; surplus behaviour unchanged here
+$rec[7] = -1
+$rec[8] = null
+$rec[9] = null
+$rec[11] = null
+$station  ->  set local variable: name=$pointer value=$rec
+* TODO P2-05b: call lib.LI.FDN.Reg.Add here (B9) - adds the station to registry [29]; added when that lib exists, left out so this lib can be tested on its own today
+return $rec

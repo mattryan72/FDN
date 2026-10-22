@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~4,060 tokens when built
+- Estimated size: ~4,583 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-03_lib_Ware.Rec.md`
 - Save the answer as: `notes/P2-03.md`
 
