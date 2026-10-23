@@ -1,0 +1,566 @@
+* Script: lib.LI.FDN.Trade  (v1, engine 50)
+* Desc: FDNv9 - Wait-free docked drone buy/sell between $home and an NPC partner station
+* Arg 0: mode (String) 'mode'
+* Arg 1: partner (Value) 'partner'
+* Arg 2: ware (Value) 'ware'
+* Arg 3: amount (Number) 'amount'
+* Arg 4: home (Value) 'home'
+* Arg 5: dest (Value) 'dest'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2, R-T1 / B15). MSCI has no station-to-station trade
+* command, so a drone is created already docked at $partner, trades one load at a time and
+* is destructed in the same block - nothing ever waits between create ship and destruct.
+* One exit label (Exit:); every path goes there. At most one drone exists at any moment.
+* A log reason code is written via lib.LI.FDN.Log at every decision. Returns units traded,
+* always an int >= 0, never null or negative (0 on any failure).
+*
+* Arguments:
+* - mode (String): 'buy' = partner sells to $home/$dest; 'sell' = $home stock sold to partner
+* - partner (Value): NPC station to trade with (owner race != Player)
+* - ware (Value): ware to trade
+* - amount (Number): requested units (> 0)
+* - home (Value): player-owned station whose account pays/receives and holds the record
+* - dest (Value): optional delivery station for 'buy' only; null = $home
+*
+* Returns values:
+* - units actually traded (int >= 0); 0 on any guard failure, price check or spawn failure
+*
+* To Do - N/A
+*
+* Version: 1.0
+* Date: 23/10/2026
+* Tested: TC 23/10/2026
+* -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+* always-defined so an early goto Exit: still returns a clean int 0 with no leftover drone
+$traded = 0
+$drone = null
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ * v9.01 R-T1: FDN not initialised - fail soft, always return an int (never null)
+ return 0
+end
+$PageID = $al.Settings[1]
+* record name built once here and reused by the sell reconcile at Exit (text 4000)
+$pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+* -----------------------------------------------------------------------------------
+
+* mode must be exactly 'buy' or 'sell' (single-condition checks only: no != operator, no logical-AND)
+$mode.ok = [FALSE]
+if $mode == 'buy'
+ $mode.ok = [TRUE]
+end
+if $mode == 'sell'
+ $mode.ok = [TRUE]
+end
+if not $mode.ok
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip bad mode' caller=$s.name
+ return 0
+end
+* amount must be a positive integer (T1: null < 6 is FALSE, so datatype-guard first)
+if not is datatyp[ $amount ] == DATATYPE_INT
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip bad amount' caller=$s.name
+ return 0
+end
+if not $amount > 0
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip zero amount ' + $ware caller=$s.name
+ return 0
+end
+* -----------------------------------------------------------------------------------
+
+* partner must exist and be an NPC station (never the player's own)
+if not is datatyp[ $partner ] == DATATYPE_STATION
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip bad partner' caller=$s.name
+ return 0
+end
+$p.exists = $partner  ->  exists
+if not $p.exists
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip partner gone' caller=$s.name
+ return 0
+end
+$p.owner = $partner  ->  get owner race
+if $p.owner == Player
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip own station' caller=$s.name
+ return 0
+end
+* v9.01 R-T1: never trade a foe (relation constant; T5 confirmed the command works on FL) - checked after $home is validated, below
+* -----------------------------------------------------------------------------------
+* partner must still sit in a trade sector (from the cached scan, never re-scanned)
+$p.sector = $partner  ->  get sector
+if not $p.sector
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip no sector' caller=$s.name
+ return 0
+end
+$trade.sectors = [THIS] -> call script lib.LI.FDN.Sectors : mode=3
+if not $trade.sectors
+ * cache empty or missing - cannot confirm the partner is reachable, fail soft
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip no trade sectors' caller=$s.name
+ return 0
+end
+$in.trade = find $p.sector in array: $trade.sectors
+if not $in.trade
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip partner out of sector list' caller=$s.name
+ return 0
+end
+* -----------------------------------------------------------------------------------
+
+* home must exist and be player-owned (Is.Valid returns TRUE / FALSE / null)
+$home.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$home need.dock=[FALSE]
+if not $home.valid
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip bad home' caller=$s.name
+ return 0
+end
+* dest: on buy, default to home when no delivery station is given; then validate it
+if $mode == 'buy'
+ if not $dest
+  $dest = $home
+ end
+ $dest.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dest need.dock=[FALSE]
+ if not $dest.valid
+  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip bad dest' caller=$s.name
+  return 0
+ end
+end
+* v9.01 R-T1: never trade a foe (relation constant; T5 confirmed the command works on FL).
+* $home is now validated above, so `get relation to object` has a safe source station.
+$rel = $home  ->  get relation to object $partner
+if $rel == Foe
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip foe' caller=$s.name
+ return 0
+end
+
+* -----------------------------------------------------------------------------------
+
+* v9.01 R-T1: defensive active-task cap - only enforced when both counters are set and > 0
+* (T1: null <= null is FALSE, so a bare `if not $active <= $max.tasks` would take unguarded nulls)
+$active = $al.Settings[18]
+$max.tasks = $al.Settings[19]
+if is datatyp[ $active ] == DATATYPE_INT
+ if is datatyp[ $max.tasks ] == DATATYPE_INT
+  if $max.tasks > 0
+   if $active > $max.tasks
+    = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip task cap ' + $active caller=$s.name
+    return 0
+   end
+  end
+ end
+end
+* -----------------------------------------------------------------------------------
+
+
+* home ware record (read-only; the price thresholds and the sell reconcile both come from it)
+$rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$home ware=$ware create=[FALSE]
+if not $rec
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip no record ' + $ware caller=$s.name
+ return 0
+end
+* price sanity: partner's live price must be positive and within the ware min/max range
+$price = $partner  ->  get price of ware $ware
+if not is datatyp[ $price ] == DATATYPE_INT
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip no price ' + $ware caller=$s.name
+ return 0
+end
+if not $price > 0
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip zero price' caller=$s.name
+ return 0
+end
+$min.p = = get min price of ware $ware
+$max.p = = get max price of ware $ware
+if is datatyp[ $min.p ] == DATATYPE_INT
+ if not $price >= $min.p
+  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip below min price' caller=$s.name
+  return 0
+ end
+end
+if is datatyp[ $max.p ] == DATATYPE_INT
+ if not $price <= $max.p
+  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip above max price' caller=$s.name
+  return 0
+ end
+end
+* buy only at or below the record's buy-at threshold; sell only at or above the sell-at threshold
+if $mode == 'buy'
+ $buy.at = $rec[4]
+ if is datatyp[ $buy.at ] == DATATYPE_INT
+  if not $price <= $buy.at
+   = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip price above buy at' caller=$s.name
+   return 0
+  end
+ else
+  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip no buy at price' caller=$s.name
+  return 0
+ end
+else
+ $sell.at = $rec[6]
+ if is datatyp[ $sell.at ] == DATATYPE_INT
+  if not $price >= $sell.at
+   = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip price below sell at' caller=$s.name
+   return 0
+  end
+ else
+  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip no sell at price' caller=$s.name
+  return 0
+ end
+end
+* clamp the requested amount to what this trade can actually move; log each clamp, exit on 0
+$remaining = $amount
+if $mode == 'buy'
+ * partner stock of the ware (cannot buy more than it holds)
+$p.stock = $partner  ->  get amount of ware $ware in cargo bay
+if is datatyp[ $p.stock ] == DATATYPE_INT
+ if not $p.stock < 0
+  if $p.stock < $remaining
+   $remaining = $p.stock
+   = [THIS] -> call script lib.LI.FDN.Log : text='TRADE clamp partner stock ' + $remaining caller=$s.name
+  end
+ else
+  $remaining = 0
+ end
+end
+ * delivery station free space for the ware
+$d.free = $dest  ->  get free amount of ware $ware in cargo bay
+if is datatyp[ $d.free ] == DATATYPE_INT
+ if not $d.free < 0
+  if $d.free < $remaining
+   $remaining = $d.free
+   = [THIS] -> call script lib.LI.FDN.Log : text='TRADE clamp dest space ' + $remaining caller=$s.name
+  end
+ else
+  $remaining = 0
+ end
+end
+ * money: the homebase account pays (confirmed), so clamp to what it can afford at this price
+$money = $home  ->  get money
+if not is datatyp[ $money ] == DATATYPE_INT
+ $money = 0
+end
+$afford = $money / $price
+if $afford < $remaining
+ $remaining = $afford
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE clamp money ' + $remaining caller=$s.name
+end
+else
+ * sell: partner free space for the ware (demand) and the home's physical + virtual stock
+$p.free = $partner  ->  get free amount of ware $ware in cargo bay
+if is datatyp[ $p.free ] == DATATYPE_INT
+ if not $p.free < 0
+  if $p.free < $remaining
+   $remaining = $p.free
+   = [THIS] -> call script lib.LI.FDN.Log : text='TRADE clamp partner space ' + $remaining caller=$s.name
+  end
+ else
+  $remaining = 0
+ end
+end
+$home.phys = $home  ->  get amount of ware $ware in cargo bay
+if not is datatyp[ $home.phys ] == DATATYPE_INT
+ $home.phys = 0
+end
+$virt.stock = $rec[0]
+if not is datatyp[ $virt.stock ] == DATATYPE_INT
+ $virt.stock = 0
+end
+$stock.avail = $home.phys + $virt.stock
+if $stock.avail < $remaining
+ $remaining = $stock.avail
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE clamp home stock ' + $remaining caller=$s.name
+end
+end
+* nothing left to trade after the clamps - stop before any spawn
+if not $remaining > 0
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip nothing to trade' caller=$s.name
+ return 0
+end
+* -----------------------------------------------------------------------------------
+
+* max loads per call: read [27]; if unset or not a positive int, default to 5 (confirmed)
+$max.loads = $al.Settings[27]
+if not is datatyp[ $max.loads ] == DATATYPE_INT
+ $max.loads = 5
+end
+if not $max.loads > 0
+ $max.loads = 5
+end
+* -----------------------------------------------------------------------------------
+
+* build the drone-type candidate list, de-duplicated (T5: type=null spawns a Mammoth, so we
+* must only ever pass real ship types). Order: [26] cache, then each entry of [25], then the
+* default Argon Mercury Super Freighter XL, then one TS fallback each for Argon and Paranid.
+$candidates = = array alloc: size=0
+$t.cache = $al.Settings[26]
+if $t.cache
+ if not find $t.cache in array: $candidates
+  append $t.cache to array $candidates
+ end
+end
+$t.list = $al.Settings[25]
+if is datatyp[ $t.list ] == DATATYPE_ARRAY
+ $li = 0
+ $ln = size of array $t.list
+ $list.done = [FALSE]
+ while not $list.done
+  if not $li < $ln
+   $list.done = [TRUE]
+  else
+   * copy to a local first so a null entry is skipped, never appended (T5: null spawns a Mammoth)
+   $t.item = $t.list[$li]
+   inc $li =
+   if $t.item
+    if not find $t.item in array: $candidates
+     append $t.item to array $candidates
+    end
+   end
+  end
+ end
+end
+if not find Argon Mercury Super Freighter XL in array: $candidates
+ append Argon Mercury Super Freighter XL to array $candidates
+end
+* runtime TS fallbacks so an XRM/TShips mod removing the default type cannot break trading.
+* VERIFY (P0-C2 T5): confirm `get ship type array` returns a DATATYPE_ARRAY of ship types on AP/FL.
+$t.fallback = = get ship type array: maker race=Argon class=TS 2031
+if is datatyp[ $t.fallback ] == DATATYPE_ARRAY
+ $fb.size = size of array $t.fallback
+ if $fb.size > 0
+  $t.fb = $t.fallback[0]
+  if $t.fb
+   if not find $t.fb in array: $candidates
+    append $t.fb to array $candidates
+   end
+  end
+ end
+end
+$t.fallback = = get ship type array: maker race=Paranid class=TS 2031
+if is datatyp[ $t.fallback ] == DATATYPE_ARRAY
+ $fb.size = size of array $t.fallback
+ if $fb.size > 0
+  $t.fb = $t.fallback[0]
+  if $t.fb
+   if not find $t.fb in array: $candidates
+    append $t.fb to array $candidates
+   end
+  end
+ end
+end
+* -----------------------------------------------------------------------------------
+
+* try up to 4 spawn attempts; stop as soon as one type is accepted or the cap is reached.
+* No break/continue: a $done flag ends the loop, set when a type passes or the cap/candidates run out.
+$drone = null
+$idx = 0
+$num.cand = size of array $candidates
+$attempts = 0
+$done = [FALSE]
+while not $done
+ if not $attempts < 4
+  $done = [TRUE]
+ else
+  if not $idx < $num.cand
+   $done = [TRUE]
+  else
+   * read the candidate, then advance so a skip/reject never retries the same entry
+   $t = $candidates[$idx]
+   inc $idx =
+   if $t
+    * T5: only real ship types reach create ship; a null is already skipped by the `if $t` above.
+    inc $attempts =
+    $drone = = create ship: type=$t owner=Player addto=$partner x=null y=null z=null
+    $exists = $drone  ->  exists
+    if not $exists
+     = [THIS] -> call script lib.LI.FDN.Log : text='TRADE spawn fail ' + $t caller=$s.name
+    else
+     * T6: name, tag and homebase it immediately after creation so a leftover is findable.
+     $d.name = = read text: page=$PageID id=310
+     $drone  ->  set name to $d.name
+     $tag.name = = read text: page=$PageID id=4102
+     $now.tag = = playing time
+     $drone  ->  set local variable: name=$tag.name value=$now.tag
+     $drone  ->  set homebase to $home
+     * accept only a drone that can dock, carry the ware and store more than zero of it (nested checks, no logical-AND)
+     $dock.ok = $drone  ->  is docking allowed at $partner
+     $trans.ok = $drone  ->  can transport ware $ware
+     $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+     $accept = [FALSE]
+     if $dock.ok
+      if $trans.ok
+       if is datatyp[ $drone.max ] == DATATYPE_INT
+        if $drone.max > 0
+         $accept = [TRUE]
+        end
+       end
+      end
+     end
+     if $accept
+      * accepted - cache the winning type for next time and persist it, then stop trying
+      $al.Settings[26] = $t
+      set global variable: name='al.LI.FDN.event' value=$al.Settings
+      $done = [TRUE]
+     else
+      $drone  ->  destruct: show no explosion=[TRUE]
+      = [THIS] -> call script lib.LI.FDN.Log : text='TRADE reject type ' + $t caller=$s.name
+      $drone = null
+     end
+    end
+   end
+  end
+ end
+end
+* no candidate passed - log the error and fail soft (the drone, if any, is cleared at Exit)
+$have.drone = [FALSE]
+if $drone
+ $d.alive = $drone  ->  exists
+ if $d.alive
+  $have.drone = [TRUE]
+ end
+end
+if not $have.drone
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE error no usable drone type' caller=$s.name
+ goto label Exit:
+end
+* -----------------------------------------------------------------------------------
+
+* trade loop: at most $max.loads loads, each clamped to the drone's max cargo for this ware.
+* A null/<=0 result ends the loop (logged, not an error). No waits between create and destruct.
+$traded = 0
+$loads = 0
+while $loads < $max.loads
+ if not $remaining > 0
+  * nothing left to trade - end the loop without another load
+  $loads = $max.loads
+ else
+  $chunk = $remaining
+  if is datatyp[ $drone.max ] == DATATYPE_INT
+   if $drone.max < $chunk
+    $chunk = $drone.max
+   end
+  end
+  * the buy/sell decision lives INSIDE this else, so a pass where nothing remains trades nothing (no ghost load)
+  if $mode == 'buy'
+   $n = $drone  ->  buy $chunk units of $ware
+   $buy.ok = [FALSE]
+   if is datatyp[ $n ] == DATATYPE_INT
+    if $n > 0
+     $buy.ok = [TRUE]
+    end
+   end
+   if $buy.ok
+    * empty the drone back to zero and deliver what it bought to the destination
+    $rem.drone = - $n
+    = $drone  ->  add $rem.drone units of $ware
+    = $dest  ->  add $n units of $ware
+    $traded = $traded + $n
+    $remaining = $remaining - $n
+    inc $loads =
+   else
+    $loads = $max.loads
+   end
+  else
+   * sell: load the chunk, sell it, and remove any leftover the drone could not move
+   = $drone  ->  add $chunk units of $ware
+   $n = $drone  ->  sell $chunk units of $ware
+   if not is datatyp[ $n ] == DATATYPE_INT
+    $n = 0
+   else
+    if $n < 0
+     $n = 0
+    end
+   end
+   $leftover = $chunk - $n
+   if $leftover > 0
+    $rem.drone = - $leftover
+    = $drone  ->  add $rem.drone units of $ware
+   end
+   if $n > 0
+    $traded = $traded + $n
+    $remaining = $remaining - $n
+    inc $loads =
+   else
+    $loads = $max.loads
+   end
+  end
+ end
+end
+goto label Exit:
+* -----------------------------------------------------------------------------------
+
+Exit:
+* the single exit: always destruct any surviving drone (T4: check exists, not if $drone)
+if $drone
+ $d.alive = $drone  ->  exists
+ if $d.alive
+  $drone  ->  destruct: show no explosion=[TRUE]
+ end
+end
+$drone = null
+* -----------------------------------------------------------------------------------
+
+* only after a confirmed trade: update the home record and stamp last-trade time (rec[8])
+if not $traded > 0
+ return 0
+end
+if $mode == 'sell'
+ * remove what was actually sold from the home's stock via Update.Ware (physical + virtual)
+ $removed = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=$ware amount=$traded station=$home action='remove'
+ if not is datatyp[ $removed ] == DATATYPE_INT
+  $removed = 0
+ else
+  if $removed < 0
+   $removed = 0
+  end
+ end
+ * reconcile: if less was removed than sold, top the difference up from physical cargo first,
+ * then virtual [0] - never taking either below zero. Home stock is only touched after a sale.
+ if $removed < $traded
+  $diff = $traded - $removed
+  $h.phys = $home  ->  get amount of ware $ware in cargo bay
+  if not is datatyp[ $h.phys ] == DATATYPE_INT
+   $h.phys = 0
+  end
+  $h.virt = $rec[0]
+  if not is datatyp[ $h.virt ] == DATATYPE_INT
+   $h.virt = 0
+  end
+  * take as much of the difference from physical cargo as it can spare (floor at zero)
+  $from.phys = 0
+  if $h.phys > 0
+   if $h.phys < $diff
+    $from.phys = $h.phys
+   else
+    $from.phys = $diff
+   end
+  end
+  * then take whatever is left from virtual stock (floor at zero)
+  $left.diff = $diff - $from.phys
+  $from.virt = 0
+  if $h.virt > 0
+   if $h.virt < $left.diff
+    $from.virt = $h.virt
+   else
+    $from.virt = $left.diff
+   end
+  end
+  * apply the reconciled removals to physical and virtual stock, then persist the record
+  $new.phys = $h.phys - $from.phys
+  if $from.phys > 0
+   $neg.phys = - $from.phys
+   = $home  ->  add $neg.phys units of $ware
+  end
+  $new.virt = $h.virt - $from.virt
+  $rec[0] = $new.virt
+  $home  ->  set local variable: name=$pointer value=$rec
+  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE reconcile diff=' + $diff + ' phys=' + $h.phys + ' virt=' + $h.virt caller=$s.name
+ end
+end
+* -----------------------------------------------------------------------------------
+
+$now = = playing time
+$rec[8] = $now
+$pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+$home  ->  set local variable: name=$pointer value=$rec
+* -----------------------------------------------------------------------------------
+
+= [THIS] -> call script lib.LI.FDN.Log : text='TRADE ok ' + $mode + ' ' + $traded + ' of ' + $ware caller=$s.name
+return $traded
+* -----------------------------------------------------------------------------------

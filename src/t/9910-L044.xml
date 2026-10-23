@@ -119,6 +119,7 @@
   <t id="202">Cr: %s</t>
   <t id="300">\033RConfirm Remove Ware\033X - FDN will forget this ware and delete any virtual stock</t>
   <t id="301">Other Wares:</t>
+  <t id="310">FDN Trade Drone</t>
 
   <t id="330">FDN: %s is run by Station Manager and was removed from the network</t>
   <t id="331">FDN paused: the Distribution Centre is run by Station Manager. Choose a new one.</t>
@@ -154,6 +155,7 @@
   <t id="4005">FDN.Show.Wares</t>
   <t id="4100">FDN.Busy.%s</t>
   <t id="4101">FDN.Trade.%s</t>
+  <t id="4102">FDN.Trade.Drone</t>
   
   <t id="5000">FDND.Ware.%s.%s</t>
   <t id="5001">FDND.Credits.%s</t>
