@@ -1,20 +1,25 @@
-* Script: plugin.LI.FDN.Cleanup  (v1.0, engine 50)
-* Desc: FDNv8 - Clears Global values used by Dynamic menus
+* Script: plugin.LI.FDN.Cleanup  (v2, engine 50)
+* Desc: FDNv9 - Clears FDND.* dynamic-menu globals and sweeps orphan trade drones
 
 001  * Author: Logain Abler
 002  * -----------------------------------------------------------------------------------
 003  * this script clears the global values used for dynamic menus
-004  
+* v9.01 R-T1 / B15 (REFERENCE G): then destructs every player TS-class ship that still
+* carries the FDN.Trade.Drone local tag, and resets settings [18] = 0 and [26] = null.
+* The sweep is STARTed from al.LI.FDN.event on init/reinit (wiring done in P4-05), so
+* this task may wait between ships - the AL handler never calls it inline.
+
 005  * Expected values:
-006  * - n/a
+006  * - n/a (all state comes from the 'al.LI.FDN.event' global)
 007  
 008  * Return values:
-009  * - n/a
+009  * - null always
 010  
-011  * Version: 1.0
-012  * Date: 17/05/2012
-013  * Tested: 17/05/2012
+* Version: 2
+* Date: 23/10/2026
+* Tested: TC 23/10/2026
 014  * -----------------------------------------------------------------------------------
+
 015  
 016  * Clears globals used for dynamic menus
 017  * All globals will be prefixed with FDND.
@@ -29,8 +34,71 @@
 026   end
 027  end
 028  * -----------------------------------------------------------------------------------
-029  return null
-030  
-031  
-032  
-033  
+
+* v9.01 R-T1 / B15 (REFERENCE G): orphan trade-drone sweep.
+* Runs only when the settings array exists and is an array - on a fresh install
+* al.LI.FDN.event has already allocated it before this task STARTs, but we still
+* guard in case of an interrupted init.
+$script.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ return null
+end
+$PageID = $al.Settings[1]
+* the tag name comes from text 4102 (added in P2-07a) so it stays a single source
+$tag.name = = read text: page=$PageID id=4102
+
+* count of drones actually destructed (logged once at the end); wait every 10 to keep the game responsive
+$destroyed = 0
+$wait.counter = 0
+
+* class/type TS 2031 is OBJ_SHIP_TS. The tag FDN.Trade.Drone is required - a name
+* match alone is not enough, since the player can rename any ship (REFERENCE G).
+$ts.array = = get ship array: of race Player class/type=TS 2031
+if is datatyp[ $ts.array ] == DATATYPE_ARRAY
+ $s.ts = size of array $ts.array
+ while $s.ts > 0
+  dec $s.ts =
+  if $s.ts >= 0
+   $drone = $ts.array[$s.ts]
+   if $drone
+    * re-validate after any previous wait (cooperative scheduling): the ship may have
+    * been destroyed by another task, a collision, or the player since we read the array.
+    $alive = $drone  ->  exists
+    if $alive
+     $owner = $drone  ->  get owner race
+     if $owner == Player
+      $tagged = $drone  ->  get local variable: name=$tag.name
+      if $tagged
+       inc $destroyed =
+       inc $wait.counter =
+       $drone  ->  destruct: show no explosion=[TRUE]
+       * long-loop guard (MSCI primer): wait every 10 destructs.
+       if $wait.counter >= 10
+        $wait.counter = 0
+        = wait 1 ms
+       end
+      end
+     end
+    end
+   end
+  end
+ end
+end
+
+* reset [18] (active trade-task counter, used by lib.LI.FDN.Trade L140-149) to an
+* explicit int 0 - a null here would be silently skipped by the DATATYPE_INT guard.
+$al.Settings[18] = 0
+* reset [26] (cached trade-drone ship type, lib.LI.FDN.Trade L292/L397) so a stale or
+* mod-removed type is not reused on the next trade; Trade falls through to [25], the
+* default Argon Mercury Super Freighter XL, and the TS fallback list when it is null.
+$al.Settings[26] = null
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+
+* log the count - lib.LI.FDN.Log gates on [7] itself (D2); string built in a local first
+$txt.log = 'Cleanup: orphan sweep destroyed ' + $destroyed + ' trade drones; reset [18]=0 [26]=null'
+= [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+
+* -----------------------------------------------------------------------------------
+return null
+

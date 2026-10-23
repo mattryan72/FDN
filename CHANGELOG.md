@@ -63,6 +63,7 @@
 - [P8] Supply.Dock: the dock supply loop waits 0.5-1 s every 10 wares (the DC sell loop already waits per ware).
 - [P1-05] Supply.Dock: debug log lines (debug on only) for each dock pass, supply from the DC (requested and added), surplus to the DC, sell cap and early stop after a wait.
 - [P1-05a] Main Menu: new Docks view (view 3, plugin.LI.FDN.Menu.AP.Dock.List; TC: plugin.LI.FDN.Menu.Dock.List) lists every tracked player dock except the DC and opens Dock Details; "Switch to" cycles DC -> Stations -> Docks; back from Dock Details returns to the Docks list. Ware settings and Add ware now create a missing ware record (settings were silently lost before).
+- [R-T1][B15] plugin.LI.FDN.Cleanup: orphan trade-drone sweep - destructs every player TS-class ship carrying the FDN.Trade.Drone tag (tag required, name alone is not enough), resets settings [18]=0 and [26]=null, logs the count via lib.LI.FDN.Log; waits 1 ms per 10 destructs. Existing FDND.* clearing unchanged - done in P2-07b.
 
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:
