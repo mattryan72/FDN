@@ -2,7 +2,7 @@
 
 - Phase: 2 (branch `phase2-libs`)
 - Writes code: yes
-- Estimated size: ~6,317 tokens when built
+- Estimated size: ~8,134 tokens when built
 - Build: `python tools/build_prompt.py docs/tasks/P2-07a_lib_Trade.md`
 - Save the answer as: `notes/P2-07a.md`
 
@@ -11,7 +11,6 @@
 CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 - `docs/MSCI_PRIMER.md`
-- notes/NOTES_semantics.md (optional)
 - source_readable/plugin.LI.FDN.Buy.Ware.txt lines 040-100
 - source_readable/plugin.LI.FDN.Sell.Ware.txt lines 030-125
 
@@ -19,6 +18,17 @@ CORE_PROMPT.md is always added first by the builder. Then, in this order:
 
 ### Library contracts (REFERENCE D; all synchronous, wait-free, return null on bad input)
 - `lib.LI.FDN.Trade` | args: mode ('buy'/'sell'), partner (NPC station), ware, amount, home (player station whose account pays/receives), dest (optional, buy only) | units traded (0 on any failure, never null/negative). Wait-free. | D9, B15
+- `lib.LI.FDN.Cfg.Get` | args: none | settings array, or null if uninitialised / wrong version | D1
+- `lib.LI.FDN.Log` | args: text, caller | null; appends `time;caller;text` to log 9910 when `[6]` is TRUE (`$s.name = = get script name` once at top, pass `caller=$s.name`) | D2
+- `lib.LI.FDN.Is.Valid` | args: obj, need.dock (Boolean) | TRUE if obj exists (`DATATYPE_STATION`), owner race == Player, and is a Dock if asked | B3, B12
+- `lib.LI.FDN.Sectors` | args: mode (1 factories, 2 docks, 3 trade = all + adv. sats) | sector array from cache [15], never scans | B10
+- `lib.LI.FDN.Ware.Rec` | args: station, ware, create (Boolean) | 10-element ware record array, or null | D3, B2, B18
+
+### Phase 0 test findings (from notes/NOTES_semantics.md)
+- **T1 (null comparisons):** `null >= 0`, `null < 6`, `null == 0` are all FALSE; negative guards (`if not $x >= 0`) take null, so check `DATATYPE_INT` first.
+- **T4 (`destruct` and `exists`):** after `destruct`, `if $drone` is still TRUE, while `$drone -> exists` is FALSE. Always check `$exists = $drone -> exists` before destructing.
+- **T5 (docked trade drone on FL):** `create ship` with `SS_SH_A_TS_5` at an NPC station works (`exists` TRUE, `is docking allowed` TRUE, `can transport ware` TRUE, `max cargo` > 0). Calling `create ship` with `type=null` spawns a player Mammoth instead of returning null, so always guard `if $t` and validate against TS types before `create ship`.
+- **T6 (`SIGNAL_KILLED`):** `destruct: show no explosion=[TRUE]` still fires `SIGNAL_KILLED`; name and tag the drone (`FDN.Drone`, text 4102 = playing time) immediately after creation and never START a command on it.
 
 ### lib.LI.FDN.Trade spec (REFERENCE G)**Why it exists:** MSCI has no station-to-station trade command. A docked ship's `buy`/`sell` is the only way into the native economy (real price, homebase account, NPC stock, possibly trade rank/stats). The drone is created already docked and destroyed in the same wait-free block, so freight was never visible. Keeping it changes nothing the player sees.
 **Invariants:** nothing waits between `create ship` and `destruct` (a drone can never end up in a save). One exit label: every path does `goto label Exit:`. Because the lib is wait-free, at most one drone exists at any moment. Log a reason code at every decision via `lib.LI.FDN.Log` (e.g. `TRADE skip foe`, `TRADE clamp money 120`, `TRADE spawn fail <type>`).
