@@ -1,0 +1,120 @@
+* Script: lib.LI.FDN.Lock  (v1, engine 50)
+* Desc: FDNv9 - try/release a playing-time lock on an object local or a settings index
+* Arg 0: obj (Value) 'obj'            null = global lock on a settings index
+* Arg 1: key (String/Int) 'key'       object: FDN.Busy.<key>; global: settings index
+* Arg 2: action (String) 'action'     'try' or 'release'
+* Arg 3: timeout (Value) 'timeout'    seconds before a lock is stale (try only)
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2). Single owner of the B1/B11 playing-time lock.
+* Object locks are the station local FDN.Busy.<key> (name sprintf'd from text 4100);
+* global locks are a settings index in al.LI.FDN.event given by key. A lock stores the
+* 'playing time' it was taken; try takes it when free or older than timeout, release
+* clears it. No waits, no START. Returns TRUE if acquired/released, FALSE while held,
+* null for bad input (bad action/key/obj/timeout). Trade guards FDN.Trade.<ware> (text
+* 4101) are set by the trade task directly (P2-11a/b), not here.
+
+* Arguments:
+* - obj (Value): Station to lock, or null for a global settings-index lock
+* - key (String/Int): object = FDN.Busy.<key>; global = index into al.LI.FDN.event
+* - action (String): 'try' acquire if free/stale; 'release' clear the lock
+* - timeout (Value): seconds a stale lock is held for before try takes it
+
+* Returns values:
+* - TRUE when 'try' acquired or 'release' cleared the lock
+* - FALSE when 'try' found the lock still held (younger than timeout)
+* - null for bad action, missing key/obj, out-of-range index, bad timeout, or FDN not initialised
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 23/10/2026
+* Tested: TC 23/10/2026
+* -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ * FDN not initialised - no settings to hold a global lock or a PageID for the name
+  return null
+end
+$PageID = $al.Settings[1]
+if not $key
+ * no key - cannot name an object lock or pick a settings index
+  return null
+end
+* -----------------------------------------------------------------------------------
+* resolve where the lock lives: station local (obj set) or settings index (global).
+* Copy every read to a local first; never test -> results inside a condition.
+$lock.value = null
+if $obj
+ if not is datatyp[ $obj ] == DATATYPE_STATION
+  * object guard before any -> call, same as Reg.Add L29-31 / Ware.Rec L39-41 (copy)
+   return null
+ end
+ $exists = $obj  ->  exists
+ if not $exists
+  * destroyed station - a dead local is meaningless
+   return null
+ end
+ * name from text 4100 'FDN.Busy.%s', same sprintf idiom as Ware.Rec L51 (copy)
+ * VERIFY: text id 4100 must exist on page $PageID before this runs (added to t/9910-L044.xml with P2-05)
+ $pointer = = sprintf: pageid=$PageID textid=4100, $key, null, null, null, null
+ $lock.value = $obj  ->  get local variable: name=$pointer
+else
+ * global lock - key is the settings index; must be an integer in range before any use
+ if not is datatyp[ $key ] == DATATYPE_INT
+  return null
+ end
+ if $key < 0
+  return null
+ end
+ $size = size of array $al.Settings
+ if $key >= $size
+  return null
+ end
+ * copy the element to a local before testing it (B4: never compare an unset element)
+ $lock.value = $al.Settings[$key]
+end
+
+if $action == 'try'
+ * free when never set, or held long enough to count as stale ($elapsed >= timeout)
+ $now = = playing time
+ if not is datatyp[ $timeout ] == DATATYPE_INT
+  * try needs a usable timeout
+   return null
+ end
+ if not $timeout > 0
+  return null
+ end
+ if is datatyp[ $lock.value ] == DATATYPE_INT
+  * locked - only let this through when the lock is more than timeout s old (stale)
+  $elapsed = $now - $lock.value
+  if $elapsed < $timeout
+   * still held - not acquired
+    return [FALSE]
+  end
+ end
+ if $obj
+  * take the object lock on the station local (name already built above)
+  $obj  ->  set local variable: name=$pointer value=$now
+ else
+  * take the global lock in settings and persist it, same as Supply.Start L131-132 (copy)
+  $al.Settings[$key] = $now
+  set global variable: name='al.LI.FDN.event' value=$al.Settings
+ end
+ return [TRUE]
+else if $action == 'release'
+ * release clears the lock and confirms; no timeout needed
+ if $obj
+  * same set-local spelling as Buy.Ware L104 / Main.Menu Remove Wares (copy)
+  $obj  ->  set local variable: name=$pointer value=null
+ else
+  * clear to null and save so it persists, same as Factory.Check clears [12] (L45-46 copy)
+  $al.Settings[$key] = null
+  set global variable: name='al.LI.FDN.event' value=$al.Settings
+ end
+ return [TRUE]
+else
+ * bad action - neither 'try' nor 'release'
+ return null
+end

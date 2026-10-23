@@ -147,6 +147,8 @@
   <t id="4003">FDN.Show.Dock</t>
   <t id="4004">FDN.Show.DC</t>
   <t id="4005">FDN.Show.Wares</t>
+  <t id="4100">FDN.Busy.%s</t>
+  <t id="4101">FDN.Trade.%s</t>
   
   <t id="5000">FDND.Ware.%s.%s</t>
   <t id="5001">FDND.Credits.%s</t>
