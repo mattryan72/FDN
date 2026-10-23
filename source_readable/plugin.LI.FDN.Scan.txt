@@ -1,0 +1,170 @@
+* Script: plugin.LI.FDN.Scan  (v1, engine 50)
+* Desc: FDN v9.01 - Single-pass station scan: fills [3] factories, [4] docks, [8] exclude array and the [15] sector cache, stamps [16]
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is a task (it may wait), not a library. It replaces the B10 scan half of
+* Sector.Array: one pass over every player station that at the same time fills the
+* factory array [3], the dock array [4] and the exclude array [8], builds the sector
+* cache [15] ([0] factories, [1] docks, [2] trade = factories + docks + advanced
+* satellite sectors) and stamps the scan time into [16]. Sector.Array keeps its return-
+* list half until P3 switches the menu callers over to lib.LI.FDN.Sectors.
+*
+* Expected values:
+* - N/A none
+
+* Returns values:
+* - N/A always null; results live in al.LI.FDN.event [3] [4] [8] [15] [16]
+
+* To Do - P3-04b switches Supply.Start and the menu callers from Sector.Array to this script + lib.LI.FDN.Sectors
+
+* Version: 1.0
+* Date: 23/10/2026
+* Tested: TC 23/10/2026
+* -----------------------------------------------------------------------------------
+ * v9.01 B10/B25/P1 changes (Scan):
+ *   B10 Sector.Array both scanned and returned a list, and its documented modes 1/2/3 were ignored except 3; split into this task (scan + fill) and lib.LI.FDN.Sectors (wait-free cache reader).
+ *   B25 v8 appended docks twice in two find-in-array passes over the same array (O(n^2)); Scan is a single pass - every station is tested once against [3]/[4] with one local copy of each array.
+ *   P1  The scan runs from Supply.Start at most every [17] seconds (default 300); this script stamps the playing time into [16].
+ *   FL  Approved decision: a station run by Station Manager is dropped via lib.LI.FDN.Is.FL.Managed - never added to [3]/[4], removed if it was tracked, DC cleared once with text 331. Still in [8]: Buy.Ware/Sell.Ware pass [8] as the exclude array to find station so FDN never trades with the player's own stations (fix #1).
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
+if not is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ return null
+end
+* PageID first - every log line and text read below needs it
+$PageID = $al.Settings[1]
+$dc.old = $al.Settings[2]
+$factory.array.old = $al.Settings[3]
+$dock.array.old = $al.Settings[4]
+ * v9.01 B25: local copies of the stored arrays - one find per station against a local, never an array element in a condition (P1 lesson)
+$factory.array = = array alloc: size=0
+$dock.array = = array alloc: size=0
+ * fix #1: [8] holds ALL existing player stations so Buy.Ware/Sell.Ware can pass it to find station as the exclude array - FDN never trades with the player's own stations (Sector.Array L049 pattern)
+$exclude.array = = array alloc: size=0
+$fac.sectors = = array alloc: size=0
+$dock.sectors = = array alloc: size=0
+$trade.sectors = = array alloc: size=0
+$s.name = = get script name
+
+$find.array = = get station array: of race Player class/type=Station 2016
+$count = 0
+$s = size of array $find.array
+while $s > 0
+ dec $s =
+ $station = $find.array[$s]
+ if is datatyp[ $station ] == DATATYPE_STATION
+  $exists = $station  ->  exists
+  if $exists
+   append $station to array $exclude.array
+   $fl.managed = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$station
+   if $fl.managed == [TRUE]
+    gosub SM.Drop.Sub:
+   else
+    $sector = $station  ->  get sector
+    $managed.factory = [THIS] -> call script lib.LI.FDN.Is.Factory : station=$station
+    if $managed.factory == [TRUE]
+     append $station to array $factory.array
+     $null = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$station
+     if $sector
+      if not find $sector in array: $fac.sectors
+       append $sector to array $fac.sectors
+      end
+      if not find $sector in array: $trade.sectors
+       append $sector to array $trade.sectors
+      end
+     end
+    end
+    $is.dock = $station  ->  is of class Dock 2007
+    if $is.dock
+     append $station to array $dock.array
+     $null = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$station
+     if $sector
+      if not $station == $dc.old
+       if not find $sector in array: $dock.sectors
+        append $sector to array $dock.sectors
+       end
+      end
+      if not find $sector in array: $trade.sectors
+       append $sector to array $trade.sectors
+      end
+     end
+    end
+   end
+  end
+ end
+ inc $count =
+ if $count == 50
+  $count = 0
+  = wait 1 ms
+ end
+end
+$sat.array = = get ship array: of race Player class/type=Advanced Satellite (object class)
+$s = size of array $sat.array
+while $s > 0
+ dec $s =
+ $sat = $sat.array[$s]
+ if $sat
+  $exists = $sat  ->  exists
+  if $exists
+   $sector = $sat  ->  get sector
+   if $sector
+    if not find $sector in array: $trade.sectors
+     append $sector to array $trade.sectors
+    end
+   end
+  end
+ end
+end
+
+$fac.sectors = = sort array $fac.sectors
+$fac.sectors = reverse array $fac.sectors
+$dock.sectors = = sort array $dock.sectors
+$dock.sectors = reverse array $dock.sectors
+$trade.sectors = = sort array $trade.sectors
+$trade.sectors = reverse array $trade.sectors
+
+$sector.cache = = array alloc: size=3
+$sector.cache[0] = $fac.sectors
+$sector.cache[1] = $dock.sectors
+$sector.cache[2] = $trade.sectors
+
+$al.Settings[3] = $factory.array
+$al.Settings[4] = $dock.array
+$al.Settings[8] = $exclude.array
+$al.Settings[15] = $sector.cache
+$now = = playing time
+$al.Settings[16] = $now
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+return null
+
+SM.Drop.Sub:
+if $station == $dc.old
+ $al.Settings[2] = null
+ $dc.old = null
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ $txt.msg = = read text: page=$PageID id=331
+ write to player logbook $txt.msg
+ $txt.log = = sprintf: pageid=$PageID textid=332, $station, null, null, null, null
+ $null = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+else
+ $was.tracked = [FALSE]
+ if is datatyp[ $factory.array.old ] == DATATYPE_ARRAY
+  if find $station in array: $factory.array.old
+   $was.tracked = [TRUE]
+  end
+ end
+ if is datatyp[ $dock.array.old ] == DATATYPE_ARRAY
+  if find $station in array: $dock.array.old
+   $was.tracked = [TRUE]
+  end
+ end
+ if $was.tracked == [TRUE]
+  $txt.msg = = sprintf: pageid=$PageID textid=330, $station, null, null, null, null
+  write to player logbook $txt.msg
+  $txt.log = = sprintf: pageid=$PageID textid=332, $station, null, null, null, null
+  $null = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
+endsub
+return null

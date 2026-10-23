@@ -1,0 +1,41 @@
+* Script: lib.LI.FDN.Sectors  (v1, engine 50)
+* Desc: FDNv9 - Read cached sector list from settings [15] (1=factories, 2=docks, 3/4=trade)
+* Arg 0: mode (Value) 'mode'
+* Author: Logain Abler
+* Version: 1.0
+* Date: 23/10/2026
+* Tested: TC 23/10/2026
+* -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$sector.cache = $al.Settings[15]
+if not is datatyp[ $sector.cache ] == DATATYPE_ARRAY
+ return null
+end
+$s = size of array $sector.cache
+if $s < 3
+ return null
+end
+if $mode == 1
+ $index = 0
+else if $mode == 2
+ $index = 1
+else if $mode == 3
+ $index = 2
+else if $mode == 4
+ $index = 2
+else
+ return null
+end
+$sectors = $sector.cache[$index]
+if not is datatyp[ $sectors ] == DATATYPE_ARRAY
+ return null
+end
+$s = size of array $sectors
+if not $s > 0
+ return null
+end
+return $sectors

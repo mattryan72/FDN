@@ -1,0 +1,40 @@
+* Script: lib.LI.FDN.Is.FL.Managed  (v1, engine 50)
+* Desc: FDNv9 - TRUE if a station is run by FL Station Manager and must be dropped from the network
+* Arg 0: station (Value) 'station'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 2 stub). Single owner of the approved FL Station
+* Manager exclusion check (REFERENCE H, test T9 in card P0-C3): on Farnham's Legacy a
+* station run by Station Manager is dropped from [3]/[4] and, if it is the DC, [2].
+* This Phase 2 stub returns [FALSE] for every existing station so nothing is dropped
+* until test T9 confirms the detection command. The real rule (P4-06): FL only -
+* settings [23] == 3 - and the egosoft.stationmgr.time local is fresh (<= 10 s old).
+* Null on bad input follows the Phase 2 lib contract, but Scan treats null as FALSE so
+* a stub or a bad call can never drop a station by accident.
+
+* Arguments:
+* - station (Value): Station to test against the FL Station Manager rule
+
+* Returns values:
+* - [FALSE] always while this is the Phase 2 stub; P4-06 returns [TRUE] only on FL for
+*   a station whose egosoft.stationmgr.time local is <= 10 s old (T9b)
+* - null for bad input (not a station, or it does not exist)
+
+* To Do - P4-06: replace the stub body with the T9-approved detection ([23] == 3 + fresh egosoft.stationmgr.time)
+
+* Version: 1.0
+* Date: 23/10/2026
+* Tested: TC 23/10/2026
+* -----------------------------------------------------------------------------------
+
+if not is datatyp[ $station ] == DATATYPE_STATION
+ * station datatype check before any -> call, same as Is.Valid.txt L28-31 (copy)
+ return null
+end
+$exists = $station  ->  exists
+if not $exists
+ return null
+end
+* Phase 2 stub: no detection yet - test T9 (card P0-C3) must confirm the command first.
+* Returning [FALSE] here means Scan never drops a station until P4-06 lands the real check.
+return [FALSE]
