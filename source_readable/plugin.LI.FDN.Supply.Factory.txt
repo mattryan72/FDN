@@ -1,82 +1,67 @@
-* Script: plugin.LI.FDN.Supply.Factory  (v2, engine 50)
-* Desc: FDNv9 - Supply Factory logic
+* Script: plugin.LI.FDN.Supply.Factory  (v3, engine 50)
+* Desc: FDNv9 - Supply Factory logic; called routine of Supply.Factory.Check (no START from the caller)
 * Arg 0: factory (Value) 'factory'
 * Arg 1: flag (Value) 'flag'
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
-* This script is called by LI.FDN.Supply.Factory.Check
-* It is used to handle supply between the factrry and DC
+* This script is called synchronously by plugin.LI.FDN.Supply.Factory.Check - it runs as a
+* routine inside that task and returns when done; the caller never STARTs it.
+* It is used to handle supply between the factory and DC
 * 
 * Expected values:
 * - Factory
-* - Flag - 1 for Product 2 for Resources
+* - Flag - 1 for Product, null/other for Resources
 * 
 * Returns values:
-* - N/A
+* - N/A (null)
 * 
-* To Do - N/A
+* To Do - P2-14 rewrites the shortfall debug line; P2-11a revisits who releases the buy lock
 * 
-* Version: 2
-* Date: 20/10/2026
-* Tested: not tested
+* Version: 3.0
+* Date: 24/10/2026
+* Tested: TC 25/10/2026
 * -----------------------------------------------------------------------------------
-* v9.01 B3/B11 changes (Supply.Factory):
-*   B3  The DC is validated once near the top of this task (exists / owner race == Player
-*       / Dock class) into $dc.valid. If invalid, products are not taken from the factory
-*       and no resource remove or buy is attempted (P1-01 already pauses FDN and tells
-*       the player; no message here). The product removal only takes what Update.Ware
-*       reports as added - only a null return falls back to v8 behaviour (0 included).
-*       Tighten after P1-04: once 'add' returns real amounts on every path, remove the null
-*       fallback so a partial add can never leave wares in both stations.
-*   B3  The DC ware record is checked for null before [3] is read; if missing, only that
-*       ware's buy is skipped (flag), the remaining wares are still processed.
-*   B11 Buying a shortfall STARTs plugin.LI.FDN.Buy.Ware at most once per 120 s per factory:
-*       FDN.Settings [3] holds the playing time of the last buy start; while
-*       'playing time' - [3] < 120 no further Buy.Ware is STARTed for this factory.
-*   B31 Supply.Resource.Sub: when the factory already holds more than 3 cycles of a
-*       resource in cargo, $required goes negative; clamp it to 0 after the $max clamp so
-*       the 'requires' debug line never shows a negative amount (the existing > 0 gate
-*       already prevented any remove or buy).
+* v9.01 Phase 2 changes (P2-09b) - closes D1, D2 (one of nine), D3, B3, B11:
+*   D1  Header switched to lib.LI.FDN.Cfg.Get (the only allowed copy of the settings fetch).
+*   D2  Debug.Sub (the sub and its gosubs) deleted; every debug line goes through lib.LI.FDN.Log with $s.name as caller.
+*   D3  The DC ware record is read via lib.LI.FDN.Ware.Rec : station=$dc ware=$ware create=[FALSE] -
+*       null = no record, only that ware's buy is skipped; the text 4000 sprintf and the
+*       $have.record flag are gone.
+*   B3  DC validation reduced to one lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE] call near the
+*       top (exists / owner race == Player / Dock class); while invalid, products are not taken
+*       and no resource remove or buy is attempted. Supply.Start already paused FDN and told the
+*       player when the DC goes bad - this only stops unchecked uses of $dc mid-tick.
+*   B11 The manual busy flag in the factory settings [3] is replaced by lib.LI.FDN.Lock :
+*       obj=$factory key='buy' action='try' timeout=120 (station local FDN.Busy.buy, stores
+*       playing time, stale after 120 s). A null or FALSE result skips the buy this pass; no
+*       release here - P2-11a owns that. The old 'busy for another N s' line becomes one
+*       'Buy skipped - factory busy' line.
+*   B31 (kept) Supply.Resource.Sub: when the factory already holds more than 3 cycles of a
+*       resource in cargo, $required goes negative; it is clamped to 0 after the $max clamp so
+*       the 'requires' debug line never shows a negative amount.
 * -----------------------------------------------------------------------------------
 
-* Fetch values saved in the AL Plugin global variable:
-* - DC
+* v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
 $script = = get script name
-$al.Settings = get global variable: name='al.LI.FDN.event'
-if $al.Settings
- $PageID = $al.Settings[1]
- $DebugID = 0 + $PageID
- $dc = $al.Settings[2]
- * v9.01 B3/B11 - names and time, read once for the whole task
- $pointer.settings = = read text: page=$PageID id=4001
- $now = = playing time
-else
+$s.name = $script
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
  return null
 end
+* Fetch values saved in the AL Plugin global variable:
+* - DC
+* array elements copied to locals before any condition (P1 lesson)
+$dc = $al.Settings[2]
+$debug.on = $al.Settings[7]
 * -----------------------------------------------------------------------------------
 
-* v9.01 B3: validate the DC once per task (a task runs atomically between waits, so this
-* stays true for both subs). P1-01 clears and pauses on an invalid DC every tick, so in
-* practice $dc.valid is TRUE here - this check stops the unchecked uses of $dc in case a
-* DC dies mid-tick. No message: Supply.Start already told the player once.
-$dc.valid = [TRUE]
-if not $dc -> exists
- * destroyed or never set
+* v9.01 B3: one call covers exists + player ownership + Dock class; Supply.Start owns telling
+* the player when the DC goes bad, so there is no message here - this only stops unchecked
+* uses of $dc in case a DC dies mid-tick (a routine runs atomically between waits)
+$dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $dc.valid
  $dc.valid = [FALSE]
-end
-if $dc.valid
- $owner = $dc -> get owner race
- if not $owner == Player
-  * sold, captured or given away
-  $dc.valid = [FALSE]
- end
-end
-if $dc.valid
- if not $dc -> is of class Dock 2007
-  * wrong station type for a DC
-  $dc.valid = [FALSE]
- end
 end
 * -----------------------------------------------------------------------------------
 
@@ -109,16 +94,16 @@ Add.Product.Sub:
 * Get the product amount to be passed to the DC
 $product.amount = $factory  ->  get amount of ware $ware in cargo bay
 * debug
-if $al.Settings[7]
- $txt.debug = $factory + ' has ' + $product.amount + ' of ' + $ware + ' to pass to DC'
- gosub Debug.Sub:
+if $debug.on
+ $txt.log = $factory + ' has ' + $product.amount + ' of ' + $ware + ' to pass to DC'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
 end
 * v9.01 B3: only touch the product if the DC is still valid (exists / player owned / Dock)
 if not $dc.valid
  * debug
- if $al.Settings[7]
-  $txt.debug = 'DC invalid - product kept at ' + $factory
-  gosub Debug.Sub:
+ if $debug.on
+  $txt.log = 'DC invalid - product kept at ' + $factory
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
  return null
 end
@@ -127,7 +112,7 @@ $added.to.dc = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amoun
 * -----------------------------------------------------------------------------------
 
 * v9.01 B3: remove from the factory only what was added to the DC (0 included) - only a null
-* return falls back to v8 behaviour (e.g. Update.Ware before P1-04). Tighten after P1-04:
+* return falls back to v8 behaviour (e.g. Update.Ware before P1-04). Tighten after P2-12a:
 * once 'add' returns real amounts on every path, drop the null fallback so a partial add can
 * never leave wares in both stations.
 $remove = - $product.amount
@@ -137,11 +122,11 @@ end
 * Remove ware from factory
  = $factory  ->  add $remove units of $ware
 * debug
-if $al.Settings[7]
+if $debug.on
  * v9.01: negate on its own line - a unary minus inside a longer expression is mis-compiled
  $removed = - $remove
- $txt.debug = 'Remove ' + $removed + '  of ' + $ware + ' from ' + $factory
- gosub Debug.Sub:
+ $txt.log = 'Remove ' + $removed + '  of ' + $ware + ' from ' + $factory
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
 end
 endsub
 * -----------------------------------------------------------------------------------
@@ -175,27 +160,19 @@ if $required < 0
 end
 
 * debug
-if $al.Settings[7]
+if $debug.on
  if not $skip.ware
-  $txt.debug = $factory + ' requires ' + $required + '  of ' + $ware
-  gosub Debug.Sub:
+  $txt.log = $factory + ' requires ' + $required + '  of ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
 end
 
 * if statement to ensure no negative values
 if $required > 0
- * v9.01 B3: the DC ware record is read only when the DC is valid and exists; if it is
- * missing (e.g. a freshly set DC with no FDN stock yet) skip this ware's buy and keep on
- * with the remaining wares - do not return from inside the sub here, that would end the
- * whole task and skip them
- $have.record = [FALSE]
- if $dc.valid
-  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-  $ware.settings = $dc  ->  get local variable: name=$pointer
-  if $ware.settings
-   $have.record = [TRUE]
-  end
- end
+ * v9.01 D3: read the DC ware record via Ware.Rec with create=[FALSE]; null = no record yet, in
+ * which case only this ware's buy is skipped and the remaining wares are still processed - do
+ * not return from inside the sub here, that would end the whole call and skip them
+ $ware.settings = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=$ware create=[FALSE]
 
  * remove the required from the DC and return what the DC was able to supply
  if not $skip.ware
@@ -215,45 +192,31 @@ if $required > 0
    $required.buy = $required - $from.dc
    
    * debug
-   if $al.Settings[7]
-    $txt.debug = 'Buy ' + $required.buy + ' of ware ' + $ware + ' for ' + $factory
-    gosub Debug.Sub:
+   if $debug.on
+    $txt.log = 'Buy ' + $required.buy + ' of ware ' + $ware + ' for ' + $factory
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
    end
    
-   * v9.01 B3: only look at the record when it exists (null would make [3] unreadable)
-   if $have.record
-    * if can buy
-    if $ware.settings[3]
-     * v9.01 B11: skip starting Buy.Ware while a previous buy for this factory is still in
-     * flight - FDN.Settings [3] holds the playing time of its start, stale after 120 s
-     * (same pattern as the P1-01 run-lock on al.LI.FDN.event [12])
-     $factory.settings = $factory  ->  get local variable: name=$pointer.settings
-     if not $factory.settings
-      * should not happen - Factory.Check allocates it; create it so a buy can still start
-      $settings.new = = array alloc: size=6
-      $factory  ->  set local variable: name=$pointer.settings value=$settings.new
-      $factory.settings = $factory  ->  get local variable: name=$pointer.settings
-     end
-     $busy.until = $factory.settings[3]
-     $busy = [FALSE]
-      * v9.01 B11: only an integer is a start time (FDN v7 saves kept a station in [3]) - VERIFY
-     if is datatyp[ $busy.until ] == DATATYPE_INT
-      * v9.01 B11: never write a combined comparison - compute the elapsed time first
-      $elapsed = $now - $busy.until
-      if $elapsed < 120
-       $busy = [TRUE]
-       * debug
-       if $al.Settings[7]
-        $txt.debug = 'Buy skipped - factory busy for another ' + ( 120 - $elapsed ) + ' s'
-        gosub Debug.Sub:
-       end
-      end
-     end
-     if not $busy
-      * v9.01 B11: mark this factory busy from now on (start time; stale after 120 s)
-      $factory.settings[3] = $now
-      $factory  ->  set local variable: name=$pointer.settings value=$factory.settings
+   * v9.01 B3/D3: only look at the record when it exists (null would make [3] unreadable);
+   * copy the element to a local before the condition (P1 lesson)
+   if $ware.settings
+    $can.buy = $ware.settings[3]
+    if $can.buy
+     * v9.01 B11: one lib call replaces the manual busy flag in FDN.Settings [3] - Lock stores
+     * playing time in the station local FDN.Busy.buy and it goes stale after 120 s, so a
+     * crashed Buy.Ware cannot wedge this factory. No release here (P2-11a owns that).
+     $lock = [THIS] -> call script lib.LI.FDN.Lock : obj=$factory key='buy' action='try' timeout=120
+     if $lock
+      * acquired - start the buy
       START  = null -> call script plugin.LI.FDN.Buy.Ware : factory=$factory  ware=$ware  amount=$required.buy
+     end
+     if not $lock
+      * held (FALSE) or bad input (null) - skip this pass; stale after 120 s
+      * debug
+      if $debug.on
+       $txt.log = 'Buy skipped - factory busy (buy lock held, stale after 120 s)'
+       = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+      end
      end
     end
    end
@@ -262,15 +225,6 @@ if $required > 0
  end
 end
 endsub
-* -----------------------------------------------------------------------------------
 
-* Debug Massage handling
-Debug.Sub:
-$d.time = = playing time
-$d.time = = format time: $d.time
-$txt = $d.time + ';' + $script + ';' + $txt.debug
-write to log file $DebugID  append=[TRUE]  value=$txt
-endsub
-* -----------------------------------------------------------------------------------
 return null
 
