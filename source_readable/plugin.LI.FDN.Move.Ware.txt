@@ -1,170 +1,204 @@
-* Script: plugin.LI.FDN.Move.Ware  (v2, engine 50)
-* Desc: FDNv9 - Handles the user inputs for moving wares
+* Script: plugin.LI.FDN.Move.Ware  (v3, engine 50)
+* Desc: FDN v9 - Handles the user inputs for moving wares
 * Arg 0: ware (Value) 'ware'
 * Arg 1: source (Value) 'source'
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * this script handles the user inputs for moving wares
-004  
-005  * Expected values:
-006  * - ware
-007  * - source
-008  
-009  * Returns values:
-010  * - N/A
-011  
-012  * Version: 1.0
-013  * Date: 09/06/2012
-014  * Tested: 09/06/2012
-* v9.01 B20 (P1-13a): null-check a cancelled destination prompt before any -> is of class / get free amount call
-015  * -----------------------------------------------------------------------------------
-016  
-017  * Fetch values saved in the AL Plugin global variable:
-018  $script = = get script name
-019  $al.Settings = get global variable: name='al.LI.FDN.event'
-020  if $al.Settings
-021   $PageID = $al.Settings[1]
-022   $DebugID = 0 + $PageID
-023  else
-024   return null
-025  end
-026  * -----------------------------------------------------------------------------------
-027  
-028  * fetch ware details from the source
-029  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-030  $ware.array = $source  ->  get local variable: name=$pointer
-031  * calculate the avialable physical, virtual and total
-032  $virtual.avialable = $ware.array[0]
-033  if not $virtual.avialable > 0
-034   $virtual.avialable = 0
-035  end
-036  $physical.avialable = $source  ->  get amount of ware $ware in cargo bay
-037  $stock.avialable = $virtual.avialable + $physical.avialable
-038  * -----------------------------------------------------------------------------------
-039  
-040  if not $stock.avialable > 0
-041   * Debug
-042   if $al.Settings[7]
-043    $txt.debug = $source + ' has no free ' + $ware + ' - exit move ware'
-044    gosub Debug.Sub:
-045   end
-046   return null
-047  end
-048  * -----------------------------------------------------------------------------------
-049  
-050  * USER SELECT - player owned ship or station
-051  $txt = = read text: page=$PageID id=184
-052  $destination = null  ->  get user input: type=Var/Ship/Station owned by Player, title=$txt
-053  * Debug
-054  if $al.Settings[7]
-055   $txt.debug = 'Selected: ' + $destination
-056   gosub Debug.Sub:
-057  end
-* v9.01 B20 (P1-13a): a cancelled destination prompt returns null - exit before any -> is of class / get free amount call
-$debug = $al.Settings[7]
-if not $destination
- * Debug
- if $debug
-  $txt.debug = 'Destination cancelled - exit move ware'
-  gosub Debug.Sub:
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* this script handles the user inputs for moving wares, from a dock or the DC to any
+* player owned ship or station. It is called by plugin.LI.FDN.Main.Menu ('move.ware',
+* source = the station whose menu is open) and is interactive: two get user input
+* prompts can hold the script while the player thinks, so every object is re-checked
+* after the amount prompt before anything moves.
+
+* Expected values:
+* - ware
+* - source (the station whose menu is open)
+
+* Returns values:
+* - N/A - always returns null
+
+* Version: 3.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+*
+* v9.01 P2-12b changes - closes D1, D2 (one of nine), D3 and the B3/B12 source check; keeps B20:
+*   D1  Header switched to lib.LI.FDN.Cfg.Get ($PageID comes from $al.Settings[1]).
+*   D2  Debug.Sub deleted; every debug line goes through lib.LI.FDN.Log with $s.name as caller.
+*   D3  The source ware record is read via lib.LI.FDN.Ware.Rec (create=[FALSE]) - the text 4000
+*       sprintf and the null-array read of [0] are gone; a missing record counts as virtual stock 0.
+*   B3/B12  The source is validated with lib.LI.FDN.Is.Valid : obj=$source need.dock=[FALSE] up front,
+*           and again after the prompts (with $destination -> exists) before anything moves.
+*   B20     A cancelled destination prompt exits before any -> call (kept from P1-13a).
+* -----------------------------------------------------------------------------------
+
+* v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+$debug.on = $al.Settings[7]
+
+* v9.01 B3/B12: validate the source before any stock read (Is.Valid returns TRUE, FALSE or null)
+$src.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$source need.dock=[FALSE]
+if not $src.valid
+ if $debug.on
+  $txt.log = $source + ' Move.Ware failed - source is invalid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
  return null
 end
-058  * -----------------------------------------------------------------------------------
-059  
-060  * check that destination can accept ware
-061  if not $destination  ->  is of class Dock 2007
-062   if not $destination  ->  get free amount of ware $ware in cargo bay
-063    $txt = = sprintf: pageid=$PageID textid=194, $destination, $ware, null, null, null
-064    display subtitle text: text=$txt duration=2000 ms
-065    return null
-066   end
-067  end
-068  * -----------------------------------------------------------------------------------
-069  
-070  * catch if source and destination is the same and exit
-071  if $destination == $source
-072   * Debug
-073   if $al.Settings[7]
-074    $txt.debug = 'Selected: ' + $destination + ' is same as source - exit move ware'
-075    gosub Debug.Sub:
-076   end
-077   $txt = = sprintf: pageid=$PageID textid=192, $destination, null, null, null, null
-078   display subtitle text: text=$txt duration=2000 ms
-079   return null
-080  end
-081  * -----------------------------------------------------------------------------------
-082  
-083  * USER INPUT - amount of ware to move
-084  $txt = = read text: page=$PageID id=178
-085  $amount = null  ->  get user input: type=Var/Number, title=$txt
-086  if not is datatyp[ $amount ] == DATATYPE_NULL
-087   if not $amount > 0
-088    * if not a valid amount exit
-089    return null
-090   end
-091   if $amount > $stock.avialable
-092    * if amount greater than current stock
-093    $amount = $stock.avialable
-094   end
-095  else
-096   $txt = = sprintf: pageid=$PageID textid=193, $amount, $ware, null, null, null
-097   display subtitle text: text=$txt duration=2000 ms
-098   return null
-099  end
-100  * Debug
-101  if $al.Settings[7]
-102   $txt.debug = 'Input : ' + $amount + ' of ' + $ware + ' to be moved'
-103   gosub Debug.Sub:
-104  end
-105  * -----------------------------------------------------------------------------------
-106  
-107  * checks if the destination can hold the ware
-108  if not $destination  ->  is of class Dock 2007
-109   if $destination  ->  get free amount of ware $ware in cargo bay
-110    
-111    * add to destination
-112    $amount.added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$destination  action='add'
-113    * -----------------------------------------------------------------------------------
-114    
-115    if $amount.added > 0
-116     if $amount.added < $amount
-117      $amount = $amount.added
-118     end
-119     
-120     * remove from source
-121      = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$source  action='remove'
-122     * -----------------------------------------------------------------------------------
-123    end
-124   end
-125  else
-126   
-127   * add to destination
-128   $amount.added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$destination  action='add'
-129   * -----------------------------------------------------------------------------------
-130   
-131   if $amount.added > 0
-132    if $amount.added < $amount
-133     $amount = $amount.added
-134    end
-135    
-136    * remove from source
-137     = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$amount  station=$source  action='remove'
-138    * -----------------------------------------------------------------------------------
-139   end
-140  end
-141  return null
-142  * -----------------------------------------------------------------------------------
-143  
-144  * Debug Massage handling
-145  Debug.Sub:
-146  $d.time = = playing time
-147  $d.time = = format time: $d.time
-148  $txt = $d.time + ';' + $script + ';' + $txt.debug
-149  write to log file $DebugID  append=[TRUE]  value=$txt
-150  endsub
-151  * -----------------------------------------------------------------------------------
-152  return null
-153  
-154  
+
+* source stock before the prompts (Source.Stock.Sub reads the record and cargo fresh each time it runs)
+gosub Source.Stock.Sub:
+if not $stock.available > 0
+ if $debug.on
+  $txt.log = $source + ' has no free ' + $ware + ' - exit move ware'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return null
+end
+
+* USER SELECT - player owned ship or station
+$txt = = read text: page=$PageID id=184
+$destination = null  ->  get user input: type=Var/Ship/Station owned by Player, title=$txt
+* v9.01 B20: a cancelled prompt returns null - exit before any -> call
+if not $destination
+ if $debug.on
+  $txt.log = $source + ' Destination cancelled - exit move ware'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return null
+end
+if $debug.on
+ $txt.log = $source + ' Selected: ' + $destination
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
+
+* check that the destination can accept the ware (a Dock has virtual storage, anything else needs free cargo space)
+$dest.is.dock = $destination  ->  is of class Dock 2007
+if not $dest.is.dock
+ $dest.free = $destination  ->  get free amount of ware $ware in cargo bay
+ if not $dest.free > 0
+  $txt = = sprintf: pageid=$PageID textid=194, $destination, $ware, null, null, null
+  display subtitle text: text=$txt duration=2000 ms
+  return null
+ end
+end
+
+* catch if source and destination is the same and exit
+if $destination == $source
+ if $debug.on
+  $txt.log = $source + ' Destination is the same as the source - exit move ware'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ $txt = = sprintf: pageid=$PageID textid=192, $destination, null, null, null, null
+ display subtitle text: text=$txt duration=2000 ms
+ return null
+end
+
+* USER INPUT - amount of ware to move
+$txt = = read text: page=$PageID id=178
+$amount = null  ->  get user input: type=Var/Number, title=$txt
+if is datatyp[ $amount ] == DATATYPE_NULL
+ $txt = = sprintf: pageid=$PageID textid=193, $amount, $ware, null, null, null
+ display subtitle text: text=$txt duration=2000 ms
+ return null
+end
+if not $amount > 0
+ return null
+end
+
+* the prompts can stay open a long time: re-check both objects before anything moves
+$src.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$source need.dock=[FALSE]
+$dest.exists = $destination  ->  exists
+$both.valid = [FALSE]
+if $src.valid
+ if $dest.exists
+  $both.valid = [TRUE]
+ end
+end
+if not $both.valid
+ if $debug.on
+  $txt.log = $source + ' Move.Ware stopped - source or destination no longer valid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return null
+end
+
+* fresh stock after the prompts, then clamp the amount to it
+gosub Source.Stock.Sub:
+if not $stock.available > 0
+ if $debug.on
+  $txt.log = $source + ' has no free ' + $ware + ' any more - exit move ware'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return null
+end
+if $amount > $stock.available
+ $amount = $stock.available
+end
+if $debug.on
+ $txt.log = $source + ' Input : ' + $amount + ' of ' + $ware + ' to be moved to ' + $destination
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
+
+* THE MOVE: add to the destination first, then remove what was really added from the source
+* Update.Ware only accepts stations, so a station goes through it and a ship gets a plain cargo bay add limited to its free space
+$dest.is.station = [FALSE]
+if is datatyp[ $destination ] == DATATYPE_STATION
+ $dest.is.station = [TRUE]
+end
+$amount.added = 0
+if $dest.is.station
+ $amount.added = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=$ware amount=$amount station=$destination action='add'
+else
+ $dest.free = $destination  ->  get free amount of ware $ware in cargo bay
+ if $dest.free > 0
+  $amount.added = $amount
+  if $amount.added > $dest.free
+   $amount.added = $dest.free
+  end
+  = $destination  ->  add $amount.added units of $ware
+ end
+end
+if not $amount.added > 0
+ if $debug.on
+  $txt.log = $source + ' Move of ' + $amount + ' ' + $ware + ' to ' + $destination + ' - nothing could be added'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return null
+end
+if $amount.added < $amount
+ $amount = $amount.added
+end
+$amount.removed = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=$ware amount=$amount station=$source action='remove'
+if $debug.on
+ $txt.log = $source + ' Moved ' + $amount + ' of ' + $ware + ' to ' + $destination + ', added ' + $amount.added + ', removed ' + $amount.removed
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
+* the source stock changed in the last instant: log it, never try to undo
+if $amount.removed < $amount
+ if $debug.on
+  $txt.log = $source + ' Move mismatch - added ' + $amount.added + ' but removed only ' + $amount.removed + ' of ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
+return null
+
+Source.Stock.Sub:
+* read the source record and cargo fresh: virtual stock (no record or no stock counts as 0) plus physical
+$ware.array = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$source ware=$ware create=[FALSE]
+$virtual.available = 0
+if $ware.array
+ $virtual.available = $ware.array[0]
+ if not $virtual.available > 0
+  $virtual.available = 0
+ end
+end
+$physical.available = $source  ->  get amount of ware $ware in cargo bay
+$stock.available = $virtual.available + $physical.available
+endsub
