@@ -1,33 +1,40 @@
-* Script: plugin.LI.FDN.Format.Name  (v1.0, engine 50)
-* Desc: FDNv8 - Formats object name for menus
+* Script: plugin.LI.FDN.Format.Name  (v3, engine 50)
+* Desc: FDN v9.01 - Returns the menu text 'name [ID]' for an object (text 134)
 * Arg 0: object (Value) 'object'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Thin script called by every menu to format an object name. Keeps its name and argument.
+* The 'name [ID] + sector' header line becomes lib.LI.FDN.Menu.ObjLine in Phase 3; until
+* then this script returns only the 'name [ID]' text, exactly as v1 did.
+*
+* Expected values:
+* - object: any existing object (station, ship, ...)
+*
+* Returns values:
+* - the formatted text (page text 134), or null if there is no such object
+*
+* Version: 3.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+ * v9.01 D1 change (Format.Name): header via lib.LI.FDN.Cfg.Get; a missing or gone object now returns null instead of crashing on get name.
+ * -----------------------------------------------------------------------------------
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * This script fromats object names for the menu
-004  
-005  * Expected values:
-006  * -object
-007  
-008  * Returns values:
-009  * - formatted name
-010  
-011  * Version: 1.0
-012  * Date: 22/05/2012
-013  * Tested: 22/05/2012
-014  * -----------------------------------------------------------------------------------
-015  
-016  $al.Settings = get global variable: name='al.LI.FDN.event'
-017  if $al.Settings
-018   $PageID = $al.Settings[1]
-019  end
-020  
-021  * -----------------------------------------------------------------------------------
-022  $name = $object  ->  get name
-023  $id = $object  ->  get ID code
-024  $return = = sprintf: pageid=$PageID textid=134, $name, $id, null, null, null
-025  * -----------------------------------------------------------------------------------
-026  return $return
-027  
-028  
-029  
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+
+if is datatyp[ $object ] == DATATYPE_NULL
+ return null
+end
+$exists = $object  ->  exists
+if not $exists
+ return null
+end
+
+$name = $object  ->  get name
+$id = $object  ->  get ID code
+$return = = sprintf: pageid=$PageID textid=134, $name, $id, null, null, null
+return $return
