@@ -1,191 +1,239 @@
-* Script: plugin.LI.FDN.Update.Ware  (v7, engine 50)
-* Desc: 
+* Script: plugin.LI.FDN.Update.Ware  (v8, engine 50)
+* Desc: FDN v9 - Add or remove a ware from a station's stock and its virtual ref
 * Arg 0: ware (Value) 'ware'
 * Arg 1: amount (Number) 'amount'
 * Arg 2: station (Value) 'station'
 * Arg 3: action (Value) 'action'
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  
-004  * Expected values:
-005  * - ware
-006  * - amount
-007  * - station
-008  * - action
-009  
-010  * Returns values:
-011  * - 'add' = amount actually added (physical + virtual); 'remove' = amount actually removed; 0 if amount <= 0; null for 'create' or if FDN settings are missing
-012  
-013  * Version: 1.1
-014  * Date: 18/10/2026
-015  * Tested: 09/06/2012
-016  * -----------------------------------------------------------------------------------
-017  
-018  * Fetch values saved in the AL Plugin global variable:
-019  $script = = get script name
-020  $al.Settings = get global variable: name='al.LI.FDN.event'
-021  if $al.Settings
-022   $PageID = $al.Settings[1]
-023   $DebugID = 0 + $PageID
-024  else
-025   return null
-026  end
-027  * -----------------------------------------------------------------------------------
-028  
-029  * return.remove is passed back but only used by the suppy factory script
-030  $return.remove = 0
-* v9.01 B2: build the record name before 'create' uses it (it was null on the create path)
-$pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-031  
-032  * if the script is call just to add the virtual ref
-033  if $action == 'create'
- * v9.01 B2: create only when missing - an unconditional create would wipe an existing record
- $ware.array = $station  ->  get local variable: name=$pointer
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is called by lib.LI.FDN.Trade, plugin.LI.FDN.Supply.Dock,
+* plugin.LI.FDN.Supply.Factory, plugin.LI.FDN.Move.Ware and plugin.LI.FDN.Main.Menu.
+* It moves wares between physical cargo bay stock and the station local virtual ref
+* FDN.Ware.<ware> (record element [0]). Only Dock class stations keep a record; for
+* every other station the amount is clamped to the free/physical stock and no record
+* is read or written.
+
+* Expected values:
+* - ware
+* - amount
+* - station
+* - action ('create', 'add' or 'remove')
+
+* Returns values:
+* - 'add' = amount actually added (physical + virtual); 'remove' = amount actually removed; 0 if amount <= 0, if the ware or station is invalid, or if action is unknown; null for 'create' or when FDN settings are missing
+
+* Version: 8.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+
+* v9.01 Phase 2 changes (P2-12a) - closes D1, D2 (one of nine), D3, B2/B9 (via Ware.Rec), B29, B30:
+*   D1  Header switched to lib.LI.FDN.Cfg.Get (the only allowed copy of the settings fetch).
+*   D2  Debug.Sub deleted; every debug line goes through lib.LI.FDN.Log with $s.name as caller.
+*   D3  The ware record is read and created via lib.LI.FDN.Ware.Rec - the text 4000 sprintf,
+*       Add.Ware.Sub's array build and the inline settings [29] registry block are gone.
+*   B2/B9  Record get-or-create and the station registry add are owned by Ware.Rec (create path).
+*   B30  A newly created record is used directly from the Ware.Rec create return - no stale null read.
+* -----------------------------------------------------------------------------------
+
+* v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$debug.on = $al.Settings[7]
+* guard - ware must be set (Ware.Rec would build a record name from it, so check first)
+if not $ware
+ * v9.01 D2: debug - log the guard failure (no variables: station and action may be null here)
+ if $debug.on
+  $txt.log = 'Update.Ware failed - no ware given'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ * v9.01: documented return values - null for create, 0 for add/remove/unknown
+ if $action == 'create'
+  return null
+ end
+ return 0
+end
+
+* guard - station datatype BEFORE any -> call (a number or string would throw a script error)
+if not is datatyp[ $station ] == DATATYPE_STATION
+ * v9.01 D2: debug - log the guard failure (ware is valid here, station is not)
+ if $debug.on
+  $txt.log = $ware + ' Update.Ware failed - station is not a station'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ * v9.01: documented return values - null for create, 0 for add/remove/unknown
+ if $action == 'create'
+  return null
+ end
+ return 0
+end
+
+* guard - station must still exist
+$exists = $station  ->  exists
+if not $exists
+ * v9.01 D2: debug - log the guard failure (the station is gone, so no station in the text)
+ if $debug.on
+  $txt.log = $ware + ' Update.Ware failed - station does not exist'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ * v9.01: documented return values - null for create, 0 for add/remove/unknown
+ if $action == 'create'
+  return null
+ end
+ return 0
+end
+
+* guard - action must be exactly create, add or remove (an unknown action used to run the remove branch)
+$action.ok = [FALSE]
+if $action == 'create'
+ $action.ok = [TRUE]
+end
+if $action == 'add'
+ $action.ok = [TRUE]
+end
+if $action == 'remove'
+ $action.ok = [TRUE]
+end
+if not $action.ok
+ * v9.01 D2: debug - log the guard failure
+ if $debug.on
+  $txt.log = $station + ' Update.Ware failed - unknown action, ware ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return 0
+end
+
+* the create action only makes sure a record exists (Ware.Rec never overwrites an existing one)
+if $action == 'create'
+ $ware.array = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[FALSE]
  if not $ware.array
-  gosub Add.Ware.Sub:
+  $ware.array = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[TRUE]
+  if $ware.array
+   gosub Show.Ware.Sub:
+   if $debug.on
+    $txt.log = $station + ' Record created for ' + $ware
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+  end
  end
  return null
-036  end
-037  * -----------------------------------------------------------------------------------
-038  
-039  * check for valid amount
-040  if $amount > 0
- * v9.01: no virtual stock unless a Dock record says so - null made the non-Dock 'remove' maths null
- $virtual.stock = 0
-041   
-042   * check if dock - only dock class station have virtual storage
-043   if $station  ->  is of class Dock 2007
-044    * -----------------------------------------------------------------------------------
-045    
-  $ware.array = $station  ->  get local variable: name=$pointer
-048    * -----------------------------------------------------------------------------------
-049    
-050    * if no ware array is found for virtula add one
-051    if not $ware.array
-052     gosub Add.Ware.Sub:
-   * v9.01 B30: re-read the record just created, or [0] reads null and a virtual add/remove is lost
-   $ware.array = $station  ->  get local variable: name=$pointer
-053    end
-054    * -----------------------------------------------------------------------------------
-055    
-056    * get virtual stock
-057    $virtual.stock = $ware.array[0]
-058    * -----------------------------------------------------------------------------------
-059   end
-060   
-061   $physical.stock = $station  ->  get amount of ware $ware in cargo bay
-062   $physical.free = $station  ->  get free amount of ware $ware in cargo bay
-063   
-064   * add and remove
-065   if $action == 'add'
-066    * -----------------------------------------------------------------------------------
-067    * add ware - priority it to add to physical first the use virtual
-068    if $station  ->  is of class Dock 2007
-069     if not $physical.free > $amount
-070      
-071      $to.virtual = $amount - $physical.free
-072      $virtual.stock = $virtual.stock + $to.virtual
-073      $ware.array[0] = $virtual.stock
-074      $station  ->  set local variable: name=$pointer value=$ware.array
-075      
-076       = $station  ->  add $physical.free units of $ware
-077      return $amount
-078      
-079     else
-080       = $station  ->  add $amount units of $ware
-081      return $amount
-082     end
-083     
-084    else
-085     if not $physical.free > $amount
-086      $amount = $physical.free
-087     end
-088      = $station  ->  add $amount units of $ware
-089     return $amount
-090    end
-091    * -----------------------------------------------------------------------------------
-092    
-093   else
-094    * -----------------------------------------------------------------------------------
-095    * remove ware - priority it to remove from virtula first then use physical
-096    if $amount < $virtual.stock
-097     $virtual.stock = $virtual.stock - $amount
-098     $ware.array[0] = $virtual.stock
-099     $return.remove = $amount
-100    else
-101     $from.physical = $amount - $virtual.stock
-102     
-103     $return.remove = $virtual.stock
-104     
-105     if $physical.stock < $from.physical
-106      $from.physical = $physical.stock
-107     end
-108     $return.remove = $return.remove + $from.physical
-109     
-110     $ware.array[0] = 0
-111     $remove = - $from.physical
-112      = $station  ->  add $remove units of $ware
-113    end
-114   end
-115   * -----------------------------------------------------------------------------------
-116   
-117   * update the virtual ware ref
-  * v9.01 B2: only a Dock has a record - now that $pointer is always set, never write a null record under a real name (non-Dock 'remove')
+end
+
+* nothing to move unless the amount is above 0
+if not $amount > 0
+ return 0
+end
+
+* only a Dock class station keeps a virtual stock record
+$virtual.stock = 0
+$ware.array = null
+$is.dock = $station  ->  is of class Dock 2007
+if $is.dock
+ $ware.array = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[FALSE]
+ if not $ware.array
+  $ware.array = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[TRUE]
   if $ware.array
-   $station  ->  set local variable: name=$pointer value=$ware.array
+   gosub Show.Ware.Sub:
+   if $debug.on
+    $txt.log = $station + ' Record created for ' + $ware
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
   end
-119  end
-120  
-121  * return.remove is passed back but only used by the suppy factory script
-122  return $return.remove
-123  * -----------------------------------------------------------------------------------
-124  
-125  Add.Ware.Sub:
-126  * add the virtula ref as none was found
-127  $price = $station  ->  get price of ware $ware
-128  $array = = array alloc: size=12
-129  $array[0] = 0
-130  $array[1] = null
-131  $array[2] = null
-132  $array[3] = [FALSE]
-133  $array[4] = $price
-134  $array[5] = -1
-135  $array[6] = $price
-* v9.01 B5: -1 = use the global surplus default in settings [28]; surplus behaviour unchanged here
-136  $array[7] = -1
-137  $array[8] = null
-138  $array[9] = null
-139  $array[11] = null
-140  $station  ->  set local variable: name=$pointer value=$array
-141  
-142  * if no physical wares found create and delete ware so it show no the dock
-143  $physical.check = $station  ->  get amount of ware $ware in cargo bay
-144  if not $physical.check > 0
-145    = $station  ->  add 1 units of $ware
-146    = $station  ->  add -1 units of $ware
-147  end
-* v9.01 B9: remember this station in the registry (settings [29]) so Reset can find it; lib.LI.FDN.Reg.Add replaces this in Phase 2
-$registry = $al.Settings[29]
-if not $registry
- $registry = = array alloc: size=0
- $al.Settings[29] = $registry
+ end
+ if $ware.array
+  $virtual.stock = $ware.array[0]
+  if not is datatyp[ $virtual.stock ] == DATATYPE_INT
+   $virtual.stock = 0
+  end
+  * write-back name: Ware.Rec reads and creates but cannot store a changed record, so keep this one sprintf (text 4000)
+  $PageID = $al.Settings[1]
+  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+ end
 end
-if not find $station in array: $registry
- append $station to array $registry
+
+$physical.stock = $station  ->  get amount of ware $ware in cargo bay
+$physical.free = $station  ->  get free amount of ware $ware in cargo bay
+
+* add: with a record (a Dock) what fits goes into the cargo bay first and the rest into the virtual stock; without one the amount is clamped to the free space
+if $action == 'add'
+ if $ware.array
+  if not $physical.free > $amount
+   $to.virtual = $amount - $physical.free
+   $virtual.stock = $virtual.stock + $to.virtual
+   $ware.array[0] = $virtual.stock
+   $station  ->  set local variable: name=$pointer value=$ware.array
+    = $station  ->  add $physical.free units of $ware
+   if $debug.on
+    $txt.log = $station + ' Add ' + $amount + ' of ' + $ware + ', physical ' + $physical.free + ', virtual ' + $to.virtual
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+   return $amount
+  end
+  = $station  ->  add $amount units of $ware
+  if $debug.on
+   $txt.log = $station + ' Add ' + $amount + ' of ' + $ware + ', physical ' + $amount + ', virtual 0'
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  end
+  return $amount
+ end
+ $to.add = $amount
+ if not $physical.free > $amount
+  $to.add = $physical.free
+ end
+  = $station  ->  add $to.add units of $ware
+ if $debug.on
+  $txt.log = $station + ' Add ' + $to.add + ' of ' + $ware + ' (requested ' + $amount + ')'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return $to.add
 end
-set global variable: name='al.LI.FDN.event' value=$al.Settings
-148  endsub
-149  * -----------------------------------------------------------------------------------
-150  
-151  * Debug Massage handling
-152  Debug.Sub:
-153  $d.time = = playing time
-154  $d.time = = format time: $d.time
-155  $txt = $d.time + ';' + $script + ';' + $txt.debug
-156  write to log file $DebugID  append=[TRUE]  value=$txt
-157  endsub
-158  * -----------------------------------------------------------------------------------
-159  return null
-160  
-161  
+
+* remove: from the virtual stock first, then from the cargo bay (only 'remove' can reach here, the action was checked above)
+$return.remove = 0
+$from.virtual = 0
+$from.physical = 0
+if $amount < $virtual.stock
+ $from.virtual = $amount
+ $virtual.stock = $virtual.stock - $amount
+ if $ware.array
+  $ware.array[0] = $virtual.stock
+ end
+ $return.remove = $amount
+else
+ $from.virtual = $virtual.stock
+ $from.physical = $amount - $virtual.stock
+ if $physical.stock < $from.physical
+  $from.physical = $physical.stock
+ end
+ $return.remove = $from.virtual + $from.physical
+ if $ware.array
+  $ware.array[0] = 0
+ end
+ $remove = - $from.physical
+  = $station  ->  add $remove units of $ware
+end
+
+* store the changed record (only a Dock with a record has one)
+if $ware.array
+ $station  ->  set local variable: name=$pointer value=$ware.array
+end
+if $debug.on
+ $txt.log = $station + ' Remove ' + $return.remove + ' of ' + $ware + ', virtual ' + $from.virtual + ', physical ' + $from.physical + ' (requested ' + $amount + ')'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
+return $return.remove
+
+return null
+
+Show.Ware.Sub:
+* a new record was just made but the ware is not in the cargo bay yet: add 1 and remove 1 so the ware shows on the dock
+$physical.check = $station  ->  get amount of ware $ware in cargo bay
+if not $physical.check > 0
+  = $station  ->  add 1 units of $ware
+  = $station  ->  add -1 units of $ware
+end
+endsub
