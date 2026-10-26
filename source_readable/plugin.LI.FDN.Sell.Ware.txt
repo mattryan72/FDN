@@ -1,227 +1,287 @@
-* Script: plugin.LI.FDN.Sell.Ware  (v2, engine 50)
-* Desc: FDNv9 - Sell ware from dock
+* Script: plugin.LI.FDN.Sell.Ware  (v3, engine 50)
+* Desc: FDNv9 - Sell ware from a dock to NPC stations in the trade sectors
 * Arg 0: dock (Value) 'dock'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: amount (Value) 'amount'
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * This script is called by LI.FDN.Supply.Factory
-004  * It is used to buy a ware needed for production
-005  
-006  * Expected values:
-007  * - Factory
-008  * - Ware
-009  * - Amount
-010  
-011  * Returns values:
-012  * - N/A
-013  
-014  * To Do - Debug
-015  
-016  * Version: 1.0
-017  * Date: 22/05/2012
-018  * Tested: 22/05/2012
-019  * -----------------------------------------------------------------------------------
-* v9.01 B4 B12 B15: guard against null record / non-int sell cap, re-check dock and DC after the wait, safer trade drone
-020  
-021  * Fetch values saved in the AL Plugin global variable:
-022  * - DC
-023  $script = = get script name
-024  $al.Settings = get global variable: name='al.LI.FDN.event'
-025  if $al.Settings
-026   $PageID = $al.Settings[1]
-027   $DebugID = 0 + $PageID
-028   $exclude.array = $al.Settings[8]
- * v9.01 B12: fetch the DC so the loop can re-check it after the wait
-  $dc = $al.Settings[2]
-029  else
-030   return null
-031  end
-032  * -----------------------------------------------------------------------------------
-033  
-034  $sector.array = null -> call script plugin.LI.FDN.Sector.Array : search=3
-035  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-036  $ware.settings = $dock  ->  get local variable: name=$pointer
-037  $sell.at = $ware.settings[6]
- * v9.01 B4: never sell or search with a missing record or a non-int sell-at price (null min.price)
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is STARTed by plugin.LI.FDN.Supply.Dock when a dock holds stock above its
+* sell cap for a ware. It walks every cached trade sector, finds NPC buyers at or above
+* the sell-at price and sells what it can through lib.LI.FDN.Trade (home = the dock, whose
+* account receives; no dest). Supply.Dock holds the per-dock/per-ware trade guard
+* FDN.Trade.<ware> while this runs - this script owns releasing it at Exit:. The task
+* counter [18] is owned by this script (incremented here, decremented at Exit:); it does
+* NOT take the trade guard itself because its caller already holds it.
+
+* Expected values:
+* - Dock    station to sell from (player owned)
+* - Ware    ware to sell
+* - Amount  hint only - units above the cap when Supply.Dock looked; recomputed each pass
+
+* Returns values:
+* - N/A (null)
+
+* To Do - N/A
+
+* Version: 3.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+* v9.01 P2-11b changes - closes D1, D2 (one of nine), B4, B12, B15; owns counter [18]:
+*   D1  Standard header via lib.LI.FDN.Cfg.Get ($PageID is no longer needed here).
+*   D2  Debug.Sub and Check.Alive.Sub deleted; every debug line goes through
+*       lib.LI.FDN.Log with $s.name as caller.
+*   B4  The dock ware record is read via Ware.Rec(create=[FALSE]) - the sell cap [5] must be
+*       an INT >= 0 (-1 = selling off) and the sell-at price [6] must be an INT, both up front
+*       and on every loop pass (the record is re-read each pass).
+*   B12 Dock and DC are validated with lib.LI.FDN.Is.Valid up front and again after
+*       every wait in the sector loop; any failure ends the pass at Exit:.
+*   B15 The temp-drone block, the Update.Ware 'remove' call and all manual stock removal
+*       are replaced by one wait-free lib.LI.FDN.Trade call per found buyer (hardened drone,
+*       money/stock/space clamps; sell mode already removes the sold units from dock stock
+*       and stamps rec[8] - calling Update.Ware here would remove them twice).
+*   B2/B18 Trade ownership: Supply.Dock takes FDN.Trade.<ware> on the dock (try, stale 120 s)
+*       BEFORE it STARTs this script and does not release it, so Sell.Ware only RELEASES that
+*       lock at Exit:. It owns [18]: increments while below [19], decrements at Exit: with a
+*       floor at 0. The single Exit: label balances both on every route.
+*   Sector search unchanged from v8 - cached trade sectors (mode 3), one find per pass, wait
+*   500-1000 ms between passes with a re-validation after the wait.
+
+* -----------------------------------------------------------------------------------
+$counter.inc = [FALSE]
+
+* v9.01 B2/B18: the trade guard key is built before any guard that can exit, so Exit:
+* always knows whether to release it (only when the ware is not null).
+if $ware
+ $trade.key = 'FDN.Trade.' + $ware
+end
+
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ goto label Exit:
+end
+$dc = $al.Settings[2]
+$debug.on = $al.Settings[7]
+$exclude.array = $al.Settings[8]
+
+* v9.01 B12: the dock must be a valid player dock before anything runs
+$dock.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+if not $dock.valid
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - dock no longer valid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+* v9.01 B12: the DC must be a valid player dock before anything runs
+$dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $dc.valid
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - DC no longer valid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+* v9.01 B4/D3: the dock ware record via Ware.Rec (read-only); sell cap [5] and sell-at
+* price [6] must both be INTs before anything runs (Trade re-checks the price live).
+$ware.settings = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dock ware=$ware create=[FALSE]
+if not $ware.settings
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - no FDN ware record for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+$sell.cap = $ware.settings[5]
+if not is datatyp[ $sell.cap ] == DATATYPE_INT
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - sell cap not set for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+if not $sell.cap >= 0
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - sell cap off for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+$sell.at = $ware.settings[6]
+if not is datatyp[ $sell.at ] == DATATYPE_INT
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - sell at price not set for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+* v9.01 B2/B18: task cap - increment [18] only while below [19]; a non-int or max <= 0
+* means unlimited (same nested INT checks as the Supply.Dock sell gate and Buy.Ware).
+$trade.active = $al.Settings[18]
+$trade.max = $al.Settings[19]
+if is datatyp[ $trade.active ] == DATATYPE_INT
+ if is datatyp[ $trade.max ] == DATATYPE_INT
+  if $trade.max > 0
+   if not $trade.active < $trade.max
+    if $debug.on
+     $txt.log = $dock + ' Sell skipped - trade task cap reached (' + $trade.active + '/' + $trade.max + ')'
+     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+    end
+    goto label Exit:
+   end
+  end
+ end
+end
+ * [18] is null until Cleanup has run in this save - count from 0 (null + 1 is not safe)
+if not is datatyp[ $trade.active ] == DATATYPE_INT
+ $trade.active = 0
+end
+
+$al.Settings[18] = $trade.active + 1
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+$counter.inc = [TRUE]
+
+* v9.01 P2-11b: cached trade sectors (mode 3 - factories + docks + advanced satellites);
+* the cache never scans, so a null or empty list only means nothing is cached yet.
+$sector.array = [THIS] -> call script lib.LI.FDN.Sectors : mode=3
+if not $sector.array
+ if $debug.on
+  $txt.log = $dock + ' Sell skipped - no trade sectors in cache for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+$s = size of array $sector.array
+$more = [TRUE]
+while $s > 0
+ dec $s =
+ * v9.01 B4/D3: re-read the record each pass; sell cap only when [5] is an INT >= 0
+ $ware.settings = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dock ware=$ware create=[FALSE]
  if not $ware.settings
-  if $al.Settings[7]
-   $txt.debug = 'No FDN ware record - nothing to sell'
-   gosub Debug.Sub:
+  if $debug.on
+   $txt.log = $dock + ' Sell stopped - no FDN ware record for ' + $ware
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
   end
-  return null
+  goto label Exit:
  end
- if not is datatyp[ $sell.at ] == DATATYPE_INT
-  if $al.Settings[7]
-   $txt.debug = 'Sell at price not set for ' + $ware + ' - nothing to sell'
-   gosub Debug.Sub:
+ $sell.cap = $ware.settings[5]
+ if not is datatyp[ $sell.cap ] == DATATYPE_INT
+  if $debug.on
+   $txt.log = $dock + ' Sell stopped - sell cap not set for ' + $ware
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
   end
-  return null
+  goto label Exit:
  end
-038  * -----------------------------------------------------------------------------------
-039  
-040  $s = size of array $sector.array
-041  while $s > 0
-042   dec $s =
-043   
-044   $ware.settings = $dock  ->  get local variable: name=$pointer
- * v9.01 B4: re-read the record each pass; sell cap only when [5] is an integer >= 0 (-1 means selling off)
-   if not $ware.settings
-    if $al.Settings[7]
-     $txt.debug = 'No FDN ware record - nothing to sell'
-     gosub Debug.Sub:
+ if not $sell.cap >= 0
+  if $debug.on
+   $txt.log = $dock + ' Sell stopped - sell cap off for ' + $ware
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  end
+  goto label Exit:
+ end
+ * v9.01 B4: the amount from Supply.Dock is only a hint - recompute it every pass
+ $sector = $sector.array[$s]
+ $virtual.stock = $ware.settings[0]
+ $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
+ $stock = $virtual.stock + $physical.stock
+ $amount = $stock - $sell.cap
+ if not $amount > 0
+  * nothing above the cap - stop looking (no continue, no extra dec)
+  $s = 0
+  $more = [FALSE]
+ end
+ if $amount > 0
+  * Find stations buying the ware in this sector (v8 find, unchanged)
+  $sell.Station = find station: resource $ware with best price: min.price=$sell.at, amount=null, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
+  if $sell.Station
+   * v9.01 B15/R-T1: the whole drone dance is inside Trade - hardened spawn, foe/price
+   * money/space clamps (T5 confirmed on FL); sell mode removes the sold units from dock
+   * stock and stamps rec[8], so no Update.Ware call here (it would remove them twice).
+   $traded = [THIS] -> call script lib.LI.FDN.Trade : mode='sell' partner=$sell.Station ware=$ware amount=$amount home=$dock
+   if not is datatyp[ $traded ] == DATATYPE_INT
+    $traded = 0
+   end
+   if $traded > 0
+    $amount = $amount - $traded
+    if $debug.on
+     $txt.log = $dock + ' Sold ' + $traded + ' of ' + $ware + ' at ' + $sell.Station
+     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
     end
-    return null
    end
-   $sell = $ware.settings[5]
-   if not is datatyp[ $sell ] == DATATYPE_INT
-    if $al.Settings[7]
-     $txt.debug = 'Sell cap not set for ' + $ware + ' - nothing to sell'
-     gosub Debug.Sub:
-    end
-    return null
+   if not $amount > 0
+    * enough sold - no need to look in the remaining sectors (no continue, no extra dec)
+    $s = 0
+    $more = [FALSE]
    end
-   if not $sell >= 0
-    if $al.Settings[7]
-     $txt.debug = 'Sell cap off for ' + $ware + ' - nothing to sell'
-     gosub Debug.Sub:
-    end
-    return null
+  end
+ end
+
+ * v9.01 B12: keep the v8 throttle between passes - one short random wait only when there
+ * is more to sell, then re-validate both stations; a failure after the wait ends at Exit:.
+ if $more
+  = wait randomly from 500 to 1000 ms
+  $dock.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+  if not $dock.valid
+   if $debug.on
+    $txt.log = $dock + ' Sell stopped - dock no longer valid'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
    end
-045   $virtual.stock = $ware.settings[0]
-046   $physical.stock = $dock  ->  get amount of ware $ware in cargo bay
-047   $stock = $virtual.stock + $physical.stock
- * v9.01 B4: $sell is read and guarded above (record re-read each pass)
-049   $amount = $stock - $sell
-050   * -----------------------------------------------------------------------------------
-051   
-052   if $al.Settings[7]
-053    $txt.debug = 'Dock Virtual Stock ' + $virtual.stock + ' for ' + $ware
-054    gosub Debug.Sub:
-055    $txt.debug = 'Dock Physical Stock ' + $physical.stock + ' for ' + $ware
-056    gosub Debug.Sub:
-057    $txt.debug = 'Has ' + $amount + ' of ' + $ware + ' free to sell'
-058    gosub Debug.Sub:
-059   end
-060   * -----------------------------------------------------------------------------------
-061   
-062   if not $amount > 0
-063    return null
-064   end
-065   
-066   $sector = $sector.array[$s]
-067   $sell.Station = find station: resource $ware with best price: min.price=$sell.at, amount=null, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
-068   * -----------------------------------------------------------------------------------
-069   
-070   if $sell.Station
-071    $relation = $dock  ->  get relation to object $sell.Station
-072    if not $relation == Foe
-073     
-074     $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$sell.Station x=null y=null z=null
- * v9.01 B15: only trade if the drone was actually created; name it and tag it so leftover drones are findable (TODO: text IDs 310/4102)
-     if $drone -> exists
-      $drone  ->  set name to 'FDN Trade Drone'
-      $d.time = = playing time
-      $drone  ->  set local variable: name='FDN.Trade.Drone' value=$d.time
-075     $drone  ->  set homebase to $dock
-076     $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
-077     * -----------------------------------------------------------------------------------
-078     
-079     if $amount > $drone.max
-080      $sell.amount = $drone.max
-081      
-082      if $al.Settings[7]
-083       $txt.debug = 'Drone has ' + $drone.max + ' of ' + $ware + ' to sell'
-084       gosub Debug.Sub:
-085      end
-086     else
-087      $sell.amount = $amount
-088      
-089      if $al.Settings[7]
-090       $txt.debug = 'Drone has ' + $sell.amount + ' of ' + $ware + ' to sell'
-091       gosub Debug.Sub:
-092      end
-093     end
-094     * -----------------------------------------------------------------------------------
-095     
-096      = $drone  ->  add $sell.amount units of $ware
-097     $sold = $drone  ->  sell $sell.amount units of $ware
- * v9.01 B15: a null sell return is treated as 0; destruct on every path behind an exists check, no wait between create and destruct
-     if not $sold
-      $sold = 0
-     end
-     if $drone -> exists
-      $drone  ->  destruct: show no explosion=[TRUE]
-     end
- * v9.01 B15: only remove from the dock what was actually sold ($sold > 0)
-099     * -----------------------------------------------------------------------------------
-100     if $sold > 0
-101      
-102      if $al.Settings[7]
-103       $txt.debug = 'Sold ' + $sold + ' for ' + $ware
-104       gosub Debug.Sub:
-105      end
-106      
-107      $amount = $amount - $sold
-108      * -----------------------------------------------------------------------------------
-109      if $al.Settings[7]
-110       $txt.debug = 'To sell amount is now ' + $amount + ' for ' + $ware
-111       gosub Debug.Sub:
-112      end
-113      
-114       = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$sold  station=$dock  action='remove'
-115      * -----------------------------------------------------------------------------------
-116     end
-     else
-      if $al.Settings[7]
-       $txt.debug = 'Drone create failed - nothing sold'
-       gosub Debug.Sub:
-      end
-     end
-117   end
-118    
-119   end
-120   
-121   * wait
-122    = wait randomly from 500 to 1000 ms
- * v9.01 B12: re-check dock and DC after the wait
- gosub Check.Alive.Sub:
-123   * -----------------------------------------------------------------------------------
-124  end
-125  return null
-126  * -----------------------------------------------------------------------------------
-127  
-* v9.01 B12: dock and DC must still exist and be player-owned; a return inside a sub ends the script
-Check.Alive.Sub:
-$ok = [FALSE]
-if $dock -> exists
- $owner = $dock -> get owner race
- if $owner == Player
-  if $dc -> exists
-   $owner = $dc -> get owner race
-   if $owner == Player
-    $ok = [TRUE]
+   goto label Exit:
+  end
+  $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+  if not $dc.valid
+   if $debug.on
+    $txt.log = $dock + ' Sell stopped - DC no longer valid'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
    end
+   goto label Exit:
   end
  end
 end
-if not $ok
- if $al.Settings[7]
-  $txt.debug = 'Dock or DC no longer valid - stop selling'
-  gosub Debug.Sub:
+ * v9.01 B15: loop finished with stock still above the cap - no buyer found in any sector
+if $amount > 0
+ if $debug.on
+  $txt.log = $dock + ' No buyer found for remaining ' + $amount + ' of ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
- return null
 end
-endsub
-128  * Debug Massage handling
-129  Debug.Sub:
-130  $d.time = = playing time
-131  $d.time = = format time: $d.time
-132  $txt = $d.time + ';' + $script + ';' + $dock + ';' + $txt.debug
-133  write to log file $DebugID  append=[TRUE]  value=$txt
-134  endsub
-135  * -----------------------------------------------------------------------------------
-136  return null
-137  
-138  
+
+* -----------------------------------------------------------------------------------
+
+Exit:
+ * v9.01 B2/B18: the single exit label - every path ends here, so the trade guard and
+ * the task counter are balanced on every route (guards before either is held land here
+ * with $counter.inc still [FALSE]). The guard was taken by Supply.Dock on this dock; we
+ * only release it. Lock returns null for a destroyed dock, so the station check alone is safe.
+if not is datatyp[ $dock ] == DATATYPE_STATION
+ $trade.key = null
+end
+
+if $ware
+ if $trade.key
+  = [THIS] -> call script lib.LI.FDN.Lock : obj=$dock key=$trade.key action='release' timeout=null
+ end
+end
+if $counter.inc
+ * re-read the settings - another task may have written them while we ran
+ $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+ if $al.Settings
+  $active = $al.Settings[18]
+  if is datatyp[ $active ] == DATATYPE_INT
+   $active = $active - 1
+   if $active < 0
+    * floor at zero so a stale or crashed counter can never go negative
+    $active = 0
+   end
+   $al.Settings[18] = $active
+   set global variable: name='al.LI.FDN.event' value=$al.Settings
+  end
+ end
+end
+return null
