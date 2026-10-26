@@ -20,6 +20,10 @@
 *   Loop, waits and START calls unchanged on this card - P2-10b owns Supply.Dock itself;
 *   Supply.Start's START of this script also stays as-is (P2-08 comment).
 * -----------------------------------------------------------------------------------
+* v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
+*   One 'Dock pass start: docks=<n>' line per pass. The end-of-pass counts live on Supply.Dock's
+*   own 'Pass finished' line, because each dock runs as its own task.
+* -----------------------------------------------------------------------------------
 * Expected values:
 * - N/A the Dock array is stored in the AL Plugin variable
 *
@@ -29,8 +33,8 @@
 * To Do - N/A
 *
 * Version: 3.0
-* Date: 25/10/2026
-* Tested: TC 25/10/2026
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
 * -----------------------------------------------------------------------------------
 
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed settings fetch (P2-01)
@@ -55,6 +59,12 @@ end
 $debug.on = $al.Settings[7]
 
 $s = size of array $dock.array
+
+* v9.01 P2-14: one line per dock pass (the per-dock results are logged by Supply.Dock itself)
+if $debug.on
+ $txt.log = 'Dock pass start: docks=' + $s
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
 
 * if DC
  * v9.01 B3: one call covers exists + player ownership + Dock class (replaces the bare -> exists test)

@@ -17,8 +17,8 @@
 * To Do - P2-12a switches the Update.Ware 'create' call to Ware.Rec create=[TRUE]
 * 
 * Version: 4.0
-* Date: 25/10/2026
-* Tested: TC 25/10/2026
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
 * -----------------------------------------------------------------------------------
 
 * v9.01 Phase 2 changes (P2-10b) - closes D1, D2 (one of nine), D3, B3, part of B12, B4:
@@ -32,6 +32,14 @@
 *       plus the per-dock/per-ware lock FDN.Trade.<ware> is free. The cap is CHECKED HERE ONLY -
 *       nothing in this script writes [18]. The counter and the lock are owned by Sell.Ware (P2-11b):
 *       it increments [18] on start, releases the lock on every exit and decrements [18] then.
+* -----------------------------------------------------------------------------------
+
+* v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
+*   Each ware in a dock pass gets exactly one line: a skip reason (dock is DC, ST ware, no record,
+*   maintain not set, stock >= maintain, surplus off, DC invalid, DC record missing, DC remote off,
+*   DC stock <= remote level) or a 'moved=' summary with the DC stock and remote level.
+*   The pass-end line is now 'Pass finished: wares=<n> moved=<n> skipped=<n>'. The counters are
+*   plain locals and nothing reads them except that log line.
 * -----------------------------------------------------------------------------------
 
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
@@ -108,9 +116,20 @@ end
 
 * this loops the wares at the dock for supply from the DC and for sale
 if not $flag
+ * v9.01 P2-14: pass counters for the 'Pass finished' line (set here so the DC case never reads a null)
+ $pass.total = 0
+ $pass.moved = 0
+ $pass.skipped = 0
+ if $dock == $dc
+  if $debug.on
+   $txt.log = $dock + ' skip: dock is DC'
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  end
+ end
  if not $dock == $dc
   $ware.array = $dock  ->  get tradeable ware array from station
   $s = size of array $ware.array
+  $pass.total = $s
   * v9.01 P8: counter for a short wait every 10 wares
   $ware.count = 0
   * v9.01 D2: debug - one line per dock pass (dock id keeps it traceable)
@@ -128,6 +147,14 @@ if not $flag
    $transport.class = = get transport class of ware $ware
    * -----------------------------------------------------------------------------------
    
+   if $transport.class == ST
+    $pass.skipped = $pass.skipped + 1
+    if $debug.on
+     $txt.log = $dock + ' ' + $ware + ' skip: ST ware'
+     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+    end
+   end
+
    if not $transport.class == ST
     * this calls the sell sub (cap check + per-dock/per-ware lock inside)
     gosub Sell.Ware.Sub:
@@ -139,6 +166,11 @@ if not $flag
     if not $ware.settings
      * v9.01 B4: nothing to sell or return for a ware with no record
      $skip.ware = [TRUE]
+     $pass.skipped = $pass.skipped + 1
+     if $debug.on
+      $txt.log = $dock + ' ' + $ware + ' skip: no record'
+      = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+     end
     end
     
     if not $skip.ware
@@ -150,11 +182,25 @@ if not $flag
      
      * get maintain amount
      $maintain.level = $ware.settings[2]
+     $maintain.unset = [FALSE]
      if not $maintain.level > 0
       $maintain.level = 0
+      $maintain.unset = [TRUE]
      end
      * calculate required
      $required.at.dock = $maintain.level - $stock
+     if $debug.on
+      $dbg.need = $required.at.dock
+      if not $dbg.need > 0
+       $dbg.need = 0
+      end
+      $dbg.why = 'stock >= maintain'
+      if $maintain.unset
+       $dbg.why = 'maintain not set'
+      end
+      $ctx = $dock + ' ' + $ware + ': maintain=' + $maintain.level
+      $ctx = $ctx + ' stock=' + $virtual.stock + '+' + $physical.stock + ' need=' + $dbg.need
+     end
      if not $required.at.dock > 0
       $surplus.flag = $ware.settings[7]
       if $surplus.flag
@@ -165,12 +211,34 @@ if not $flag
         if $dc.valid
          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dc  action='add'
          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dock  action='remove'
+         $pass.moved = $pass.moved + 1
          * v9.01 D2: debug (dock id keeps it traceable)
          if $debug.on
           $txt.log = $dock + ' Surplus ' + $surplus + ' of ' + $ware + ' to DC'
           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
          end
         end
+        if not $dc.valid
+         $pass.skipped = $pass.skipped + 1
+         if $debug.on
+          $txt.log = $ctx + ' skip: DC invalid, surplus ' + $surplus + ' not passed'
+          = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+         end
+        end
+       end
+       if not $surplus > 0
+        $pass.skipped = $pass.skipped + 1
+        if $debug.on
+         $txt.log = $ctx + ' skip: ' + $dbg.why
+         = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+        end
+       end
+      end
+      if not $surplus.flag
+       $pass.skipped = $pass.skipped + 1
+       if $debug.on
+        $txt.log = $ctx + ' skip: ' + $dbg.why + ', surplus off'
+        = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
        end
       end
      end
@@ -182,6 +250,11 @@ if not $flag
       $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
       if not $dc.valid
        $skip.ware = [TRUE]
+       $pass.skipped = $pass.skipped + 1
+       if $debug.on
+        $txt.log = $ctx + ' skip: DC invalid'
+        = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+       end
       end
       
       * v9.01 D3: DC record via Ware.Rec, only when the DC is valid; no record yet - create it, then re-read (P2-12a will move this to Ware.Rec create)
@@ -194,6 +267,11 @@ if not $flag
        * v9.01 B4: still no record after the create - skip, do not read null elements
        if not $dc.ware.settings
         $skip.ware = [TRUE]
+        $pass.skipped = $pass.skipped + 1
+        if $debug.on
+         $txt.log = $ctx + ' skip: DC record missing'
+         = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+        end
        end
       end
       
@@ -230,7 +308,27 @@ if not $flag
           $txt.log = $dock + ' Supply ' + $required.at.dock + ' of ' + $ware + ' from DC, dock added ' + $added
           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
          end
+         $pass.moved = $pass.moved + 1
+         if $debug.on
+          $txt.log = $ctx + ' moved=' + $required.at.dock
+          $txt.log = $txt.log + ' dc.remote=' + $dc.remote.level + ' dc.stock=' + $dc.virtual.stock + '+' + $dc.physical.stock
+          = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+         end
          * -----------------------------------------------------------------------------------
+        end
+        if not $dc.avialable > 0
+         $pass.skipped = $pass.skipped + 1
+         if $debug.on
+          $txt.log = $ctx + ' skip: DC stock <= remote level, dc.remote=' + $dc.remote.level + ' dc.stock=' + $dc.stock
+          = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+         end
+        end
+       end
+       if not $dc.remote.level > 0
+        $pass.skipped = $pass.skipped + 1
+        if $debug.on
+         $txt.log = $ctx + ' skip: DC remote off (<= 0), dc.stock=' + $dc.stock
+         = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
         end
        end
       end
@@ -268,7 +366,7 @@ if not $flag
  = wait randomly from 500 to 1000 ms
  * v9.01 D2: debug - one line when the pass finishes normally (dock id keeps it traceable)
  if $debug.on
-  $txt.log = $dock + ' Pass finished'
+  $txt.log = $dock + ' Pass finished: wares=' + $pass.total + ' moved=' + $pass.moved + ' skipped=' + $pass.skipped
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
 end

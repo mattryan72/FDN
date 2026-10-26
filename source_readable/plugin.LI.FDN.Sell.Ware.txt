@@ -48,6 +48,9 @@
 *   Sector search unchanged from v8 - cached trade sectors (mode 3), one find per pass, wait
 *   500-1000 ms between passes with a re-validation after the wait.
 
+* v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
+*   Added a 'Sell start' line, a 'Buyer found' line and a 'Trade sold 0' line. The 'No buyer found'
+*   line now says how many cached sectors were searched.
 * -----------------------------------------------------------------------------------
 $counter.inc = [FALSE]
 
@@ -145,6 +148,11 @@ end
 $al.Settings[18] = $trade.active + 1
 set global variable: name='al.LI.FDN.event' value=$al.Settings
 $counter.inc = [TRUE]
+* v9.01 P2-14: one start line once the task counter is held
+if $debug.on
+ $txt.log = $dock + ' Sell start: cap ' + $sell.cap + ' of ' + $ware
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
 
 * v9.01 P2-11b: cached trade sectors (mode 3 - factories + docks + advanced satellites);
 * the cache never scans, so a null or empty list only means nothing is cached yet.
@@ -158,6 +166,7 @@ if not $sector.array
 end
 
 $s = size of array $sector.array
+$sector.total = $s
 $more = [TRUE]
 while $s > 0
  dec $s =
@@ -203,6 +212,10 @@ while $s > 0
    * v9.01 B15/R-T1: the whole drone dance is inside Trade - hardened spawn, foe/price
    * money/space clamps (T5 confirmed on FL); sell mode removes the sold units from dock
    * stock and stamps rec[8], so no Update.Ware call here (it would remove them twice).
+   if $debug.on
+    $txt.log = $dock + ' Buyer ' + $sell.Station + ' found for ' + $ware
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
    $traded = [THIS] -> call script lib.LI.FDN.Trade : mode='sell' partner=$sell.Station ware=$ware amount=$amount home=$dock
    if not is datatyp[ $traded ] == DATATYPE_INT
     $traded = 0
@@ -211,6 +224,12 @@ while $s > 0
     $amount = $amount - $traded
     if $debug.on
      $txt.log = $dock + ' Sold ' + $traded + ' of ' + $ware + ' at ' + $sell.Station
+     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+    end
+   end
+   if not $traded > 0
+    if $debug.on
+     $txt.log = $dock + ' Trade sold 0 of ' + $ware + ' at ' + $sell.Station
      = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
     end
    end
@@ -247,7 +266,7 @@ end
  * v9.01 B15: loop finished with stock still above the cap - no buyer found in any sector
 if $amount > 0
  if $debug.on
-  $txt.log = $dock + ' No buyer found for remaining ' + $amount + ' of ' + $ware
+  $txt.log = $dock + ' No buyer found for remaining ' + $amount + ' of ' + $ware + ' after searching ' + $sector.total + ' sectors'
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
 end

@@ -44,6 +44,9 @@
 *   The sector loop is unchanged from v8 - cached trade sectors, one find per pass, wait
 *       300-600 ms between passes with a re-validation after the wait.
 
+* v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
+*   Added a 'Buy start' line, an 'amount is 0' skip line, a 'Seller found' line and a 'Trade bought 0'
+*   line. The 'No seller found' line now says how many cached sectors were searched.
 * -----------------------------------------------------------------------------------
 $factory.valid = [FALSE]
 $s.name = = get script name
@@ -112,6 +115,10 @@ if not is datatyp[ $amount ] == DATATYPE_INT
  goto label Exit:
 end
 if not $amount > 0
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - amount is 0 for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
  goto label Exit:
 end
 
@@ -155,6 +162,11 @@ end
 $al.Settings[18] = $trade.active + 1
 set global variable: name='al.LI.FDN.event' value=$al.Settings
 $counter.inc = [TRUE]
+* v9.01 P2-14: one start line once the guard and the task counter are held
+if $debug.on
+ $txt.log = $factory + ' Buy start: ' + $amount + ' of ' + $ware
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
 
  * v9.01 P2-11a: cached trade sectors (mode 3 - factories + docks + advanced satellites);
 * the cache never scans, so a null or empty list only means nothing is cached yet.
@@ -168,6 +180,7 @@ if not $sector.array
 end
 
 $s = size of array $sector.array
+$sector.total = $s
 while $s > 0
  dec $s =
  $sector = $sector.array[$s]
@@ -177,6 +190,10 @@ while $s > 0
   * v9.01 B15/R-T1: the whole drone dance is inside Trade - hardened spawn, foe/price
   * money/space clamps (T5 confirmed on FL), delivery straight to the factory; it returns
   * units traded, always an INT >= 0.
+  if $debug.on
+   $txt.log = $factory + ' Seller ' + $buy.Station + ' found for ' + $ware
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  end
   $traded = [THIS] -> call script lib.LI.FDN.Trade : mode='buy' partner=$buy.Station ware=$ware amount=$amount home=$dc dest=$factory
   if not is datatyp[ $traded ] == DATATYPE_INT
    $traded = 0
@@ -185,6 +202,12 @@ while $s > 0
    $amount = $amount - $traded
    if $debug.on
     $txt.log = $factory + ' Bought ' + $traded + ' of ' + $ware + ' at ' + $buy.Station
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+  end
+  if not $traded > 0
+   if $debug.on
+    $txt.log = $factory + ' Trade bought 0 of ' + $ware + ' at ' + $buy.Station
     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
    end
   end
@@ -218,7 +241,7 @@ end
  * v9.01 B15: loop finished with wares still missing - no seller found or none could buy
 if $amount > 0
  if $debug.on
-  $txt.log = $factory + ' No seller found for remaining ' + $amount + ' of ' + $ware
+  $txt.log = $factory + ' No seller found for remaining ' + $amount + ' of ' + $ware + ' after searching ' + $sector.total + ' sectors'
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
 end

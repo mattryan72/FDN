@@ -13,8 +13,8 @@
 * To Do - P2-09a switches Supply.Factory.Check to read cursor [13] / budget [22] from $al.Settings
 * 
 * Version: 2.1
-* Date: 23/10/2026
-* Tested: TC 23/10/2026
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
 * -----------------------------------------------------------------------------------
 * v9.01 B1/B3/P1 changes (Supply.Start):
 *   B1  [12] is now a real run-lock storing 'playing time' (stale after [22]*4 s), set on
@@ -30,6 +30,9 @@
 *       [22]*4 s so a crashed Factory.Check cannot wedge the supply loop forever.
 *   P4  Factory pass runs synchronously (no START) - Supply.Factory.Check owns its own loop and
 *       will read cursor [13] / budget [22] from $al.Settings in P2-09a.
+* -----------------------------------------------------------------------------------
+* v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
+*   One 'DC: <dc>' line is written per Scan run, after the DC has been validated.
 * -----------------------------------------------------------------------------------
 $script = = get script name
 $s.name = $script
@@ -133,6 +136,14 @@ $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
 if not $dc.valid
  gosub DC.Invalid:
  return null
+end
+
+* v9.01 P2-14: one 'DC: <dc>' line per Scan run (not every tick); $do.scan is still set from above
+if $do.scan
+ if $debug.on
+  $txt.log = 'DC: ' + $dc
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
 end
 
 * v9.01 B3: from here on $dc is a valid, existing, player owned Dock

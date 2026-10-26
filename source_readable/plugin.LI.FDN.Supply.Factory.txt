@@ -16,11 +16,11 @@
 * Returns values:
 * - N/A (null)
 * 
-* To Do - P2-14 rewrites the shortfall debug line; P2-11a revisits who releases the buy lock
+* To Do - N/A
 * 
 * Version: 3.0
-* Date: 24/10/2026
-* Tested: TC 25/10/2026
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
 * -----------------------------------------------------------------------------------
 * v9.01 Phase 2 changes (P2-09b) - closes D1, D2 (one of nine), D3, B3, B11:
 *   D1  Header switched to lib.LI.FDN.Cfg.Get (the only allowed copy of the settings fetch).
@@ -34,12 +34,18 @@
 *       player when the DC goes bad - this only stops unchecked uses of $dc mid-tick.
 *   B11 The manual busy flag in the factory settings [3] is replaced by lib.LI.FDN.Lock :
 *       obj=$factory key='buy' action='try' timeout=120 (station local FDN.Busy.buy, stores
-*       playing time, stale after 120 s). A null or FALSE result skips the buy this pass; no
-*       release here - P2-11a owns that. The old 'busy for another N s' line becomes one
+*       playing time, stale after 120 s). A null or FALSE result skips the buy this pass;
+*       Buy.Ware releases it at its Exit label. The old 'busy for another N s' line becomes one
 *       'Buy skipped - factory busy' line.
 *   B31 (kept) Supply.Resource.Sub: when the factory already holds more than 3 cycles of a
 *       resource in cargo, $required goes negative; it is clamped to 0 after the $max clamp so
 *       the 'requires' debug line never shows a negative amount.
+* -----------------------------------------------------------------------------------
+
+* v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
+*   The shortfall line reads '<factory> short <n> of <ware> at DC; buy allowed=<yes/no/no record>'
+*   (it used to say 'Buy N of ware ...' before the can-buy check was made).
+*   The 'has', 'Remove' and 'requires' lines are only written for amounts above 0.
 * -----------------------------------------------------------------------------------
 
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
@@ -95,8 +101,11 @@ Add.Product.Sub:
 $product.amount = $factory  ->  get amount of ware $ware in cargo bay
 * debug
 if $debug.on
- $txt.log = $factory + ' has ' + $product.amount + ' of ' + $ware + ' to pass to DC'
- = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ * v9.01 P2-14: only log when there is a product to pass (0 is noise)
+ if $product.amount > 0
+  $txt.log = $factory + ' has ' + $product.amount + ' of ' + $ware + ' to pass to DC'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
 end
 * v9.01 B3: only touch the product if the DC is still valid (exists / player owned / Dock)
 if not $dc.valid
@@ -125,8 +134,11 @@ end
 if $debug.on
  * v9.01: negate on its own line - a unary minus inside a longer expression is mis-compiled
  $removed = - $remove
- $txt.log = 'Remove ' + $removed + '  of ' + $ware + ' from ' + $factory
- = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ * v9.01 P2-14: only log a real removal (0 is noise)
+ if $removed > 0
+  $txt.log = 'Remove ' + $removed + '  of ' + $ware + ' from ' + $factory
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
 end
 endsub
 * -----------------------------------------------------------------------------------
@@ -162,8 +174,11 @@ end
 * debug
 if $debug.on
  if not $skip.ware
-  $txt.log = $factory + ' requires ' + $required + '  of ' + $ware
-  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  * v9.01 P2-14: only log a real requirement (0 after the clamp is noise)
+  if $required > 0
+   $txt.log = $factory + ' requires ' + $required + '  of ' + $ware
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  end
  end
 end
 
@@ -191,9 +206,18 @@ if $required > 0
    * calculate what needs to be bought
    $required.buy = $required - $from.dc
    
-   * debug
+   * v9.01 P2-14: one shortfall line per ware. The DC record was already read above with
+   * create=[FALSE]; nothing is created or changed just for the log.
    if $debug.on
-    $txt.log = 'Buy ' + $required.buy + ' of ware ' + $ware + ' for ' + $factory
+    $dbg.buy = 'no record'
+    if $ware.settings
+     $dbg.can = $ware.settings[3]
+     $dbg.buy = 'no'
+     if $dbg.can
+      $dbg.buy = 'yes'
+     end
+    end
+    $txt.log = $factory + ' short ' + $required.buy + ' of ' + $ware + ' at DC; buy allowed=' + $dbg.buy
     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
    end
    
@@ -204,7 +228,7 @@ if $required > 0
     if $can.buy
      * v9.01 B11: one lib call replaces the manual busy flag in FDN.Settings [3] - Lock stores
      * playing time in the station local FDN.Busy.buy and it goes stale after 120 s, so a
-     * crashed Buy.Ware cannot wedge this factory. No release here (P2-11a owns that).
+     * crashed Buy.Ware cannot wedge this factory. Buy.Ware releases it at its Exit: label.
      $lock = [THIS] -> call script lib.LI.FDN.Lock : obj=$factory key='buy' action='try' timeout=120
      if $lock
       * acquired - start the buy
