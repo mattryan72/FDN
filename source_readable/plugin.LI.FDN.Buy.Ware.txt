@@ -1,214 +1,257 @@
-* Script: plugin.LI.FDN.Buy.Ware  (v2, engine 50)
-* Desc: FDNv9 - Buy ware for factory
+* Script: plugin.LI.FDN.Buy.Ware  (v3, engine 50)
+* Desc: FDNv9 - Buy ware for a factory from NPC stations in the trade sectors
 * Arg 0: factory (Value) 'factory'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: amount (Value) 'amount'
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * This script is called by LI.FDN.Supply.Factory
-004  * It is used to buy a ware needed for production
-005  
-006  * Expected values:
-007  * - Factory
-008  * - Ware
-009  * - Amount
-010  
-011  * Returns values:
-012  * - N/A
-013  
-014  * To Do - N/A
-015  
-016  * Version: 1.0
-017  * Date: 22/05/2012
-018  * Tested: 22/05/2012
-019  * -----------------------------------------------------------------------------------
-* v9.01 B4 B12 B15: guard against a null ware record / non-int buy-at price, re-check factory and DC after the wait, safer trade drone
-020  
-021  * Fetch values saved in the AL Plugin global variable:
-022  * - DC
-023  * - exclude arrya holds all player owned stations so they are excluded from the search
-024  $script = = get script name
-025  $al.Settings = get global variable: name='al.LI.FDN.event'
-026  if $al.Settings
-027   $PageID = $al.Settings[1]
-028   $DebugID = 0 + $PageID
-029   $dc = $al.Settings[2]
-030   $debug = $al.Settings[7]
-031   $exclude.array = $al.Settings[8]
-032  else
-033   return null
-034  end
-035  * -----------------------------------------------------------------------------------
-036  
- * v9.01 B12: factory and DC must still exist and be player-owned
- gosub Check.Alive.Sub:
-037  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
-038  $ware.settings = $dc  ->  get local variable: name=$pointer
- * v9.01 B4: never buy with a missing ware record (null would make [3] unreadable)
- if not $ware.settings
-  if $debug
-   $txt.debug = 'No FDN ware record for ' + $ware
-   gosub Debug.Sub:
-  end
-  return null
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is STARTed by plugin.LI.FDN.Supply.Factory when the DC cannot supply a
+* factory's full resource requirement and the DC record allows buying for that ware.
+* It walks every cached trade sector, finds NPC sellers at or under the buy-at price and
+* buys what it can through lib.LI.FDN.Trade (home = the DC, whose account pays; dest =
+* the factory). Supply.Factory holds the per-factory 'buy' lock while this runs - this
+* script owns releasing it. The trade guard FDN.Trade.<ware> and the task counter [18]
+* are owned by this script (taken/incremented here, released/decremented at Exit:).
+*
+* Expected values:
+* - Factory   destination station (player owned)
+* - Ware      ware to buy
+* - Amount    units still missing after the DC supply attempt
+*
+* Returns values:
+* - N/A (null)
+*
+* To Do - N/A
+*
+* Version: 3.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+* v9.01 P2-11a changes - closes D1, D2 (one of nine), B4, B12, B15; owns the trade guard:
+*   D1  Standard header via lib.LI.FDN.Cfg.Get ($PageID is no longer needed here).
+*   D2  Debug.Sub and Check.Alive.Sub deleted; every debug line goes through
+*       lib.LI.FDN.Log with $s.name as caller.
+*   B4  The DC ware record is read via Ware.Rec(create=[FALSE]) - can-buy [3] kept,
+*       buy-at price [4] must be an INT before anything runs (Trade re-checks it).
+*   B12 Factory and DC are validated with lib.LI.FDN.Is.Valid up front and again after
+*       every wait in the sector loop; any failure ends the pass at Exit:.
+*   B15 The temp-drone block is replaced by one wait-free lib.LI.FDN.Trade call per
+*       found seller (hardened drone, money/stock/space clamps, delivery to the factory).
+*   B2/B18 Trade ownership: this script takes FDN.Trade.<ware> on the DC (try, stale 120 s)
+*       and increments [18] only while below [19]; both are released/decremented at the
+*       single Exit: label. It also releases Supply.Factory's 'buy' lock on $factory here.
+*   The sector loop is unchanged from v8 - cached trade sectors, one find per pass, wait
+*       300-600 ms between passes with a re-validation after the wait.
+
+* -----------------------------------------------------------------------------------
+$factory.valid = [FALSE]
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ goto label Exit:
+end
+$dc = $al.Settings[2]
+$debug.on = $al.Settings[7]
+$exclude.array = $al.Settings[8]
+
+* v9.01 B12: factory and DC must exist and be player-owned before anything runs; the
+* results are stored so Exit: knows whether to release the caller's 'buy' lock.
+$factory.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$factory need.dock=[FALSE]
+if not $factory.valid
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - factory no longer valid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
-039  * if can buy
-040  if $ware.settings[3]
-041   
-042   * This calls the script that returns a list of sectors that have a player owned stations
-043   * or Adv Sat deployed
-044   $sector.array = null -> call script plugin.LI.FDN.Sector.Array : search=3
-045   * Get buy at price
-046   $buy.at = $ware.settings[4]
- * v9.01 B4: never search with a null max.price
-  if not is datatyp[ $buy.at ] == DATATYPE_INT
-   if $debug
-    $txt.debug = 'Buy at price not set for ' + $ware
-    gosub Debug.Sub:
-   end
-   return null
-  end
-047   
-048   $s = size of array $sector.array
-049   while $s > 0
-050    dec $s =
-051    $sector = $sector.array[$s]
-052    * Find stations sellin the required ware
-053    $buy.Station = find station: product $ware with best price:  max.price=$buy.at, amount=$amount, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
-054    * check if station found
-055    if $buy.Station
-056     * Check relation to DC
-057     $relation = $dc  ->  get relation to object $buy.Station
-058     if not $relation == Foe
-059      * If not a foe try to buy ware
-060      * DEBUG Message Start----------------------------------------------------------------
-061      if $debug
-062       $txt.debug = $buy.Station + ' found in sector ' + $sector + ' selling ' + $ware
-063       gosub Debug.Sub:
-064      end
-065      * DEBUG Message End------------------------------------------------------------------
-066      $price = $buy.Station  ->  get price of ware $ware
-067      * DEBUG Message Start----------------------------------------------------------------
-068      if $debug
-069       $txt.debug = 'FDN buying ' + $ware + ' at ' + $price
-070       gosub Debug.Sub:
-071      end
-072      * DEBUG Message End------------------------------------------------------------------
-073      * Create drone at the station
-074      $drone = = create ship: type=Argon Mercury Super Freighter XL owner=Player addto=$buy.Station x=null y=null z=null
- * v9.01 B15: only trade if the drone was actually created; name it and tag it so leftover drones are findable (TODO: text IDs 310/4102)
-      if $drone -> exists
-       $drone  ->  set name to 'FDN Trade Drone'
-       $d.time = = playing time
-       $drone  ->  set local variable: name='FDN.Trade.Drone' value=$d.time
-075      * Set drone Homebase to DC
-076      $drone  ->  set homebase to $dc
- * v9.01 B15: clamp the buy to what this drone can carry
-      $buy.amount = $amount
-      $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
-      if not is datatyp[ $drone.max ] == DATATYPE_INT
-       * cannot carry the ware at all (e.g. wrong ship type) - do not buy anything
-       $drone.max = 0
-      end
-      if $drone.max < $buy.amount
-       $buy.amount = $drone.max
-      end
-077      * Buy wares from station
- * v9.01 B15: a null buy return is treated as 0 (v8 would have logged/added null)
-078      $bought = $drone  ->  buy $buy.amount units of $ware
-      if not $bought
-       $bought = 0
-      end
-079      * Remove drone
-080      $drone  ->  destruct: show no explosion=[TRUE]
-081      * DEBUG Message Start----------------------------------------------------------------
-082      if $debug
-083       $txt.debug = 'FDN has bought ' + $bought + ' of ' + $ware + ' at ' + $price
-084       gosub Debug.Sub:
-085      end
-086      * DEBUG Message End------------------------------------------------------------------
-087      * Check if wares were bought
-088      if $bought > 0
-089        = $factory  ->  add $bought units of $ware
-090       * DEBUG Message Start----------------------------------------------------------------
-091       if $debug
-092        $txt.debug = 'Add ' + $bought + ' of ' + $ware + ' to ' + $factory
-093        gosub Debug.Sub:
-094       end
-095       * DEBUG Message End------------------------------------------------------------------
-096       if $bought == $amount
-097        return null
-098       else
-099        $amount = $amount - $bought
-100        * DEBUG Message Start----------------------------------------------------------------
-101        if $debug
-102         $txt.debug = $factory + ' still requires ' + $amount + ' of wares'
-103         gosub Debug.Sub:
-104        end
-105        * DEBUG Message End------------------------------------------------------------------
-106       end
-107      end
-       else
-        if $debug
-         $txt.debug = 'Drone create failed - nothing bought'
-         gosub Debug.Sub:
-        end
-       end
-108     end
-109    end
-110     = wait randomly from 300 to 600 ms
- * v9.01 B12: re-check factory and DC after the wait
-   gosub Check.Alive.Sub:
-111   end
- * v9.01 B15: loop finished with wares still missing (no seller found or none could buy)
-  if $debug
-   $txt.debug = 'No seller found for remaining ' + $amount + ' of ' + $ware
-   gosub Debug.Sub:
-  end
-112   
-113  else
-114   * debug
-115   if $debug
-116    $txt.debug = 'DC is not set to buy ' + $ware
-117    gosub Debug.Sub:
-118   end
-119  end
-120  
-121  return null
-122  * -----------------------------------------------------------------------------------
-123  * -----------------------------------------------------------------------------------
-124  * Debug Massage handling
-125  Debug.Sub:
-126  $d.time = = playing time
-127  $d.time = = format time: $d.time
-128  $txt = $d.time + ';' + $script + ';' + $txt.debug
-129  write to log file $DebugID  append=[TRUE]  value=$txt
-130  endsub
-131  * -----------------------------------------------------------------------------------
-132  * -----------------------------------------------------------------------------------
- * v9.01 B12: factory and DC must still exist and be player-owned; a return inside a sub ends the script
- Check.Alive.Sub:
- $ok = [FALSE]
- if $factory -> exists
-  $owner = $factory -> get owner race
-  if $owner == Player
-   if $dc -> exists
-    $owner = $dc -> get owner race
-    if $owner == Player
-     $ok = [TRUE]
+ goto label Exit:
+end
+
+* v9.01 B12: the DC must be a valid player dock before anything runs
+$dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $dc.valid
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - DC no longer valid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+* v9.01 B4/D3: the DC ware record via Ware.Rec (read-only); can-buy [3] kept from v8,
+* buy-at price [4] must be an INT - Trade re-checks it against the live partner price.
+$ware.settings = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=$ware create=[FALSE]
+if not $ware.settings
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - no FDN ware record for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+$can.buy = $ware.settings[3]
+if not $can.buy
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - DC is not set to buy ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+$buy.at = $ware.settings[4]
+if not is datatyp[ $buy.at ] == DATATYPE_INT
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - buy at price not set for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+* v9.01 B4: amount must be a positive integer before the counter is touched (T1)
+if not is datatyp[ $amount ] == DATATYPE_INT
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - bad amount for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+if not $amount > 0
+ goto label Exit:
+end
+
+* v9.01 B2: trade guard - per-dock/per-ware lock on the DC (the buyer), stale after 120 s.
+* Taken before the cap check, so a cap failure only has to release this at Exit:.
+$trade.key = 'FDN.Trade.' + $ware
+$lock.held = [FALSE]
+$lock = [THIS] -> call script lib.LI.FDN.Lock : obj=$dc key=$trade.key action='try' timeout=120
+if not $lock
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - trade guard held for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+$lock.held = [TRUE]
+
+* v9.01 B2/B18: task cap - increment [18] only while below [19]; a non-int or max <= 0
+* means unlimited (same nested INT checks as the Supply.Dock sell gate).
+$counter.inc = [FALSE]
+$trade.active = $al.Settings[18]
+$trade.max = $al.Settings[19]
+if is datatyp[ $trade.active ] == DATATYPE_INT
+ if is datatyp[ $trade.max ] == DATATYPE_INT
+  if $trade.max > 0
+   if not $trade.active < $trade.max
+    if $debug.on
+     $txt.log = $factory + ' Buy skipped - trade task cap reached (' + $trade.active + '/' + $trade.max + ')'
+     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
     end
+    goto label Exit:
    end
   end
  end
- if not $ok
-  if $debug
-   $txt.debug = 'Factory or DC no longer valid - stop buying'
-   gosub Debug.Sub:
-  end
-  return null
+end
+ * [18] is null until Cleanup has run in this save - count from 0
+if not is datatyp[ $trade.active ] == DATATYPE_INT
+ $trade.active = 0
+end
+
+$al.Settings[18] = $trade.active + 1
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+$counter.inc = [TRUE]
+
+ * v9.01 P2-11a: cached trade sectors (mode 3 - factories + docks + advanced satellites);
+* the cache never scans, so a null or empty list only means nothing is cached yet.
+$sector.array = [THIS] -> call script lib.LI.FDN.Sectors : mode=3
+if not $sector.array
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - no trade sectors in cache for ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
- endsub
-133  return null
-134  
-135  
+ goto label Exit:
+end
+
+$s = size of array $sector.array
+while $s > 0
+ dec $s =
+ $sector = $sector.array[$s]
+ * Find stations selling the required ware in this sector (v8 find, unchanged)
+ $buy.Station = find station: product $ware with best price:  max.price=$buy.at, amount=$amount, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
+ if $buy.Station
+  * v9.01 B15/R-T1: the whole drone dance is inside Trade - hardened spawn, foe/price
+  * money/space clamps (T5 confirmed on FL), delivery straight to the factory; it returns
+  * units traded, always an INT >= 0.
+  $traded = [THIS] -> call script lib.LI.FDN.Trade : mode='buy' partner=$buy.Station ware=$ware amount=$amount home=$dc dest=$factory
+  if not is datatyp[ $traded ] == DATATYPE_INT
+   $traded = 0
+  end
+  if $traded > 0
+   $amount = $amount - $traded
+   if $debug.on
+    $txt.log = $factory + ' Bought ' + $traded + ' of ' + $ware + ' at ' + $buy.Station
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+  end
+  if not $amount > 0
+   * enough bought - no need to look in the remaining sectors (no continue, no extra dec)
+   $s = 0
+  end
+ end
+ * v9.01: keep the v8 throttle between passes - one short random wait, then re-validate
+ * both stations; a failure after the wait ends the pass at Exit:.
+ if $amount > 0
+  = wait randomly from 300 to 600 ms
+  $factory.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$factory need.dock=[FALSE]
+  if not $factory.valid
+   if $debug.on
+    $txt.log = $factory + ' Buy stopped - factory no longer valid'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+   goto label Exit:
+  end
+  $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+  if not $dc.valid
+   if $debug.on
+    $txt.log = $factory + ' Buy stopped - DC no longer valid'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+   goto label Exit:
+  end
+ end
+end
+ * v9.01 B15: loop finished with wares still missing - no seller found or none could buy
+if $amount > 0
+ if $debug.on
+  $txt.log = $factory + ' No seller found for remaining ' + $amount + ' of ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
+
+* -----------------------------------------------------------------------------------
+
+Exit:
+ * v9.01 B2/B18: the single exit label - every path ends here, so the trade guard and
+ * the task counter are balanced on every route (guard failures before either is held
+ * land here with both flags still [FALSE]).
+if $lock.held
+ = [THIS] -> call script lib.LI.FDN.Lock : obj=$dc key=$trade.key action='release' timeout=null
+end
+if $counter.inc
+ * re-read the settings - another task may have written them while we ran
+ $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+ if $al.Settings
+  $active = $al.Settings[18]
+  if is datatyp[ $active ] == DATATYPE_INT
+   $active = $active - 1
+   if $active < 0
+    * floor at zero so a stale or crashed counter can never go negative
+    $active = 0
+   end
+   $al.Settings[18] = $active
+   set global variable: name='al.LI.FDN.event' value=$al.Settings
+  end
+ end
+end
+ * v9.01 B11: Supply.Factory holds the per-factory 'buy' lock while this runs - release it
+ * here so a wedged or long buy does not block the factory until the 120 s stale expires.
+if $factory.valid
+ = [THIS] -> call script lib.LI.FDN.Lock : obj=$factory key='buy' action='release' timeout=null
+end
+return null
+
