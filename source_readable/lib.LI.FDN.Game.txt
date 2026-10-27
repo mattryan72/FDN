@@ -1,0 +1,46 @@
+* Script: lib.LI.FDN.Game  (v1, engine 50)
+* Desc: FDN v9.01 - Which game is running: 1 = TC, 2 = AP, 3 = FL
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 4). Single owner of the "which game" test that
+* v8 kept in lib.BW.isAP (script engine version >= 50, which is also TRUE on FL). It
+* reads the script engine version once and maps it with >= thresholds, never ==.
+* It reads no settings and writes nothing, so it is safe from any script. Callers that
+* want the result kept (plugin.LI.FDN.Upgrade, plugin.LI.FDN.Setup) store it in settings
+* [23]; this script does not touch the settings array.
+
+* Engine numbers (NOTES_semantics T7 and the FDN v8 notes):
+* - TC 3.2 = 44 (out of scope for v9, still reported as 1)
+* - AP 2.0 = 52
+* - FL 1.3 with Unofficial Patch 1.3.20 = 60 (measured on Matt's game)
+* VERIFY: the AP 3.3 value, and vanilla FL 1.3 without the patch, which may be below 60
+* and would then be reported as 2. Run test T7 there and adjust the FL threshold if so.
+
+* Arguments:
+* - none
+
+* Returns values:
+* - 1 = TC (engine below 50)
+* - 2 = AP (engine 50 to 59)
+* - 3 = FL (engine 60 or more)
+
+* To Do - VERIFY the AP 3.3 and unpatched FL engine values (see above)
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: FL 27/10/2026 (test.LI.FDN.Game 3/3, engine 60; AP and unpatched FL not seen)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P4-01): replaces the lib.BW.isAP game test with a three-way result
+ * -----------------------------------------------------------------------------------
+
+$engine = = script engine version
+if $engine >= 60
+ $game = 3
+else if $engine >= 50
+ $game = 2
+else
+ $game = 1
+end
+
+return $game
