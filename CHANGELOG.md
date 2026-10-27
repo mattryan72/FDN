@@ -8,6 +8,7 @@
 ### Decisions
 - Keep temporary docked freighter for trades; harden it (R-T1 / B15).
 - B5, B9 and the FL Station Manager exclusion approved by Matt on 2026-10-17 (see Behaviour changes).
+- FL patch flag: settings [24] is 1 when lib.LI.FDN.Game returns 3 (engine 60 or more), otherwise 0; patch-only commands live in their own scripts called only when [24] is 1 (decided by Matt 2026-10-27, P4-02).
 
 ### Fixed
 - [B18] Main.Menu: safe ware edits (record get-or-create) - done in P1-05a.
