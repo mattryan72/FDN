@@ -7,14 +7,15 @@
 * plugin.LI.FDN.Menu.Command, which returns the NEW stack or null to close. Main.Menu never
 * edits the stack and never assigns a view; the old command cascade, the -1 view table,
 * the header 'Switch to' row and the show.factory plumbing are gone.
-* Views (v8 numbers kept so settings [5] and the _D updaters do not change):
+* Views (v8 numbers kept so settings [5] does not change):
 *   1 DC (Menu.Station), 2 Stations (Menu.Stations), 4 Factory Details,
 *   5 Dock (Menu.Station), 6 Ware Details, 7 Config. View 3 is retired.
 * Opening state is [[1, DC, null]], or [[7, null, null]] when no DC is set.
 * Back and Escape (-1) are handled by Menu.Command. The footer shows Back when the stack
 * has more than one entry and Close otherwise, both as the row ['back', null, null, null].
-* B8: the controller bumps token [20] on every open, and START's an updater (DC.Details_D
-* for view 1, Dock.Details_D for view 5) only when it ENTERS that view or station, never on a redraw.
+* B8/P3-09: the controller bumps token [20] on every open, and START's the single updater
+* plugin.LI.FDN.Menu.Refresh (view, obj, token) only when it ENTERS view 1 or 5 or a different station,
+* never on a redraw. Refresh exits by itself for a static view, a newer token or another view.
 * Builder contracts (P3-06, P3-07):
 *   plugin.LI.FDN.Menu.Station  : menu, view (1 or 5), obj   -> the menu
 *   plugin.LI.FDN.Menu.Stations : menu, obj                  -> the menu
@@ -25,11 +26,11 @@
 
 * Returns null
 
-* To Do - install only after P3-06 (Menu.Station) and P3-07 (Menu.Stations) exist and texts 302-307 are in the text file
+* To Do - install together with plugin.LI.FDN.Menu.Refresh (P3-09); the texts 302-307 are in the text file
 
 * Version: 2.0
 * Date: 27/10/2026
-* Tested: not tested
+* Tested: FL 27/10/2026 (menu opened in game: DC view, Stations link; not all hand-checks seen)
 * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -154,11 +155,7 @@ end
 $menu.token = $menu.token + 1
 $al.Settings[20] = $menu.token
 set global variable: name='al.LI.FDN.event' value=$al.Settings
-if $view == 1
- START  = null -> call script plugin.LI.FDN.Menu.DC.Details_D :
-else
- START  = null -> call script plugin.LI.FDN.Menu.Dock.Details_D : value=$obj
-end
+START  = null -> call script plugin.LI.FDN.Menu.Refresh : view=$view obj=$obj token=$menu.token
 $updater.view = $view
 $updater.obj = $obj
 endsub

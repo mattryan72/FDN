@@ -74,6 +74,14 @@ if $is.dc == [TRUE]
 end
  = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$obj
 
+* navigation: the DC view links to the Stations list (factories and docks by sector); the old header 'Switch to' row is gone
+if $is.dc == [TRUE]
+ $txt = = read text: page=$PageID id=114
+ add custom menu heading to array $menu: title=$txt
+ $txt = = read text: page=$PageID id=303
+ add custom menu item to array $menu: text=$txt returnvalue='open.stations'
+end
+
 * credits heading, also published for the updater
 gosub Credits.Sub:
 $pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null

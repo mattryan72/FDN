@@ -1,0 +1,154 @@
+* Script: plugin.LI.FDN.Menu.Refresh  (v1, engine 50)
+* Desc: FDNv9 - Live refresh of the DC and dock views
+* Arg 0: view (Value) 'view'
+* Arg 1: obj (Value) 'obj'
+* Arg 2: token (Value) 'token'
+
+ * Author: Logain Abler
+ * -----------------------------------------------------------------------------------
+ * STARTed by plugin.LI.FDN.Main.Menu when it enters view 1 (DC) or 5 (dock). It is a
+ * task (it waits), so Main.Menu does not wait on it. It replaces
+ * plugin.LI.FDN.Menu.DC.Details_D and Menu.Dock.Details_D.
+ *
+ * Menu.Station already drew the first rows and stored every ware row pair in a global
+ * named by text 5000 (id, ware) and the credits row in one named by text 5001 (id). The
+ * menu holds the SAME array objects as those globals, so this script edits the arrays IN
+ * PLACE and never replaces them. Each pass re-reads the settings global to see a newer
+ * token, an FDN switch-off or another view, then updates credits and every stored ware
+ * row from lib.LI.FDN.Menu.WareRow. Wares added since the draw have no stored pair yet
+ * and are skipped; they appear on the next redraw.
+ *
+ * Expected values:
+ * - view (Value): 1 = the DC, anything else here = a dock
+ * - obj (Value): the station to refresh
+ * - token (Value): the menu generation this updater serves
+ *
+ * Returns values:
+ * - null
+ *
+ * To Do - N/A
+ *
+ * Version: 1.0
+ * Date: 27/10/2026
+ * Tested: FL 27/10/2026 (test.LI.FDN.Refresh 7/7, run twice; live DC view opened in game)
+ * -----------------------------------------------------------------------------------
+  * v9.01 D6 (P3-09): single updater for views 1 and 5, replaces the _D updaters
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+* datatype check before any -> call (a number or string would throw a script error)
+if not is datatyp[ $obj ] == DATATYPE_STATION
+ return null
+end
+$exists = $obj  ->  exists
+if not $exists
+ return null
+end
+
+* dynamic flag: [6][0] for the DC, [6][2] for a dock (a static view needs no refresh;
+* the first draw already has the values)
+$dyn = $al.Settings[6]
+if not is datatyp[ $dyn ] == DATATYPE_ARRAY
+ return null
+end
+$flag = null
+if $view == 1
+ $flag = $dyn[0]
+else
+ $flag = $dyn[2]
+end
+if not $flag
+ return null
+end
+
+$id = $obj  ->  get ID code
+
+while [TRUE]
+ * wait
+  = wait randomly from 1000 to 2000 ms
+ * re-read the settings each pass so we see a newer menu, an FDN switch-off or another view
+ $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+ if not $al.Settings
+  return null
+ end
+ $st = $al.Settings[0]
+ if not $st
+  * FDN switched off
+  return null
+ end
+ $cur.token = $al.Settings[20]
+ if not $cur.token == $token
+  * a newer menu or updater was STARTed, this one must stop
+  return null
+ end
+ $open = $al.Settings[5]
+ if not $open == $view
+  * the menu closed or another view is open
+  return null
+ end
+ $exists = $obj  ->  exists
+ if not $exists
+  return null
+ end
+ gosub Credits.Sub:
+ gosub Wares.Sub:
+end
+
+return null
+* -----------------------------------------------------------------------------------
+
+* credits row: refresh element 3 (the money) of the stored array in place; the menu
+* holds the same array, so the open menu updates
+Credits.Sub:
+$pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null
+$credits.row = get global variable: name=$pointer
+if is datatyp[ $credits.row ] == DATATYPE_ARRAY
+ $money = $obj  ->  get money
+ $money = = convert number $money to string
+ $money = = sprintf: pageid=$PageID textid=202, $money, null, null, null, null
+ $credits.row[3] = $money
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* ware rows: rebuild each stored pair via WareRow and copy the new row's elements into
+* the OLD array (the same one the menu holds) element by element. A ware with no stored
+* pair (new since the draw) is skipped; the next redraw adds it. Each element is copied
+* to a local first - never an array element in a condition, and $pair[0] / the global
+* are never assigned.
+Wares.Sub:
+$ware.array = $obj  ->  get tradeable ware array from station
+$s = size of array $ware.array
+while $s > 0
+ dec $s =
+ $ware = $ware.array[$s]
+ $pointer = = sprintf: pageid=$PageID textid=5000, $id, $ware, null, null, null
+ $pair = get global variable: name=$pointer
+ if is datatyp[ $pair ] == DATATYPE_ARRAY
+  $is.dc = [FALSE]
+  if $view == 1
+   $is.dc = [TRUE]
+  end
+  $new.pair = [THIS] -> call script lib.LI.FDN.Menu.WareRow : station=$obj ware=$ware is.dc=$is.dc
+  if is datatyp[ $new.pair ] == DATATYPE_ARRAY
+   $old.row = $pair[0]
+   $new.row = $new.pair[0]
+   $n.old = size of array $old.row
+   $n.new = size of array $new.row
+   $n = $n.old
+   if $n.new < $n.old
+    $n = $n.new
+   end
+   while $n > 0
+    dec $n =
+    $v = $new.row[$n]
+    $old.row[$n] = $v
+   end
+  end
+ end
+end
+endsub
