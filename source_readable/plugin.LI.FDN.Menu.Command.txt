@@ -162,8 +162,7 @@ if $command == 'can.buy'
  return $stack
 end
 if $command == 'surplus'
- $idx = 7
- gosub Ware.Toggle.Sub:
+ gosub Ware.Surplus.Sub:
  return $stack
 end
 if $command == 'product'
@@ -381,6 +380,30 @@ if $cur
  $rec[$idx] = null
 else
  $rec[$idx] = 1
+end
+gosub Ware.Save.Sub:
+endsub
+
+* v9.01 B5: surplus cycles Default (-1) -> On (1) -> Off (0) -> Default; null counts as Default
+Ware.Surplus.Sub:
+* Ware.Save.Sub logs $rec[$idx], so the index is set here
+$idx = 7
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+$cur = $rec[7]
+if is datatyp[ $cur ] == DATATYPE_NULL
+ $cur = -1
+end
+if $cur == -1
+ $rec[7] = 1
+else
+ if $cur == 1
+  $rec[7] = 0
+ else
+  $rec[7] = -1
+ end
 end
 gosub Ware.Save.Sub:
 endsub
