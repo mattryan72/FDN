@@ -1,0 +1,53 @@
+* Script: lib.LI.FDN.Menu.Toggle  (v1, engine 50)
+* Desc: FDN v9.01 - Appends one ON/OFF toggle row to a custom menu array
+* Arg 0: menu (Value) 'menu'
+* Arg 1: label (String) 'label'
+* Arg 2: bool (Value) 'bool'
+* Arg 3: retval (Value) 'retval'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 3). Single owner of the D5 ON/OFF toggle row copied
+* in v8 (Ware.Details can.buy / surplus, Config.Menu dynamic.dc / dynamic.dock / auto):
+* it turns a boolean into the green ON (text 148) or red OFF (text 149), then delegates to
+* lib.LI.FDN.Menu.Row with that text as the value. One call = one finished toggle row.
+
+* The menu is passed as an ARRAY argument. Arrays are references: Menu.Row appends to the
+* caller's own $menu in place, so nothing is returned and the caller sees the new row
+* without reading any return value (T3). No waits, no STARTs - safe from a builder or
+* inside plugin.LI.FDN.Main.Menu's loop.
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place); anything but an array adds nothing
+* - label (String): column-1 text; already read from the text file by the caller (P3-02 rule)
+* - bool (Value): true = show ON (text 148); false or null = show OFF (text 149), as v8
+* - retval (Value): [cmd, obj, ware] array for a clickable row; null = an info line
+
+* Returns values:
+* - null always (the menu is changed in place)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+ * v9.01 D5 (P3-02): toggle row helper extracted from the copy in Ware.Details / Config.Menu
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return null
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+* v9.01 D5: bool TRUE reads text 148 (ON), anything else 149 (OFF) - exactly as the v8 rows did
+if $bool
+ $onoff.txt = = read text: page=$PageID id=148
+else
+ $onoff.txt = = read text: page=$PageID id=149
+end
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$label value=$onoff.txt retval=$retval
+return null

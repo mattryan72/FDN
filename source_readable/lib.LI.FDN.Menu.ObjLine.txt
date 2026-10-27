@@ -1,0 +1,58 @@
+* Script: lib.LI.FDN.Menu.ObjLine  (v1, engine 50)
+* Desc: FDN v9.01 - Appends the 'Name [ID]' + sector header block to a custom menu array
+* Arg 0: menu (Value) 'menu'
+* Arg 1: object (Value) 'object'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 3). Single owner of the D6 object header line copied
+* in six menus (Ware.Details, Factory.Details, DC/Dock details): it validates the object
+* with lib.LI.FDN.Is.Valid (need.dock FALSE - any player station is a valid header), then
+* adds the 'Name [ID]' text from plugin.LI.FDN.Format.Name and its sector line exactly as
+* v8 Menu.Ware.Details did: an info row [1, name, -1, sector] followed by a blank ' ' line.
+
+* The menu is passed as an ARRAY argument. Arrays are references: every append happens on
+* the caller's own $menu in place, so nothing is returned and the caller sees the new lines
+* without reading any return value (T3). No waits, no STARTs - safe from a builder or inside
+* plugin.LI.FDN.Main.Menu's loop.
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place); anything but an array adds nothing
+* - object (Value): the station whose header block is shown (DC, dock or factory)
+
+* Returns values:
+* - null always (the menu is changed in place); a null or invalid object adds nothing and returns null
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P3-02): header line helper extracted from the copy in Ware.Details and the other five menus
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return null
+end
+* v9.01 B3/B12 (P2-02): validate once - a null or invalid object adds nothing and returns null
+$valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$object need.dock=[FALSE]
+if not $valid == [TRUE]
+ return null
+end
+* name text from the shared formatter (text 134); null means no such object - add nothing
+$name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$object
+if not is datatyp[ $name.txt ] == DATATYPE_STRING
+ return null
+end
+$sector = $object  ->  get sector
+* v9.01 D6: the 'Name [ID]' info row, identical to Ware.Details
+$header = = array alloc: size=4
+$header[0] = 1
+$header[1] = $name.txt
+$header[2] = -1
+$header[3] = $sector
+add custom menu info line to array $menu: text=$header
+* blank separator line, as in Ware.Details
+add custom menu info line to array $menu: text=' '
+return null

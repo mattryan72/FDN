@@ -1,0 +1,54 @@
+* Script: lib.LI.FDN.Menu.Row  (v1, engine 50)
+* Desc: FDN v9.01 - Appends one finished 4-column row to a custom menu array
+* Arg 0: menu (Value) 'menu'
+* Arg 1: label (String) 'label'
+* Arg 2: value (Value) 'value'
+* Arg 3: retval (Value) 'retval'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 3). Single owner of the D5 four-column row copied
+* across ~28 places in v8 (Config.Menu x8, Ware.Details x11, Factory.Details x3):
+* it builds [1, label, -1, value] and appends create new array, arguments=row, retval,
+* null, null, null to the menu, then adds a section. One call = one finished row.
+
+* The menu is passed as an ARRAY argument. Arrays are references: every append happens
+* on the caller's own $menu in place, so nothing is returned and the caller sees the new
+* row without reading any return value (T3). No waits, no STARTs - safe from a builder or
+* inside plugin.LI.FDN.Main.Menu's loop.
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place); anything but an array adds nothing
+* - label (String): column-1 text; already read from the text file by the caller (P3-02 rule)
+* - value (Value): column-4 text, normally a number converted to string by the caller
+* - retval (Value): [cmd, obj, ware] array for a clickable row; null = an info line (plain info line, no section, as the v8 info rows)
+
+* Returns values:
+* - null always (the menu is changed in place)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 26/10/2026
+* Tested: TC 26/10/2026
+* -----------------------------------------------------------------------------------
+ * v9.01 D5 (P3-02): row helper extracted from the copy in Ware.Details / Config.Menu / Factory.Details
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return null
+end
+$line = = array alloc: size=4
+$line[0] = 1
+$line[1] = $label
+$line[2] = -1
+$line[3] = $value
+if is datatyp[ $retval ] == DATATYPE_ARRAY
+ $format = = create new array, arguments=$line, $retval, null, null, null
+ append $format to array $menu
+ add section to custom menu: $menu
+else
+ * v9.01 D5: null retval = info line, added the way the hand-built v8 info rows did (no return value, no section)
+ add custom menu info line to array $menu: text=$line
+end
+return null
