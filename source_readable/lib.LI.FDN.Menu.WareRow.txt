@@ -1,0 +1,225 @@
+* Script: lib.LI.FDN.Menu.WareRow (v1, engine 50)
+* Desc: FDN v9.01 - Build one formatted ware row for the DC or dock station view
+* Arg 0: station (Value) 'station'
+* Arg 1: ware (Value) 'ware'
+* Arg 2: is.dc (Boolean) 'is.dc'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (Phase 3). Single owner of the D8 row format duplicated
+* in Wares.Summary as DC.Summary.Sub (12 columns, offsets -470/-380/-290/-200) and
+* Dock.Summary.Sub (10 columns, offsets -380/-290/-200): both read the same 12-element
+* ware record off the station and only differ in which settings are shown.
+
+* One call returns a 2-element array [row, ['open.ware', station, ware]] where row is
+* the array of columns - exactly what Wares.Summary wrapped around its two subs. The
+* caller appends it straight to the menu array (arrays are references).
+
+* The record is read via lib.LI.FDN.Ware.Rec : create=[TRUE], so a first sight of a ware
+* creates the v9 default record - same side effect as Wares.Summary Build.Ware.Array.Sub,
+* minus its add-1/add--1 cargo trick (the engine already counts an empty cargo
+* bay as 0 units for 'get amount of ware in cargo bay', so the trick is not needed here).
+
+* The v8 price fallbacks are kept: when buy-at [4] or sell-at [6] is not a positive number
+* they display the current station price and the record is written back with that value,
+* exactly as Wares.Summary does.
+
+* Bad input returns null before any object command that could throw: settings missing
+* (Cfg.Get), station not a DATATYPE_STATION or destroyed (datatype check first, P2 lesson),
+* ware null, or Ware.Rec returning null. No waits, no STARTs - safe from a builder.
+
+* Arguments:
+* - station (Value): Station the row describes (the DC dock or any managed dock)
+* - ware (Value): Ware the row shows
+* - is.dc (Boolean): true = build the 12-column DC row; false/null = the 10-column dock row
+
+* Returns values:
+* - a 2-element array [row, ['open.ware', station, ware]] ('create new array' stops at
+*   the first null, so no trailing nulls are stored) to append; null for bad input
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: TC 27/10/2026
+* -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+if not is datatyp[ $station ] == DATATYPE_STATION
+ * station datatype check before any -> call (a number or string would throw a script error)
+ return null
+end
+$exists = $station  ->  exists
+if not $exists
+ return null
+end
+if not $ware
+ return null
+end
+* record via Ware.Rec - create=[TRUE] so the row shows defaults on first sight, like v8
+$rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[TRUE]
+if not $rec
+ * no record and nothing to display (bad input in Ware.Rec)
+ return null
+end
+* -----------------------------------------------------------------------------------
+
+* current price - same command Wares.Summary uses for both views
+$price = $station  ->  get price of ware $ware
+* array elements copied to locals before any condition (P1 lesson)
+$remote.cap = $rec[1]
+$buy = $rec[3]
+$sell.cap = $rec[5]
+$maintain.stock = $rec[2]
+if $is.dc
+ * v9.01 D8: DC row - 12 columns, offsets
+ $row = = array alloc: size=12
+ $row[0] = 1
+ $row[2] = -470
+ $row[4] = -380
+ $row[6] = -290
+ $row[8] = -200
+ $row[10] = -1
+ * remote cap allow [1]: ON/OFF text 151/150
+ if $remote.cap > 0
+  $txt1 = = read text: page=$PageID id=151
+ else
+  $txt1 = = read text: page=$PageID id=150
+ end
+ * can buy [3]: ON/OFF text 153/152
+ if $buy == 1
+  $txt2 = = read text: page=$PageID id=153
+ else
+  $txt2 = = read text: page=$PageID id=152
+ end
+ * sell cap [5]: allow / not allowed, text 155/154
+ if $sell.cap >= 0
+  $txt3 = = read text: page=$PageID id=155
+ else
+  $txt3 = = read text: page=$PageID id=154
+ end
+ * label column - '- ' prefix + flags + ware name
+ $pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+ $ware.txt = $pre + $txt1 + '|' + $txt2 + '|' + $txt3 + ' ~ ' + $ware
+ $row[1] = $ware.txt
+ * remote cap value [1]: number when >= 0 else ' - '
+ if $remote.cap >= 0
+  $cap.txt = = convert number $remote.cap to string
+  $row[3] = = sprintf: pageid=$PageID textid=9000, $cap.txt, null, null, null, null
+ else
+  $row[3] = ' - '
+ end
+ * buy at [4]: v8 price fallback + write-back
+ $buy.at = $rec[4]
+ if not $buy.at > 0
+  $rec[4] = $price
+  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+  $station  ->  set local variable: name=$pointer value=$rec
+ end
+ $buy.at.txt = = convert number $buy.at to string
+ if $buy == 1
+  $row[5] = = sprintf: pageid=$PageID textid=9000, $buy.at.txt, null, null, null, null
+ else
+  $row[5] = $buy.at.txt
+ end
+ * sell cap value [5]: number when >= 0 else ' - '
+ if $sell.cap >= 0
+  $cap.txt = = convert number $sell.cap to string
+  $row[7] = = sprintf: pageid=$PageID textid=9000, $cap.txt, null, null, null, null
+ else
+  $row[7] = ' - '
+ end
+ * sell at [6]: v8 price fallback + write-back
+ $sell.at = $rec[6]
+ if not $sell.at > 0
+  $rec[6] = $price
+  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+  $station  ->  set local variable: name=$pointer value=$rec
+ end
+ $sell.at.txt = = convert number $sell.at to string
+ if $sell.cap >= 0
+  $row[9] = = sprintf: pageid=$PageID textid=9000, $sell.at.txt, null, null, null, null
+ else
+  $row[9] = $sell.at.txt
+ end
+ * storage physical/virtual goes to column [11]
+ $storage.index = 11
+
+else
+ * v9.01 D8: dock row - 10 columns, offsets
+ $row = = array alloc: size=10
+ $row[0] = 1
+ $row[2] = -380
+ $row[4] = -290
+ $row[6] = -200
+ $row[8] = -1
+ * sell allow [5]: text 155/154
+ if $sell.cap >= 0
+  $txt1 = = read text: page=$PageID id=155
+ else
+  $txt1 = = read text: page=$PageID id=154
+ end
+ * surplus flag [7]: ON/OFF text 155/154
+ $surplus = $rec[7]
+ if $surplus
+  $txt2 = = read text: page=$PageID id=155
+ else
+  $txt2 = = read text: page=$PageID id=154
+ end
+ * label column - '- ' prefix + flags + ware name
+ $pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+ $ware.txt = $pre + $txt1 + '|' + $txt2 + ' ~ ' + $ware
+ $row[1] = $ware.txt
+ * maintain stock [2]: number when >= 0 else ' - '
+ if $maintain.stock >= 0
+  $cap.txt = = convert number $maintain.stock to string
+  $row[3] = = sprintf: pageid=$PageID textid=9000, $cap.txt, null, null, null, null
+ else
+  $row[3] = ' - '
+ end
+ * sell at [6]: v8 price fallback + write-back
+ $sell.at = $rec[6]
+ if not $sell.at > 0
+  $rec[6] = $price
+  $pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+  $station  ->  set local variable: name=$pointer value=$rec
+ end
+ * sell cap [5] + sell at [6]:
+ if $sell.cap >= 0
+  $cap.txt = = convert number $sell.cap to string
+  $row[5] = = sprintf: pageid=$PageID textid=9000, $cap.txt, null, null, null, null
+  $sell.at.txt = = convert number $sell.at to string
+  $row[7] = = sprintf: pageid=$PageID textid=9000, $sell.at.txt, null, null, null, null
+ else
+  $row[5] = ' - '
+  $sell.at.txt = = convert number $sell.at to string
+  $row[7] = $sell.at.txt
+ end
+ * storage physical/virtual goes to column [9]
+ $storage.index = 9
+end
+* -----------------------------------------------------------------------------------
+
+* storage: physical cargo / virtual stock, same block in both v8 subs
+$amount = $station  ->  get amount of ware $ware in cargo bay
+$amount.txt = = convert number $amount to string
+$virtual = $rec[0]
+if not $virtual > 0
+ * v9.01 B4: never read a null element - normalise virtual stock to 0, as the v8 subs do
+ $rec[0] = 0
+ $virtual = $rec[0]
+end
+$virtual.txt = = convert number $virtual to string
+$virtual.txt = = sprintf: pageid=$PageID textid=9004, $virtual.txt, null, null, null, null
+$row[$storage.index] = $amount.txt + '/' + $virtual.txt
+* -----------------------------------------------------------------------------------
+
+* v8 row wrapper - Wares.Summary: columns + retval ['open.ware', station, ware]
+$return.value = = create new array, arguments='open.ware', $station, $ware, null, null
+return = create new array, arguments=$row, $return.value, null, null, null
+
+
