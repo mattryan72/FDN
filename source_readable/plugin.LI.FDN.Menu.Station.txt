@@ -1,0 +1,216 @@
+* Script: plugin.LI.FDN.Menu.Station  (v1, engine 50)
+* Desc: FDN v9.01 - Build the DC or dock view of the menu (one script for both)
+* Arg 0: menu (Value) 'menu'
+* Arg 1: view (Value) 'view'
+* Arg 2: obj (Value) 'obj'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Replaces plugin.LI.FDN.Menu.AP.DC.Details, Menu.AP.Dock.Details, Menu.DC.Details and
+* Menu.Dock.Details. Called by plugin.LI.FDN.Main.Menu for view 1 (the DC) and view 5
+* (a dock). The view only changes the header (the DC gets the 'Current DC' line), the
+* ware columns (12 for the DC, 10 for a dock, built by lib.LI.FDN.Menu.WareRow) and the
+* Configuration link, which only the DC shows.
+
+* Layout: info lines, credits heading, Show All / Hide All (AP and FL only), then one
+* group per main type from plugin.LI.FDN.Sort.Wares. On AP and FL a group is a native
+* collapsible grouping. On TC (no native groups) it is a plain heading, so the v8 show
+* and hide toggle rows (show.type.dc / show.type.dock) no longer exist. Last come the
+* Add Ware and Configuration items.
+
+* Live values: every ware row array and the credits array is also stored in a global
+* named by text 5000 (id, ware) and text 5001 (id), the same names the v8 updaters
+* used. The menu holds the same array objects, so an updater (Menu.Refresh, P3-09) that
+* edits the stored arrays in place updates the open menu. This script only does the
+* first draw, it never waits and never STARTs anything.
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place)
+* - view (Value): 1 = the DC view, anything else = a dock view
+* - obj (Value): the station to show
+
+* Returns values:
+* - the menu array (the same array that was passed in). A bad menu returns it
+*   untouched, a bad station adds nothing.
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: FL 27/10/2026 (builder test, AP branch; TC branch not yet seen)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P3-06): one builder for the DC and dock views, on lib.LI.FDN.Menu.WareRow / Menu.ObjLine
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return $menu
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return $menu
+end
+$PageID = $al.Settings[1]
+* datatype check before any -> call (a number or string would throw a script error)
+if not is datatyp[ $obj ] == DATATYPE_STATION
+ return $menu
+end
+$exists = $obj  ->  exists
+if not $exists
+ return $menu
+end
+
+$is.dc = [FALSE]
+if $view == 1
+ $is.dc = [TRUE]
+end
+$is.AP = [THIS] -> call script lib.BW.isAP :
+$id = $obj  ->  get ID code
+
+* header: the DC view names itself as the current DC, then the 'Name [ID]' line and sector
+if $is.dc == [TRUE]
+ $txt = = read text: page=$PageID id=129
+ add custom menu info line to array $menu: text=$txt
+ add custom menu info line to array $menu: text=' '
+end
+ = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$obj
+
+* credits heading, also published for the updater
+gosub Credits.Sub:
+$pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null
+set global variable: name=$pointer value=$credits.row
+add custom menu heading to array $menu: title=$credits.row
+
+* Show All / Hide All only exist as menu commands on AP and FL
+if $is.AP == [TRUE]
+ $show.all = = create menu return value: command Open All Groups
+ $txt = = read text: page=$PageID id=198
+ add custom menu item to array $menu: text=$txt returnvalue=$show.all
+ $hide.all = = create menu return value: command Close All Groups
+ $txt = = read text: page=$PageID id=199
+ add custom menu item to array $menu: text=$txt returnvalue=$hide.all
+end
+add section to custom menu: $menu
+
+* wares grouped by main type: [[main.type, [wares]], ...]
+$sorted = [THIS] -> call script plugin.LI.FDN.Sort.Wares : station=$obj
+$sm = 0
+if is datatyp[ $sorted ] == DATATYPE_ARRAY
+ $sm = size of array $sorted
+end
+$rows = 0
+while $sm > 0
+ dec $sm =
+ $group = $sorted[$sm]
+ $main.type = $group[0]
+ $ware.array = $group[1]
+ $sw = size of array $ware.array
+ if $sw > 0
+  $txt = = read text: page=$PageID id=$main.type
+  if $is.AP == [TRUE]
+   $open = 1
+   add new grouping to menu: $menu, text=$txt, open=$open
+  else
+   add custom menu heading to array $menu: title=$txt
+  end
+  gosub Header.Row.Sub:
+  while $sw > 0
+   dec $sw =
+   $ware = $ware.array[$sw]
+   $wr = [THIS] -> call script lib.LI.FDN.Menu.WareRow : station=$obj ware=$ware is.dc=$is.dc
+   if is datatyp[ $wr ] == DATATYPE_ARRAY
+    $pointer = = sprintf: pageid=$PageID textid=5000, $id, $ware, null, null, null
+    set global variable: name=$pointer value=$wr
+    append $wr to array $menu
+    inc $rows =
+   end
+  end
+  if $is.AP == [TRUE]
+   add end grouping to menu: $menu
+  else
+   add section to custom menu: $menu
+  end
+ end
+end
+
+* add ware
+$txt = = read text: page=$PageID id=195
+add custom menu heading to array $menu: title=$txt
+$return.array = = array alloc: size=2
+$return.array[0] = 'add.ware'
+$return.array[1] = $obj
+$txt = = read text: page=$PageID id=196
+add custom menu item to array $menu: text=$txt returnvalue=$return.array
+
+* configuration link, DC view only
+if $is.dc == [TRUE]
+ $txt = = read text: page=$PageID id=164
+ add custom menu heading to array $menu: title=$txt
+ $txt = = read text: page=$PageID id=165
+ add custom menu item to array $menu: text=$txt returnvalue='open.config'
+end
+
+$log.txt = 'Menu.Station view=' + $view + ', ware rows ' + $rows
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller='plugin.LI.FDN.Menu.Station'
+return $menu
+* -----------------------------------------------------------------------------------
+
+* Credits row: 'Wares:' and the station money, 4-column array as the v8 updater wrote it
+Credits.Sub:
+$credits.row = = array alloc: size=4
+$credits.row[0] = 1
+$txt = = read text: page=$PageID id=146
+$credits.row[1] = $txt
+$credits.row[2] = -1
+$money = $obj  ->  get money
+$money = = convert number $money to string
+$money = = sprintf: pageid=$PageID textid=202, $money, null, null, null, null
+$credits.row[3] = $money
+endsub
+* -----------------------------------------------------------------------------------
+
+* Column header row of a type group. The DC shows 6 columns, a dock 5 (no remote cap).
+* AP and FL use a non selectable item, TC an info line.
+Header.Row.Sub:
+if $is.dc == [TRUE]
+ $head = = array alloc: size=12
+ $head[2] = -470
+ $head[4] = -380
+ $head[6] = -290
+ $head[8] = -200
+ $head[10] = -1
+ $txt = = read text: page=$PageID id=142
+ $head[3] = $txt
+ $txt = = read text: page=$PageID id=144
+ $head[5] = $txt
+ $txt = = read text: page=$PageID id=143
+ $head[7] = $txt
+ $txt = = read text: page=$PageID id=145
+ $head[9] = $txt
+ $txt = = read text: page=$PageID id=140
+ $head[11] = $txt
+else
+ $head = = array alloc: size=10
+ $head[2] = -380
+ $head[4] = -290
+ $head[6] = -200
+ $head[8] = -1
+ $txt = = read text: page=$PageID id=147
+ $head[3] = $txt
+ $txt = = read text: page=$PageID id=143
+ $head[5] = $txt
+ $txt = = read text: page=$PageID id=145
+ $head[7] = $txt
+ $txt = = read text: page=$PageID id=140
+ $head[9] = $txt
+end
+$head[0] = 1
+$txt = = read text: page=$PageID id=201
+$head[1] = $txt
+if $is.AP == [TRUE]
+ add non selectable menu item: $menu, text=$head
+else
+ add custom menu info line to array $menu: text=$head
+end
+endsub
+* -----------------------------------------------------------------------------------
+return null
