@@ -1,0 +1,258 @@
+* Script: plugin.LI.FDN.Menu.Stations  (v1, engine 50)
+* Desc: FDN v9.01 - Build the Stations view of the menu (factories and docks by sector)
+* Arg 0: menu (Value) 'menu'
+* Arg 1: obj (Value) 'obj'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Replaces plugin.LI.FDN.Menu.AP.Factory.List, Menu.Factory.List, Menu.AP.Dock.List and
+* Menu.Dock.List. Called by plugin.LI.FDN.Main.Menu for view 2. It lists the factories
+* in settings [3] and the docks in settings [4] (the DC is left out), grouped by sector,
+* and never scans the universe. The sectors come from the listed stations themselves.
+* AP and FL use native collapsible groups with Show All / Hide All; TC uses a plain heading
+* per sector. A row opens the station (open.factory / open.dock).
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place)
+* - obj (Value): reserved, not used yet
+
+* Returns values:
+* - the menu array (the same array that was passed in)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: FL 27/10/2026 (builder test, AP branch; TC branch not yet seen)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P3-07): one builder for the stations list, on lib.LI.FDN.Is.Valid / Is.Factory / Fac.Cfg
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return $menu
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return $menu
+end
+$PageID = $al.Settings[1]
+$dc = $al.Settings[2]
+$all.factories = $al.Settings[3]
+$all.docks = $al.Settings[4]
+if not is datatyp[ $all.factories ] == DATATYPE_ARRAY
+ $all.factories = = array alloc: size=0
+end
+if not is datatyp[ $all.docks ] == DATATYPE_ARRAY
+ $all.docks = = array alloc: size=0
+end
+$is.AP = [THIS] -> call script lib.BW.isAP :
+$script = 'plugin.LI.FDN.Menu.Stations'
+
+* valid factories and docks, and their sectors (each sector once)
+$valid.factories = = array alloc: size=0
+$valid.docks = = array alloc: size=0
+$sector.array = = array alloc: size=0
+$s = size of array $all.factories
+while $s > 0
+ dec $s =
+ $factory = $all.factories[$s]
+ $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$factory need.dock=[FALSE]
+ if $valid == [TRUE]
+  $is.fac = [THIS] -> call script lib.LI.FDN.Is.Factory : station=$factory
+  if $is.fac == [TRUE]
+   append $factory to array $valid.factories
+   $sector = $factory  ->  get sector
+   if not find $sector in array: $sector.array
+    append $sector to array $sector.array
+   end
+  end
+ end
+end
+
+$s = size of array $all.docks
+while $s > 0
+ dec $s =
+ $dock = $all.docks[$s]
+ $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+ if $valid == [TRUE]
+  if not $dock == $dc
+   append $dock to array $valid.docks
+   $sector = $dock  ->  get sector
+   if not find $sector in array: $sector.array
+    append $sector to array $sector.array
+   end
+  end
+ end
+end
+$sector.array = = sort array $sector.array
+$sector.array = reverse array $sector.array
+* -----------------------------------------------------------------------------------
+
+$sector.count = 0
+$factory.count = 0
+$dock.count = 0
+$product.count = 0
+$resource.count = 0
+$txt = = read text: page=$PageID id=200
+add custom menu heading to array $menu: title=$txt
+* Show All / Hide All only exist as menu commands on AP and FL
+if $is.AP == [TRUE]
+ $show.all = = create menu return value: command Open All Groups
+ $txt = = read text: page=$PageID id=198
+ add custom menu item to array $menu: text=$txt returnvalue=$show.all
+ $hide.all = = create menu return value: command Close All Groups
+ $txt = = read text: page=$PageID id=199
+ add custom menu item to array $menu: text=$txt returnvalue=$hide.all
+end
+add section to custom menu: $menu
+* -----------------------------------------------------------------------------------
+
+$s = size of array $sector.array
+while $s > 0
+ dec $s =
+ $sector = $sector.array[$s]
+ inc $sector.count =
+ gosub Sector.Open.Sub:
+ $sf = size of array $valid.factories
+ while $sf > 0
+  dec $sf =
+  $factory = $valid.factories[$sf]
+  $f.sector = $factory  ->  get sector
+  if $f.sector == $sector
+   gosub Factory.Row.Sub:
+  end
+ end
+ add section to custom menu: $menu
+ $sd = size of array $valid.docks
+ while $sd > 0
+  dec $sd =
+  $dock = $valid.docks[$sd]
+  $d.sector = $dock  ->  get sector
+  if $d.sector == $sector
+   gosub Dock.Row.Sub:
+  end
+ end
+ gosub Sector.Close.Sub:
+end
+* -----------------------------------------------------------------------------------
+
+* global commands for all factories
+$txt = = read text: page=$PageID id=157
+add custom menu heading to array $menu: title=$txt
+$txt = = read text: page=$PageID id=158
+add custom menu item to array $menu: text=$txt returnvalue='product.all.on'
+$txt = = read text: page=$PageID id=159
+add custom menu item to array $menu: text=$txt returnvalue='resource.all.on'
+add section to custom menu: $menu
+$txt = = read text: page=$PageID id=166
+add custom menu item to array $menu: text=$txt returnvalue='product.all.off'
+$txt = = read text: page=$PageID id=167
+add custom menu item to array $menu: text=$txt returnvalue='resource.all.off'
+if $al.Settings[9]
+ $txt = = read text: page=$PageID id=180
+else
+ $txt = = read text: page=$PageID id=181
+end
+add custom menu info line to array $menu: text=$txt
+add custom menu info line to array $menu: text=' '
+if $sector.count > 0
+ $txt = = sprintf: pageid=$PageID textid=2000, $sector.count, null, null, null, null
+ add custom menu info line to array $menu: text=$txt
+ if $factory.count > 0
+  $txt = = sprintf: pageid=$PageID textid=2002, $factory.count, $product.count, $resource.count, null, null
+  add custom menu info line to array $menu: text=$txt
+ end
+ if $dock.count > 0
+  $txt = = sprintf: pageid=$PageID textid=2001, $dock.count, null, null, null, null
+  add custom menu info line to array $menu: text=$txt
+ end
+end
+$log.txt = 'Menu.Stations sectors ' + $sector.count + ', factories ' + $factory.count + ', docks ' + $dock.count
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$script
+return $menu
+* -----------------------------------------------------------------------------------
+
+* Start of a sector: native group on AP and FL, a plain heading on TC
+Sector.Open.Sub:
+if $is.AP == [TRUE]
+ $open = 1
+ add new grouping to menu: $menu, text=$sector, open=$open
+else
+ $head = = array alloc: size=4
+ $head[0] = 1
+ $head[1] = ' '
+ $head[2] = -1
+ $head[3] = $sector
+ add custom menu heading to array $menu: title=$head
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+Sector.Close.Sub:
+if $is.AP == [TRUE]
+ add end grouping to menu: $menu
+else
+ add section to custom menu: $menu
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* One selectable row per factory: name, products managed, resources managed
+Factory.Row.Sub:
+$name = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$factory
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$name = $pre + $name
+$fac.settings = [THIS] -> call script lib.LI.FDN.Fac.Cfg : factory=$factory auto.manage=1
+$txt.p = = read text: page=$PageID id=160
+$txt.r = = read text: page=$PageID id=161
+if is datatyp[ $fac.settings ] == DATATYPE_ARRAY
+ if $fac.settings[0]
+  inc $product.count =
+  $txt.p = = read text: page=$PageID id=162
+ end
+ if $fac.settings[1]
+  inc $resource.count =
+  $txt.r = = read text: page=$PageID id=163
+ end
+end
+$temp.array = = array alloc: size=8
+$temp.array[0] = 1
+$temp.array[1] = ''
+$temp.array[2] = 5
+$temp.array[3] = $name
+$temp.array[4] = -200
+$temp.array[5] = $txt.p
+$temp.array[6] = -1
+$temp.array[7] = $txt.r
+$return.array = = array alloc: size=2
+$return.array[0] = 'open.factory'
+$return.array[1] = $factory
+$format = = create new array, arguments=$temp.array, $return.array, null, null, null
+append $format to array $menu
+inc $factory.count =
+endsub
+* -----------------------------------------------------------------------------------
+
+* One selectable row per dock
+Dock.Row.Sub:
+$name = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$name = $pre + $name
+$temp.array = = array alloc: size=8
+$temp.array[0] = 1
+$temp.array[1] = ''
+$temp.array[2] = 5
+$temp.array[3] = $name
+$temp.array[4] = -200
+$temp.array[5] = ' '
+$temp.array[6] = -1
+$temp.array[7] = ' '
+$return.array = = array alloc: size=2
+$return.array[0] = 'open.dock'
+$return.array[1] = $dock
+$format = = create new array, arguments=$temp.array, $return.array, null, null, null
+append $format to array $menu
+inc $dock.count =
+endsub
+* -----------------------------------------------------------------------------------
+return null
