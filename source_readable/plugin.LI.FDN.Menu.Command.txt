@@ -1,0 +1,652 @@
+* Script: plugin.LI.FDN.Menu.Command (v1, engine 50)
+* Desc: FDN v9.01 - Menu command handler: runs one menu return value and returns the new view stack
+* Arg 0: stack (Value) 'stack'
+* Arg 1: return (Value) 'return'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Phase 3 command handler for the FDN menu. Main.Menu builds one view from the top of its
+* local view stack, opens it, then passes the menu return value to this script. The script
+* returns the NEW view stack, or null to close the menu. Main.Menu only assigns the result
+* back, it never edits the stack itself. There are no FDND.* globals and no 'continue'.
+
+* The stack is an array of entries [view, obj, ware]. View numbers are the v8 values of
+* settings [5]: 1 = DC, 2 = Stations, 4 = Factory.Details, 5 = Dock, 6 = Ware.Details,
+* 7 = Config.Menu (3 is retired).
+
+* The return value is either an array [command, value, ware, extra], the string of a
+* global menu action, or -1 (Escape, handled like 'back').
+
+* Arguments:
+* - stack (Value): the current view stack (array of [view, obj, ware])
+* - return (Value): the menu return value described above
+
+* Returns values:
+* - the new view stack: after navigation commands, a successful remove.ware and master.reset
+* - the same stack, unchanged: after edit commands and global actions
+* - null: after 'back' or Escape on a stack with a single entry (close the menu)
+
+* To Do - set.dc needs plugin.LI.FDN.DC.Change (P3-04b); see notes/P3-04.md
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: TC 27/10/2026
+* -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+if not is datatyp[ $stack ] == DATATYPE_ARRAY
+ return null
+end
+
+* split the return value into command, value, ware and extra (missing parts stay null)
+$command = null
+$value = null
+$ware = null
+$extra = null
+if is datatyp[ $return ] == DATATYPE_ARRAY
+ $rs = size of array $return
+ if $rs > 0
+  $command = $return[0]
+ end
+ if $rs > 1
+  $value = $return[1]
+ end
+ if $rs > 2
+  $ware = $return[2]
+ end
+ if $rs > 3
+  $extra = $return[3]
+ end
+else
+ $command = $return
+ if is datatyp[ $return ] == DATATYPE_INT
+  if $return == -1
+   $command = 'back'
+  end
+ end
+end
+
+$s = size of array $stack
+if $s < 1
+ return null
+end
+
+* --- Navigation ------------------------------------------------------------------
+if $command == 'back'
+ if $s < 2
+  return null
+ end
+ $n = $s - 1
+ $new.stack = array alloc: size=$n
+ $i = 0
+ while $i < $n
+  $new.stack[$i] = $stack[$i]
+  $i = $i + 1
+ end
+ return $new.stack
+end
+
+$view = 0
+$obj = $value
+if $command == 'open.dc'
+ $view = 1
+ $obj = $al.Settings[2]
+end
+if $command == 'open.stations'
+ $view = 2
+end
+if $command == 'open.factory'
+ $view = 4
+end
+if $command == 'open.dock'
+ $view = 5
+end
+if $command == 'open.ware'
+ $view = 6
+end
+if $command == 'open.config'
+ $view = 7
+ $obj = null
+ $ware = null
+end
+if $view > 0
+ $entry = array alloc: size=3
+ $entry[0] = $view
+ $entry[1] = $obj
+ $entry[2] = $ware
+ append $entry to array $stack
+ return $stack
+end
+
+* --- Edit commands ---------------------------------------------------------------
+$edit = 0
+$idx = 0
+if $command == 'remote.cap'
+ $edit = 1
+ $idx = 1
+end
+if $command == 'maintain.cap'
+ $edit = 1
+ $idx = 2
+end
+if $command == 'sell.cap'
+ $edit = 1
+ $idx = 5
+end
+if $command == 'buy.at'
+ $edit = 2
+ $idx = 4
+end
+if $command == 'sell.at'
+ $edit = 2
+ $idx = 6
+end
+if $edit == 1
+ gosub Number.Handler.Sub:
+ return $stack
+end
+if $edit == 2
+ gosub Price.Handler.Sub:
+ return $stack
+end
+
+* --- Toggles -----------------------------------------------------------------------
+if $command == 'can.buy'
+ $idx = 3
+ gosub Ware.Toggle.Sub:
+ return $stack
+end
+if $command == 'surplus'
+ $idx = 7
+ gosub Ware.Toggle.Sub:
+ return $stack
+end
+if $command == 'product'
+ $idx = 0
+ gosub Factory.Toggle.Sub:
+ return $stack
+end
+if $command == 'resource'
+ $idx = 1
+ gosub Factory.Toggle.Sub:
+ return $stack
+end
+if $command == 'auto'
+ $idx = 9
+ gosub Settings.Toggle.Sub:
+ return $stack
+end
+if $command == 'dynamic.dc'
+ $idx = 0
+ gosub Dynamic.Toggle.Sub:
+ return $stack
+end
+if $command == 'dynamic.dock.list'
+ $idx = 1
+ gosub Dynamic.Toggle.Sub:
+ return $stack
+end
+if $command == 'dynamic.dock'
+ $idx = 2
+ gosub Dynamic.Toggle.Sub:
+ return $stack
+end
+
+* --- Stock, move, add ware, all factories ------------------------------------------
+if $command == 'to.physical'
+ $idx = 0
+ gosub Stock.Handler.Sub:
+ return $stack
+end
+if $command == 'to.virtual'
+ $idx = 0
+ gosub Stock.Handler.Sub:
+ return $stack
+end
+if $command == 'move.ware'
+  = [THIS] -> call script plugin.LI.FDN.Move.Ware : ware=$ware source=$value
+ return $stack
+end
+if $command == 'add.ware'
+ gosub Add.Ware.Sub:
+ return $stack
+end
+if $command == 'product.all.on'
+ $gidx = 0
+ $gval = 1
+ gosub Global.Factory.Sub:
+ return $stack
+end
+if $command == 'product.all.off'
+ $gidx = 0
+ $gval = 0
+ gosub Global.Factory.Sub:
+ return $stack
+end
+if $command == 'resource.all.on'
+ $gidx = 1
+ $gval = 1
+ gosub Global.Factory.Sub:
+ return $stack
+end
+if $command == 'resource.all.off'
+ $gidx = 1
+ $gval = 0
+ gosub Global.Factory.Sub:
+ return $stack
+end
+
+* --- Remove ware, reset, debug and surplus default ---------------------------------
+if $command == 'remove.ware'
+ gosub Remove.Ware.Sub:
+ if $removed == 1
+  if $s > 1
+   $n = $s - 1
+   $new.stack = array alloc: size=$n
+   $i = 0
+   while $i < $n
+    $new.stack[$i] = $stack[$i]
+    $i = $i + 1
+   end
+   return $new.stack
+  end
+ end
+ return $stack
+end
+if $command == 'master.reset'
+ $txt = = read text: page=$PageID id=186
+ $confirm = null -> get user input: type=Var/Boolean, title=$txt
+ if $confirm == [TRUE]
+  gosub Reset.Sub:
+  return $new.stack
+ end
+ return $stack
+end
+if $command == 'debug'
+ gosub Debug.Cycle.Sub:
+ return $stack
+end
+if $command == 'surplus.default'
+ gosub Surplus.Cycle.Sub:
+ return $stack
+end
+
+* --- Set the distribution center ----------------------------------------------------
+if $command == 'set.dc'
+ gosub Set.DC.Sub:
+ return $new.stack
+end
+
+* Unknown command: just leave the stack untouched --------------------------------------
+return $stack
+
+
+Ware.Prep.Sub:
+* validate the station, read or create the ware record, build the record pointer
+$ok = 1
+if is datatyp[ $value ] == DATATYPE_STATION
+ $station = $value
+else
+ $station = $al.Settings[2]
+end
+$valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$station need.dock=[FALSE]
+if not $valid == [TRUE]
+ $ok = 0
+end
+if $ok > 0
+ $rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[TRUE]
+ if not $rec
+  $ok = 0
+ end
+end
+$pointer = = sprintf: pageid=$PageID textid=4000, $ware, null, null, null, null
+endsub
+
+
+Ware.Save.Sub:
+* write the record back, register the station, log one line, publish settings
+$station -> set local variable: name=$pointer value=$rec
+ = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$station
+$new.val = $rec[$idx]
+if is datatyp[ $new.val ] == DATATYPE_NULL
+ $new.txt = 'off'
+else
+ $new.txt = = convert number $new.val to string
+end
+$log.txt = 'FDN Menu: ' + $command + ' ware=' + $ware + ' new=' + $new.txt
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Number.Handler.Sub:
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+$txt = = sprintf: pageid=$PageID textid=182, $ware, null, null, null, null
+$amount = null -> get user input: type=Var/Number, title=$txt
+if is datatyp[ $amount ] == DATATYPE_NULL
+ endsub
+end
+if $amount >= 0
+ $rec[$idx] = $amount
+else
+ $rec[$idx] = null
+end
+gosub Ware.Save.Sub:
+endsub
+
+
+Price.Handler.Sub:
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+$min = = get min price of ware $ware
+$min.txt = = convert number $min to string
+$avg = = get average price of ware $ware
+$avg.txt = = convert number $avg to string
+$max = = get max price of ware $ware
+$max.txt = = convert number $max to string
+$txt = = sprintf: pageid=$PageID textid=183, $min.txt, $avg.txt, $max.txt, null, null
+$amount = null -> get user input: type=Var/Number, title=$txt
+if is datatyp[ $amount ] == DATATYPE_NULL
+ endsub
+end
+if $amount < $min
+ endsub
+end
+if $amount > $max
+ endsub
+end
+$rec[$idx] = $amount
+gosub Ware.Save.Sub:
+endsub
+
+
+Ware.Toggle.Sub:
+* v8: a ware setting is on (1) or off (null)
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+$cur = $rec[$idx]
+if $cur
+ $rec[$idx] = null
+else
+ $rec[$idx] = 1
+end
+gosub Ware.Save.Sub:
+endsub
+
+
+Factory.Toggle.Sub:
+* v8: factory product [0] or resource [1] switch lives in the station local named by text 4001
+$valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$value need.dock=[FALSE]
+if not $valid == [TRUE]
+ endsub
+end
+$pointer = = read text: page=$PageID id=4001
+$fset = $value -> get local variable: name=$pointer
+if not is datatyp[ $fset ] == DATATYPE_ARRAY
+ endsub
+end
+$cur = $fset[$idx]
+if $cur
+ $fset[$idx] = null
+else
+ $fset[$idx] = 1
+end
+$value -> set local variable: name=$pointer value=$fset
+$log.txt = 'FDN Menu: ' + $command + ' toggled'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Settings.Toggle.Sub:
+* v8: on (1) or off (null) setting stored directly in the settings array
+$cur = $al.Settings[$idx]
+if $cur
+ $al.Settings[$idx] = null
+else
+ $al.Settings[$idx] = 1
+end
+$log.txt = 'FDN Menu: ' + $command + ' toggled'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Dynamic.Toggle.Sub:
+* v8: dynamic menu switches are settings [6][0] (DC), [1] (dock list), [2] (dock)
+$dyn = $al.Settings[6]
+if not is datatyp[ $dyn ] == DATATYPE_ARRAY
+ endsub
+end
+$cur = $dyn[$idx]
+if $cur
+ $dyn[$idx] = null
+else
+ $dyn[$idx] = 1
+end
+$al.Settings[6] = $dyn
+$log.txt = 'FDN Menu: ' + $command + ' toggled'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Stock.Handler.Sub:
+* v8 Regroom.Ware.Sub: to.virtual moves the physical stock into the virtual count, to.physical moves virtual stock into the cargo bay as far as it fits
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+$virtual = $rec[0]
+if not $virtual
+ $virtual = 0
+end
+if $command == 'to.virtual'
+ $amount = $station -> get amount of ware $ware in cargo bay
+ $virtual = $virtual + $amount
+ $remove = 0 - $amount
+  = $station -> add $remove units of $ware
+else
+ $amount = $station -> get free amount of ware $ware in cargo bay
+ if $virtual <= $amount
+   = $station -> add $virtual units of $ware
+  $virtual = 0
+ else
+   = $station -> add $amount units of $ware
+  $virtual = $virtual - $amount
+ end
+end
+$rec[0] = $virtual
+gosub Ware.Save.Sub:
+endsub
+
+
+Add.Ware.Sub:
+* v8 Add.Ware.Sub: ask for a ware and make sure the station has a record for it (Ware.Rec create=[TRUE] does what the v8 Update.Ware create call did)
+$txt = = read text: page=$PageID id=197
+$ware = null -> get user input: type=Var/Ware, title=$txt
+if not $ware
+ endsub
+end
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+ = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$station
+$log.txt = 'FDN Menu: add.ware ware=' + $ware
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+endsub
+
+
+Global.Factory.Sub:
+* v8 Global.Factory.Sub: switch product [0] or resource [1] on or off for every factory in settings [3]
+$fa = $al.Settings[3]
+if not is datatyp[ $fa ] == DATATYPE_ARRAY
+ endsub
+end
+$pointer = = read text: page=$PageID id=4001
+$k = size of array $fa
+while $k > 0
+ $k = $k - 1
+ $factory = $fa[$k]
+ if is datatyp[ $factory ] == DATATYPE_STATION
+  $exists = $factory -> exists
+  if $exists
+   $fset = $factory -> get local variable: name=$pointer
+   if is datatyp[ $fset ] == DATATYPE_ARRAY
+    if $gval == 1
+     $fset[$gidx] = 1
+    else
+     $fset[$gidx] = null
+    end
+    $factory -> set local variable: name=$pointer value=$fset
+   end
+  end
+ end
+end
+$log.txt = 'FDN Menu: ' + $command
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Remove.Ware.Sub:
+* confirm first, then re-read stock right before deleting: delete nothing if the ware is no longer empty
+$removed = 0
+gosub Ware.Prep.Sub:
+if $ok == 0
+ endsub
+end
+$txt = = read text: page=$PageID id=300
+$confirm = null -> get user input: type=Var/Boolean, title=$txt
+if not $confirm == [TRUE]
+ endsub
+end
+$rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$station ware=$ware create=[FALSE]
+$rv = 0
+if is datatyp[ $rec ] == DATATYPE_ARRAY
+ $rv = $rec[0]
+ if not $rv
+  $rv = 0
+ end
+end
+$rp = $station -> get amount of ware $ware in cargo bay
+$rt = $rv + $rp
+if $rt > 0
+ $txt = = read text: page=$PageID id=342
+ write to player logbook $txt
+ endsub
+end
+$station -> set local variable: name=$pointer value=null
+$station -> remove product from factory or dock: $ware
+$engine = = script engine version
+if $engine >= 60
+  = [THIS] -> call script plugin.LI.FDN.FL.Remove.Tradeable : station=$station ware=$ware
+end
+$log.txt = 'FDN Menu: remove.ware ware=' + $ware
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+$removed = 1
+endsub
+
+
+Reset.Sub:
+* v8 master.reset: plugin.LI.FDN.Reset wipes, then the stack restarts on the DC view or on Config when no DC is left
+ = [THIS] -> call script plugin.LI.FDN.Reset :
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$entry = array alloc: size=3
+$entry[0] = 7
+if $al.Settings
+ $dc.now = $al.Settings[2]
+ if $dc.now
+  $entry[0] = 1
+  $entry[1] = $dc.now
+ end
+end
+$new.stack = array alloc: size=1
+$new.stack[0] = $entry
+endsub
+
+
+Debug.Cycle.Sub:
+* B5: settings [7] cycles -1 -> 1 -> 0 -> -1, null counts as -1
+$cur = $al.Settings[7]
+if is datatyp[ $cur ] == DATATYPE_NULL
+ $cur = -1
+end
+if $cur == -1
+ $al.Settings[7] = 1
+else if $cur == 1
+ $al.Settings[7] = 0
+else
+ $al.Settings[7] = -1
+end
+$log.txt = 'FDN Menu: debug cycled'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Surplus.Cycle.Sub:
+* B5: settings [28] cycles 1 -> 0 -> 2 -> 1, null counts as 1
+$cur = $al.Settings[28]
+if is datatyp[ $cur ] == DATATYPE_NULL
+ $cur = 1
+end
+if $cur == 1
+ $al.Settings[28] = 0
+else if $cur == 0
+ $al.Settings[28] = 2
+else
+ $al.Settings[28] = 1
+end
+$log.txt = 'FDN Menu: surplus.default cycled'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+endsub
+
+
+Set.DC.Sub:
+* validate the dock, ask one confirmation only when a DC is already set, let DC.Change do the switch (it owns the settings [2] write), then restart the stack on the DC view
+$new.stack = $stack
+$dock = $value
+$valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+if not $valid == [TRUE]
+ endsub
+end
+$old.dc = $al.Settings[2]
+if $old.dc
+ $name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
+ $txt = = sprintf: pageid=$PageID textid=351, $name.txt, null, null, null, null
+ $confirm = null -> get user input: type=Var/Boolean, title=$txt
+ if not $confirm == [TRUE]
+  endsub
+ end
+end
+$res = [THIS] -> call script plugin.LI.FDN.DC.Change : old=$old.dc new=$dock
+if $res == 'busy'
+ $txt = = read text: page=$PageID id=352
+ write to player logbook $txt
+ endsub
+end
+ = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$dock
+$log.txt = 'FDN Menu: set.dc done'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+$entry = array alloc: size=3
+$entry[0] = 1
+$entry[1] = $dock
+$new.stack = array alloc: size=1
+$new.stack[0] = $entry
+endsub
