@@ -1,0 +1,209 @@
+* Script: plugin.LI.FDN.DC.Change  (v9.01, engine 50)
+* Desc: FDNv9 - change the Distribution Centre as one event
+* Arg 0: old (Value) 'old'
+* Arg 1: new (Value) 'new'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* v9.01 P3-04b. Wait-free: no wait and no START, so no other script runs in between.
+* Replaces the v8 add.dc / change.dc, which only overwrote settings [2] (B30: the new DC
+* had no ware records, so the first pass after a change logged 'Buy null').
+* Steps: take the global run lock (settings [12], same key as Supply.Start), validate the
+* new DC, create ware records on the new DC for every ware the old DC, the factories in
+* [3] and the docks in [4] trade, copy the DC policy fields of each new record from the
+* old DC record, clear the DC only fields on the old DC records and switch surplus on,
+* keep both stations in the dock array [4], write [2], register the new DC, log, release.
+* The only writer of settings [2] besides Setup. Menu.Command set.dc calls this script.
+* A 'busy' result changes nothing.
+
+* Arguments:
+* - old (Value): the current DC, or null when none is set
+* - new (Value): the station that becomes the DC
+
+* Returns values:
+* - 'ok' when the DC was changed
+* - 'busy' when a supply pass holds the lock (nothing changed)
+* - 'invalid' when new is not a valid player owned Dock, or FDN is not initialised
+* - 'same' when new is already the DC
+* - 'fl.managed' when new is run by FL Station Manager
+
+* To Do - text for a player message after the change (not added, the DC view shows the new DC); see notes/P3-04b.md
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: TC 27/10/2026
+* -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return 'invalid'
+end
+$PageID = $al.Settings[1]
+$result = 'ok'
+$created = 0
+$copied = 0
+
+* step 1: pause. The factory pass holds this lock, so a held lock means busy.
+$budget = $al.Settings[22]
+if not $budget
+ $budget = 10
+end
+$lock.timeout = $budget * 4
+$locked = [THIS] -> call script lib.LI.FDN.Lock : obj=null key=12 action='try' timeout=$lock.timeout
+if not $locked == [TRUE]
+ = [THIS] -> call script lib.LI.FDN.Log : text='DC change refused: busy' caller=$s.name
+ return 'busy'
+end
+
+* step 2: validate
+$new.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$new need.dock=[TRUE]
+if not $new.valid == [TRUE]
+ $result = 'invalid'
+end
+$old.ok = [FALSE]
+if is datatyp[ $old ] == DATATYPE_STATION
+ $old.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$old need.dock=[TRUE]
+ if $old.valid == [TRUE]
+  $old.ok = [TRUE]
+ end
+end
+if $result == 'ok'
+ if $old.ok == [TRUE]
+  if $old == $new
+   $result = 'same'
+  end
+ end
+end
+if $result == 'ok'
+ $game = $al.Settings[23]
+ if $game == 3
+  $fl = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$new
+  if $fl == [TRUE]
+   $result = 'fl.managed'
+  end
+ end
+end
+
+if $result == 'ok'
+ * steps 3 and 4: records on the new DC, DC policy copied from the old DC records
+ if $old.ok == [TRUE]
+  $st = $old
+  gosub Ensure.Station.Sub:
+ end
+ $fa = $al.Settings[3]
+ if is datatyp[ $fa ] == DATATYPE_ARRAY
+  $k = size of array $fa
+  while $k > 0
+   $k = $k - 1
+   $st = $fa[$k]
+   gosub Ensure.Station.Sub:
+  end
+ end
+ $da = $al.Settings[4]
+ if is datatyp[ $da ] == DATATYPE_ARRAY
+  $k = size of array $da
+  while $k > 0
+   $k = $k - 1
+   $st = $da[$k]
+   gosub Ensure.Station.Sub:
+  end
+ end
+
+ * step 5: old DC keeps its stock as a normal dock, DC only fields cleared, surplus on
+ if $old.ok == [TRUE]
+  gosub Old.DC.Sub:
+ end
+
+ * both stations stay in the dock array [4]
+ $da = $al.Settings[4]
+ if not is datatyp[ $da ] == DATATYPE_ARRAY
+  $da = = array alloc: size=0
+  $al.Settings[4] = $da
+ end
+ if not find $new in array: $da
+  append $new to array $da
+ end
+ if $old.ok == [TRUE]
+  if not find $old in array: $da
+   append $old to array $da
+  end
+ end
+
+ * step 6: the one write of settings [2]
+ $al.Settings[2] = $new
+ = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$new
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+
+ * step 7: log
+ $old.name = '-'
+ if $old.ok == [TRUE]
+  $old.name = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$old
+ end
+ $new.name = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$new
+ $txt.log = 'DC changed: ' + $old.name + ' -> ' + $new.name + '; records created ' + $created + ', copied ' + $copied
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+else
+ $txt.log = 'DC change refused: ' + $result
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
+
+* step 8: release
+= [THIS] -> call script lib.LI.FDN.Lock : obj=null key=12 action='release' timeout=null
+return $result
+
+
+Ensure.Station.Sub:
+* make sure the new DC has a record for every tradeable ware of $st; new records copy the DC policy from the old DC record
+$st.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$st need.dock=[FALSE]
+if $st.ok == [TRUE]
+ $wares = $st -> get tradeable ware array from station
+ if is datatyp[ $wares ] == DATATYPE_ARRAY
+  $w.k = size of array $wares
+  while $w.k > 0
+   $w.k = $w.k - 1
+   $w = $wares[$w.k]
+   $new.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$new ware=$w create=[FALSE]
+   if not is datatyp[ $new.rec ] == DATATYPE_ARRAY
+    $new.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$new ware=$w create=[TRUE]
+    if is datatyp[ $new.rec ] == DATATYPE_ARRAY
+     inc $created =
+     if $old.ok == [TRUE]
+      $old.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$old ware=$w create=[FALSE]
+      if is datatyp[ $old.rec ] == DATATYPE_ARRAY
+       $new.rec[1] = $old.rec[1]
+       $new.rec[3] = $old.rec[3]
+       $new.rec[4] = $old.rec[4]
+       $new.rec[5] = $old.rec[5]
+       $new.rec[6] = $old.rec[6]
+       $pointer = = sprintf: pageid=$PageID textid=4000, $w, null, null, null, null
+       $new -> set local variable: name=$pointer value=$new.rec
+       inc $copied =
+      end
+     end
+    end
+   end
+  end
+ end
+end
+endsub
+
+
+Old.DC.Sub:
+* old DC records: clear the DC only fields [1] and [3] and switch surplus on [7]
+$wares = $old -> get tradeable ware array from station
+if is datatyp[ $wares ] == DATATYPE_ARRAY
+ $w.k = size of array $wares
+ while $w.k > 0
+  $w.k = $w.k - 1
+  $w = $wares[$w.k]
+  $old.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$old ware=$w create=[FALSE]
+  if is datatyp[ $old.rec ] == DATATYPE_ARRAY
+   $old.rec[1] = null
+   $old.rec[3] = [FALSE]
+   $old.rec[7] = 1
+   $pointer = = sprintf: pageid=$PageID textid=4000, $w, null, null, null, null
+   $old -> set local variable: name=$pointer value=$old.rec
+  end
+ end
+end
+endsub

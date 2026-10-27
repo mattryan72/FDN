@@ -26,7 +26,7 @@
 * - the same stack, unchanged: after edit commands and global actions
 * - null: after 'back' or Escape on a stack with a single entry (close the menu)
 
-* To Do - set.dc needs plugin.LI.FDN.DC.Change (P3-04b); see notes/P3-04.md
+* To Do - N/A
 
 * Version: 1.0
 * Date: 27/10/2026
@@ -639,6 +639,10 @@ $res = [THIS] -> call script plugin.LI.FDN.DC.Change : old=$old.dc new=$dock
 if $res == 'busy'
  $txt = = read text: page=$PageID id=352
  write to player logbook $txt
+ endsub
+end
+* any other refusal (invalid, same, fl.managed) leaves the stack as it was
+if not $res == 'ok'
  endsub
 end
  = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$dock
