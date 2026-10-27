@@ -168,6 +168,22 @@
   <t id="5007"></t>
   <t id="5008"></t>
 
+  <t id="302">Distribution Centre</t>
+  <t id="303">Stations</t>
+  <t id="304">Docks</t>
+  <t id="305">Factories</t>
+  <t id="306">Back</t>
+  <t id="307">Close menu</t>
+  <t id="320">Surplus to DC (default)</t>
+  <t id="321">On</t>
+  <t id="322">Off</t>
+  <t id="323">v8 compatible</t>
+  <t id="324">Default (%s)</t>
+  <t id="325">Applies to every ware set to Default. v8 compatible: on unless you switched that ware off.</t>
+  <t id="342">FDN: Remove Ware cancelled - stock is no longer empty</t>
+  <t id="351">Change Distribution Centre to %s ?</t>
+  <t id="352">Supply pass running, try again in a few seconds</t>
+
   <t id="9000">\033G%s\033X</t>
   <t id="9001">\033R%s\033X</t>
   <t id="9002">\033Y%s\033X</t>
