@@ -1,244 +1,175 @@
-* Script: plugin.LI.FDN.Config.Menu  (v2, engine 50)
-* Desc: FDNv9 - Config menu
+* Script: plugin.LI.FDN.Config.Menu  (v3, engine 50)
+* Desc: FDNv9 - Config menu (view 7)
 * Arg 0: menu (Value) 'menu'
 
-001  * Auther: Logain Abler
-002  * --------------------
-003  * This is the main menu for FDN and has 3 dynamic viewa
-004  * Menu View 1 = (default)
-005  * Menu View 2 = Add DC
-006  * Menu View 3 = Change DC
-007  * Menu is called from pludin manager
-008  
-009  * Returns TBC
-010  * Date: 17/05/2012 - v1.0
-011  * Tested: TBC
-012  
-013  * TODO
-014  
-015  
-016  * Get save values from AL
-017  $al.Settings = get global variable: name='al.LI.FDN.event'
-018  if $al.Settings
-019   $PageID = $al.Settings[1]
-020   $dc = $al.Settings[2]
-021   $is.dynamic = $al.Settings[6]
-022  else
-023   return null
-024  end
-025  
-026  
-027  $txt = = read text: page=$PageID id=103
-028   * v9.01 B23: use the menu passed in from Main.Menu (Config.View.Sub) - do not create a new one, which discarded Main.Menu's build and its heading text 102
-029  
-030  
-031  * DC menu header
-032  if $dc == null
-033   $txt = = read text: page=$PageID id=119
-034   add custom menu info line to array $menu: text=$txt
-035   * Call add DC Menu
-036   gosub Add.DC.Menu.Sub:
-037  else
-038   $txt = = read text: page=$PageID id=129
-039   add custom menu info line to array $menu: text=$txt
-040   add custom menu info line to array $menu: text=' '
-041   * Calls script to format name
-042   $txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dc
-043   * -----------------------------------------------------------------------------------
-044   $temp.array = = array alloc: size=4
-045   $temp.array[0] = 1
-046   $temp.array[1] = $txt
-047   $temp.array[2] = -1
-048   $txt = $dc  ->  get sector
-049   $temp.array[3] = $txt
-050   add custom menu info line to array $menu: text=$temp.array
-051   * Call change DC Menu
-052   gosub Change.DC.Menu.Sub:
-053  end
-054  
-055  
-056  gosub Global.Options.Sub:
-057  * Call dynamic Menu
-058  
-059  gosub Dynamic.Menu.Sub:
-060  
-061  gosub Debug.Menu.Sub:
-062  
-063  gosub Reset.Menu.Sub:
-064  
-065  return $menu
-066  
-067  
-068  Add.DC.Menu.Sub:
-069  $txt = = read text: page=$PageID id=123
-070  add custom menu heading to array $menu: title=$txt
-071  $dock.array = = get station array: of race Player class/type=Dock 2007
-072  
-073  $s = size of array $dock.array
-074  if $s > 0
-075   while $s > 0
-076    dec $s =
-077    $dock = $dock.array[$s]
-078    if $dock
-079     $txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
-080     * -----------------------------------------------------------------------------------
-081     $temp.array = = array alloc: size=4
-082     $temp.array[0] = 1
-083     $temp.array[1] = $txt
-084     $temp.array[2] = -1
-085     $txt = $dock  ->  get sector
-086     $temp.array[3] = $txt
-087     
-088     $return.array = = array alloc: size=2
-089     $return.array[0] = 'add.dc'
-090     $return.array[1] = $dock
-091     
-092     $format = = create new array, arguments=$temp.array, $return.array, null, null, null
-093     append $format to array $menu
-094    end
-095   end
-096  end
-097  endsub
-098  
-099  Change.DC.Menu.Sub:
-100  $txt = = read text: page=$PageID id=124
-101  add custom menu heading to array $menu: title=$txt
-102  $dock.array = = get station array: of race Player class/type=Dock 2007
-103  
-104  $s = size of array $dock.array
-105  if $s > 0
-106   while $s > 0
-107    dec $s =
-108    $dock = $dock.array[$s]
-109    if not $dock == $dc
-110     $txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
-111     * -----------------------------------------------------------------------------------
-112     $temp.array = = array alloc: size=4
-113     $temp.array[0] = 1
-114     $temp.array[1] = $txt
-115     $temp.array[2] = -1
-116     $txt = $dock  ->  get sector
-117     $temp.array[3] = $txt
-118     
-119     $return.array = = array alloc: size=2
-120     $return.array[0] = 'change.dc'
-121     $return.array[1] = $dock
-122     
-123     $format = = create new array, arguments=$temp.array, $return.array, null, null, null
-124     append $format to array $menu
-125    end
-126   end
-127  end
-128  endsub
-129  
-130  
-131  Dynamic.Menu.Sub:
-132  $txt = = read text: page=$PageID id=125
-133  add custom menu heading to array $menu: title=$txt
-134  
-135  $temp.array = = array alloc: size=4
-136  $temp.array[0] = 1
-137  $txt = = read text: page=$PageID id=104
-138  $temp.array[1] = $txt
-139  $temp.array[2] = -1
-140  if $is.dynamic[0]
-141   $txt = = read text: page=$PageID id=148
-142  else
-143   $txt = = read text: page=$PageID id=149
-144  end
-145  $temp.array[3] = $txt
-146  
-147  $format = = create new array, arguments=$temp.array, 'dynamic.dc', null, null, null
-148  append $format to array $menu
-149  
-150  
-151  * $temp.array = = array alloc: size=4
-152  * $temp.array[0] = 1
-153  * $txt = = read text: page=$PageID id=105
-154  * $temp.array[1] = $txt
-155  * $temp.array[2] = -1
-156  * if $is.dynamic[1]
-157  * $txt = = read text: page=$PageID id=148
-158  * else
-159  * $txt = = read text: page=$PageID id=149
-160  * end
-161  * $temp.array[3] = $txt
-162  *
-163  * $format = = create new array, arguments=$temp.array, 'dynamic.dock.list', null, null, null
-164  * append $format to array $menu
-165  
-166  
-167  $temp.array = = array alloc: size=4
-168  $temp.array[0] = 1
-169  $txt = = read text: page=$PageID id=106
-170  $temp.array[1] = $txt
-171  $temp.array[2] = -1
-172  if $is.dynamic[2]
-173   $txt = = read text: page=$PageID id=148
-174  else
-175   $txt = = read text: page=$PageID id=149
-176  end
-177  $temp.array[3] = $txt
-178  
-179  $format = = create new array, arguments=$temp.array, 'dynamic.dock', null, null, null
-180  append $format to array $menu
-181  
-182  endsub
-183  
-184  
-185  Global.Options.Sub:
-186  $txt = = read text: page=$PageID id=108
-187  add custom menu heading to array $menu: title=$txt
-188  
-189  $temp.array = = array alloc: size=4
-190  $temp.array[0] = 1
-191  $txt = = read text: page=$PageID id=109
-192  $temp.array[1] = $txt
-193  $temp.array[2] = -1
-194  
-195  if $al.Settings[9]
-196   $txt = = read text: page=$PageID id=148
-197  else
-198   $txt = = read text: page=$PageID id=149
-199  end
-200  $temp.array[3] = $txt
-201  
-202  $format = = create new array, arguments=$temp.array, 'auto', null, null, null
-203  append $format to array $menu
-204  endsub
-205  
-206  
-207  Debug.Menu.Sub:
-208  $txt = = read text: page=$PageID id=126
-209  add custom menu heading to array $menu: title=$txt
-210  
-211  $temp.array = = array alloc: size=4
-212  $temp.array[0] = 1
-213  $txt = = read text: page=$PageID id=107
-214  $temp.array[1] = $txt
-215  $temp.array[2] = -1
-216  
-217  if $al.Settings[7]
-218   $txt = = read text: page=$PageID id=148
-219  else
-220   $txt = = read text: page=$PageID id=149
-221  end
-222  $temp.array[3] = $txt
-223  
-224  $format = = create new array, arguments=$temp.array, 'debug', null, null, null
-225  append $format to array $menu
-226  endsub
-227  
-228  
-229  Reset.Menu.Sub:
-230  $txt = = read text: page=$PageID id=127
-231  add custom menu heading to array $menu: title=$txt
-232  $txt = = read text: page=$PageID id=128
-233  add custom menu item to array $menu: text=$txt returnvalue='master.reset'
-234  endsub
-235  
-236  
-237  return null
-238  
-239  
-240  
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Called by plugin.LI.FDN.Main.Menu for view 7. Appends the DC choice, dynamic menu
+* switches, global options, debug switch and master reset rows to the passed-in menu.
+* Every clickable row returns an array [command, object] handled by
+* plugin.LI.FDN.Menu.Command.
+
+* Expected values:
+* - menu (Value)
+
+* Returns values:
+* - the menu
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: FL 27/10/2026 (test.LI.FDN.ConfigMenu 9/10, see notes/P3-08c.md)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P3-08c): rows on Menu.Row / Menu.Toggle / Menu.ObjLine; add.dc and change.dc merged into set.dc; B5 surplus.default row
+* -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return $menu
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return $menu
+end
+$PageID = $al.Settings[1]
+$dc = $al.Settings[2]
+$is.dynamic = $al.Settings[6]
+if not is datatyp[ $is.dynamic ] == DATATYPE_ARRAY
+ $is.dynamic = = array alloc: size=3
+end
+
+* valid DC flag: a DC that is unset or no longer a valid dock shows the add list
+$has.dc = 0
+if is datatyp[ $dc ] == DATATYPE_STATION
+ $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+ if $valid == [TRUE]
+  $has.dc = 1
+ end
+end
+
+* DC choice (add / change) or the current DC header
+if $has.dc == 0
+ * no valid DC yet: the add-DC list under its heading text 123
+ $txt = = read text: page=$PageID id=118
+ add custom menu info line to array $menu: text=$txt
+ $cmd.label = = read text: page=$PageID id=123
+ gosub Dock.List.Sub:
+else
+ * valid DC in place: header with ObjLine, then the change-DC list (heading text 124)
+ $txt = = read text: page=$PageID id=129
+ add custom menu info line to array $menu: text=$txt
+  = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$dc
+ $cmd.label = = read text: page=$PageID id=124
+ gosub Dock.List.Sub:
+end
+
+gosub Dynamic.Rows.Sub:
+gosub Global.Rows.Sub:
+gosub Debug.Rows.Sub:
+gosub Reset.Rows.Sub:
+
+return $menu
+* -----------------------------------------------------------------------------------
+* SUB Section
+
+
+Dock.List.Sub:
+add custom menu heading to array $menu: title=$cmd.label
+$dock.array = = get station array: of race Player class/type=Dock 2007
+$s = size of array $dock.array
+while $s > 0
+ dec $s =
+ $dock = $dock.array[$s]
+ if $dock
+  $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+  if $valid == [TRUE]
+   if not $dock == $dc
+    $name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
+    if is datatyp[ $name.txt ] == DATATYPE_STRING
+     $sector = $dock -> get sector
+     $ret.array = = array alloc: size=2
+     $ret.array[0] = 'set.dc'
+     $ret.array[1] = $dock
+      = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$name.txt value=$sector retval=$ret.array
+    end
+   end
+  end
+ end
+end
+endsub
+
+
+Dynamic.Rows.Sub:
+$txt = = read text: page=$PageID id=125
+add custom menu heading to array $menu: title=$txt
+
+* dock dynamic DC (switch [0])
+$on.off = $is.dynamic[0]
+$txt = = read text: page=$PageID id=104
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'dynamic.dc'
+ = [THIS] -> call script lib.LI.FDN.Menu.Toggle : menu=$menu label=$txt bool=$on.off retval=$ret.array
+
+* dock dynamic dock (switch [2])
+$on.off = $is.dynamic[2]
+$txt = = read text: page=$PageID id=106
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'dynamic.dock'
+ = [THIS] -> call script lib.LI.FDN.Menu.Toggle : menu=$menu label=$txt bool=$on.off retval=$ret.array
+endsub
+
+
+Global.Rows.Sub:
+$txt = = read text: page=$PageID id=108
+add custom menu heading to array $menu: title=$txt
+
+* auto (global [9])
+$on.off = $al.Settings[9]
+$txt = = read text: page=$PageID id=109
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'auto'
+ = [THIS] -> call script lib.LI.FDN.Menu.Toggle : menu=$menu label=$txt bool=$on.off retval=$ret.array
+
+* surplus default (global [28]): 1 on, 0 off, 2 v8 compatible; null counts as 1
+$g = $al.Settings[28]
+if is datatyp[ $g ] == DATATYPE_NULL
+ $g = 1
+end
+if $g == 1
+ $g.txt = = read text: page=$PageID id=321
+else
+ if $g == 0
+  $g.txt = = read text: page=$PageID id=322
+ else
+  $g.txt = = read text: page=$PageID id=323
+ end
+end
+$txt = = read text: page=$PageID id=320
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'surplus.default'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$g.txt retval=$ret.array
+$txt = = read text: page=$PageID id=325
+add custom menu info line to array $menu: text=$txt
+endsub
+
+
+Debug.Rows.Sub:
+$txt = = read text: page=$PageID id=126
+add custom menu heading to array $menu: title=$txt
+
+* debug (global [7])
+$on.off = $al.Settings[7]
+$txt = = read text: page=$PageID id=107
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'debug'
+ = [THIS] -> call script lib.LI.FDN.Menu.Toggle : menu=$menu label=$txt bool=$on.off retval=$ret.array
+endsub
+
+
+Reset.Rows.Sub:
+$txt = = read text: page=$PageID id=127
+add custom menu heading to array $menu: title=$txt
+$txt = = read text: page=$PageID id=128
+add custom menu item to array $menu: text=$txt returnvalue='master.reset'
+endsub
+
