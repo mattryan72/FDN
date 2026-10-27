@@ -1,180 +1,20 @@
-* Script: plugin.LI.FDN.Menu.Dock.Details  (v1.0, engine 50)
-* Desc: FDNv8 - Dock Detail Menu for TC
+* Script: plugin.LI.FDN.Menu.Dock.Details  (v9.01, engine 50)
+* Desc: FDNv9 - STUB (P3-10): Dock Detail Menu for TC
 * Arg 0: menu (Value) 'menu'
 * Arg 1: value (Value) 'value'
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * This script builds the Dock Details Menu and retuns the array back to the Main Menu
-004  * Called by plugin.LI.FDN.Main.Menu
-005  
-006  * Expected values:
-007  * - menu - This is the menu array from the Main Menu
-008  * - value - This is the Dock
-009  * - ware.show.array - This array hold the values of what Ware Type is displayed or hiden
-010  * Ware.show.array can be null
-011  
-012  * Return values:
-013  * - return.array[update menu array][type.show.array]
-014  
-015  * ToDo:
-016  * - ?
-017  
-018  * Version: 1.0
-019  * Date: 22/05/2012
-020  * Tested: 22/05/2012
-021  * -----------------------------------------------------------------------------------
-022  * -----------------------------------------------------------------------------------
-023  * Start
-024  * -----------------------------------------------------------------------------------
-025  * Fetch values saved in the AL Plugin global variable:
-026  * - Page ID
-027  $al.Settings = get global variable: name='al.LI.FDN.event'
-028  if $al.Settings
-029   $PageID = $al.Settings[1]
-030  end
-031  * -----------------------------------------------------------------------------------
-032  * -----------------------------------------------------------------------------------
-033  * Define Reference:
-034  * The ID code of the DC is used as a reference in naming the global variable
-035  $id = $value  ->  get ID code
-036  * -----------------------------------------------------------------------------------
-037  $txt = = read text: page=$PageID id=115
-038  add custom menu heading to array $menu: title=$txt
-039  * -----------------------------------------------------------------------------------
-040  * Calls script to format name
-041  $txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$value
-042  * -----------------------------------------------------------------------------------
-043  $temp.array = = array alloc: size=4
-044  $temp.array[0] = 1
-045  $temp.array[1] = $txt
-046  $temp.array[2] = -1
-047  $txt = $value  ->  get sector
-048  $temp.array[3] = $txt
-049  add custom menu info line to array $menu: text=$temp.array
-050  * -----------------------------------------------------------------------------------
-051  * This call the plugin.LI.FDN.Sort.Wares which returns a wares arrays sorted by type
-052  * $sorted.ware.array[x] is the Main Type
-053  * $sorted.ware.array[x][x] is the sorted Ware Array for the Main Type
-054  $sorted.ware.array = [THIS] -> call script plugin.LI.FDN.Sort.Wares : station=$value
-055  * -----------------------------------------------------------------------------------
-056  $sm = size of array $sorted.ware.array
-057  * -----------------------------------------------------------------------------------
-058  * Create and size show ware array
-059  $pointer = = read text: page=$PageID id=4003
-060  $show.type.array = $value  ->  get local variable: name=$pointer
-061  if not $show.type.array
-062   $show.type.array = = array alloc: size=$sm
-063   $value  ->  set local variable: name=$pointer value=$show.type.array
-064  end
-065  * -----------------------------------------------------------------------------------
-066  
-067  $pointer = = sprintf: pageid=$PageID textid=5001, $id, null, null, null, null
-068  $array = get global variable: name=$pointer
-069  add custom menu heading to array $menu: title=$array
-070  * -----------------------------------------------------------------------------------
-071  * Start of While Loop with 1 nested While Loop - First loop is Main Type
-072  * -----------------------------------------------------------------------------------
-073  while $sm > 0
-074   dec $sm =
-075   * -----------------------------------------------------------------------------------
-076   * Fetch main.type and ware.array from sorted.ware.array
-077   $main.type = $sorted.ware.array[$sm][0]
-078   $ware.array = $sorted.ware.array[$sm][1]
-079   * -----------------------------------------------------------------------------------
-080   $sw = size of array $ware.array
-081   if $sw > 0
-082    * -----------------------------------------------------------------------------------
-083    * if ware.show.array for the main type is null set to 1 (1 = show 2 = hide)
-084    if not $show.type.array[$sm]
-085     $show.type.array[$sm] = 1
-086    end
-087    * -----------------------------------------------------------------------------------
-088    * -----------------------------------------------------------------------------------
-089    * Call the Sub which updates builds the ware header by main type
-090    $check = $show.type.array[$sm]
-091    gosub Get.Ware.Header.Sub:
-092    if $check == 1
-093     
-094     * -----------------------------------------------------------------------------------
-095     while $sw > 0
-096      dec $sw =
-097      $ware = $ware.array[$sw]
-098      * -----------------------------------------------------------------------------------
-099      * Calls the global variable for the dynamic menu created by plugin.LI.FDN.Menu.Dock.Details_D
-100      * Dock ID code and Ware are used to call the unique global variable
-101      $pointer = = sprintf: pageid=$PageID textid=5000, $id, $ware, null, null, null
-102      $summary = get global variable: name=$pointer
-103      append $summary to array $menu
-104      * -----------------------------------------------------------------------------------
-105     end
-106    end
-107   end
-108   add section to custom menu: $menu
-109  end
-110  
-111  $txt = = read text: page=$PageID id=195
-112  add custom menu heading to array $menu: title=$txt
-113  $txt = = read text: page=$PageID id=196
-114  $return.array = = array alloc: size=2
-115  $return.array[0] = 'add.ware'
-116  $return.array[1] = $value
-117  
-118  $txt = = read text: page=$PageID id=196
-119  add custom menu item to array $menu: text=$txt returnvalue=$return.array
-120  * -----------------------------------------------------------------------------------
-121  * Return values to plugin.LI.FDN.Main.Menu
-122  return $menu
-123  * Script Exit Point
-124  * -----------------------------------------------------------------------------------
-125  * -----------------------------------------------------------------------------------
-126  * -----------------------------------------------------------------------------------
-127  * SUB Section
-128  * -----------------------------------------------------------------------------------
-129  * This Sub is used to create the wares header by main type
-130  Get.Ware.Header.Sub:
-131  if $check == 1
-132   $temp.array = = array alloc: size=10
-133   $temp.array[0] = 1
-134   $txt = = read text: page=$PageID id=$main.type
-135   $txt = = sprintf: pageid=$PageID textid=18, $txt, $sw, null, null, null
-136   $temp.array[1] = $txt
-137   $temp.array[2] = -380
-138   $txt = = read text: page=$PageID id=147
-139   $temp.array[3] = $txt
-140   $temp.array[4] = -290
-141   $txt = = read text: page=$PageID id=143
-142   $temp.array[5] = $txt
-143   $temp.array[6] = -200
-144   $txt = = read text: page=$PageID id=145
-145   $temp.array[7] = $txt
-146   $temp.array[8] = -1
-147   $txt = = read text: page=$PageID id=140
-148   $temp.array[9] = $txt
-149  else
-150   $temp.array = = array alloc: size=2
-151   $temp.array[0] = 1
-152   $txt = = read text: page=$PageID id=$main.type
-153   $txt = = sprintf: pageid=$PageID textid=19, $txt, $sw, null, null, null
-154   $temp.array[1] = $txt
-155  end
-156  
-157  $return.array = = array alloc: size=2
-158  $return.array[0] = 'show.type.dock'
-159  
-160  $return.value = = array alloc: size=2
-161  $return.value[0] = $sm
-162  $return.value[1] = $value
-163  
-164  $return.array[1] = $return.value
-165  
-166  $format = = create new array, arguments=$temp.array, $return.array, null, null, null
-167  append $format to array $menu
-168  endsub
-169  * end
-170  * -----------------------------------------------------------------------------------
-171  * -----------------------------------------------------------------------------------
-172  * -----------------------------------------------------------------------------------
-173  return null
-174  
-175  
+ * Author: Logain Abler
+ * -----------------------------------------------------------------------------------
+ * v9.01 D6 (P3-10): retired. The v9 menu is drawn by plugin.LI.FDN.Main.Menu with plugin.LI.FDN.Menu.Station (view 5).
+ * This stub keeps the script name and arguments so a script call stored in an old save
+ * does not fail. It does nothing and returns null.
+ *
+ * Returns values:
+ * - null
+
+ * Version: 9.01
+ * Date: 27/10/2026
+ * Tested: FL 27/10/2026 (test.LI.FDN.Stubs 9/9)
+ * -----------------------------------------------------------------------------------
+
+return null
