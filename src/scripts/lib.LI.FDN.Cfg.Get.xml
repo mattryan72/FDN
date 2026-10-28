@@ -1,0 +1,13 @@
+<?xml version="1.0" standalone="yes"?>
+<?xml-stylesheet href="x2script.xsl" type="text/xsl"?>
+<script>
+<name>lib.LI.FDN.Cfg.Get</name>
+<version>1</version>
+<engineversion>50</engineversion>
+<description>FDNv9 - Return the live al.LI.FDN.event settings array</description>
+<arguments />
+<sourcetext />
+<codearray>
+<sval type="array" size="10"><sval type="string" val="lib.LI.FDN.Cfg.Get" /><sval type="int" val="50" /><sval type="string" val="FDNv9 - Return the live al.LI.FDN.event settings array" /><sval type="int" val="1" /><sval type="int" val="0" /><sval type="array" size="1"><sval type="string" val="al.Settings" /></sval><sval type="array" size="4"><sval type="array" size="4"><sval type="int" val="158" /><sval type="int" val="5" /><sval type="string" val="al.LI.FDN.event" /><sval type="int" val="0" /></sval><sval type="array" size="6"><sval type="int" val="125" /><sval type="int" val="-1610611965" /><sval type="int" val="131074" /><sval type="int" val="0" /><sval type="int" val="20" /><sval type="int" val="21" /></sval><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="131074" /><sval type="int" val="0" /></sval><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="0" /><sval type="int" val="0" /></sval></sval><sval type="int" val="0" /><sval type="array" size="2"><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Compiled by XScript Compiler v0.8 BETA - https://www.xpluginmanager.co.uk/xscript/" /></sval><sval type="array" size="2"><sval type="int" val="3" /><sval type="int" val="4" /></sval></sval><sval type="int" val="0" /></sval>
+</codearray>
+</script>
