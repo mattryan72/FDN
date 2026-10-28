@@ -1,16 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <language id="44">
-<page id="17" title="" descr="">
-
-</page>
-
 <page id="9910" title="Freight Distribution Network" descr="Info Nom">
 
   <t id="100">Logain Industries: \033GFDN\033X</t>
   <t id="101">Logain Industries Menus</t>
   <t id="102">FDN Main Menu</t>
   <t id="103">FDN Config Menu</t>
-  <t id="104">Distribution Center Menu:</t>
+  <t id="104">Distribution Centre Menu:</t>
   <t id="105">Dock List Menu:</t>
   <t id="106">Dock Details Menu:</t>
   <t id="107">Supply Debug:</t>
@@ -18,18 +14,18 @@
   <t id="109">Auto Manage Factories</t>
 
   <t id="110">Menu Options:</t>
-  <t id="111">Distribution Center</t>
+  <t id="111">Distribution Centre</t>
   <t id="112">Stations</t>
   <t id="113">Docks</t>
   <t id="114">\033YSwitch to:\033X </t>
-  <t id="115">\033GAvailable Distribution Center\033X:</t>
+  <t id="115">\033GAvailable Distribution Centre\033X:</t>
   <t id="116">\033GAvailable Factories\033X:</t>
   <t id="117">\033GAvailable Docks\033X:</t>
   <t id="118">\033GSELECT\033X Distribution Centre to start</t>
   <t id="119">\033RNo Available Factories found\033X</t>
 
   <t id="120">\033RNo Available Docks found\033X</t>
-  <t id="121">Distribution Center Menu</t>
+  <t id="121">Distribution Centre Menu</t>
   <t id="122"></t>
   <t id="123">\033GAdd\033X Distribution Centre</t>
   <t id="124">\033OChange\033X Distribution Centre</t>
@@ -41,10 +37,10 @@
 
   <t id="130">Distribution Centre Details</t>
   <t id="131">Factory Details</t>
-  <t id="132">Dock LDetails</t>
+  <t id="132">Dock Details</t>
   <t id="133">Details Menu</t>
   <t id="134">%s [%s]</t>
-  <t id="135">show.sector.%s</t>L
+  <t id="135">show.sector.%s</t>
   <t id="136">FDN Enabled:</t>
   <t id="137">Products:</t>
   <t id="138">FDN Managed</t>
@@ -98,7 +94,7 @@
   <t id="183">Min: %s | Avg: %s | Max: %s</t>
   <t id="184">Select Ship or Station:</t>
   <t id="185">Pass Surplus to Distribution Centre:</t>
-  <t id="186">Confrim reset - All virtual wares will be lost</t>
+  <t id="186">Confirm reset - All virtual wares will be lost</t>
   <t id="187">\033CStock Control Options\033X:</t>
   <t id="188">\033CStock Manage Options\033X:</t>
   <t id="189">Move \033OVirtual\033X stock to Physical</t>
@@ -124,6 +120,7 @@
   <t id="330">FDN: %s is run by Station Manager and was removed from the network</t>
   <t id="331">FDN paused: the Distribution Centre is run by Station Manager. Choose a new one.</t>
   <t id="332">SM drop %s</t>
+  <t id="333">FDN paused: choose a new Distribution Centre.</t>
 
   <t id="8">Laser:</t>
   <t id="9">Shield:</t>
