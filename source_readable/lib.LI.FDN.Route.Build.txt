@@ -1,0 +1,97 @@
+* Script: lib.LI.FDN.Route.Build  (v1, engine 50)
+* Desc: FDNv9 - Backbone link table [35]: every DC pair within 2 x the smaller range
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 1). Rebuilds the backbone LINK table in
+* settings slot [35] from the cleaned DC list (lib.LI.FDN.Dc.List):
+* - every pair of DCs is tested exactly once;
+* - a link exists when the jumps between the two DC sectors are an INT >= 0 and at
+*   most 2 x the SMALLER of the two Dc.Range values (M-02 backbone rule);
+* - each stored entry is [dcA, dcB, jumps] with both DCs.
+* Multi-hop routes are NOT computed here: the later route search card reads this table
+* and finds fewest total jumps without revisiting a DC (safety cap 16 hops).
+*
+* Arguments:
+* - none
+
+* Returns values:
+* - INT number of links stored in [35], or null when settings are missing or smaller
+*   than 40, or the DC list could not be read
+
+* To Do - route search (fewest jumps over [35], no revisit, cap 16 hops) is a later card
+
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-03): new - backbone link table rebuilt by Scan on every run
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return null
+end
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ return null
+end
+
+* start from an empty link table; the new one replaces [35] at the end
+$link.table = = array alloc: size=0
+$n.dc = size of array $dc.list
+$i = 0
+while $i < $n.dc
+ $dc.a = $dc.list[$i]
+ $a.sec = $dc.a  ->  get sector
+ if not $a.sec
+  inc $i =
+  continue
+ end
+ $a.range = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc.a
+ $j = $i + 1
+ while $j < $n.dc
+  $dc.b = $dc.list[$j]
+  $b.sec = $dc.b  ->  get sector
+  if $b.sec
+   $a.ok = is datatyp[ $a.range ] == DATATYPE_INT
+   $b.ok = [FALSE]
+   if $a.ok
+    $b.range = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc.b
+    $b.ok = is datatyp[ $b.range ] == DATATYPE_INT
+   end
+   if $b.ok
+    * link only when the jump distance is a real INT (unreachable returns null or
+    * negative on some games - treat it as no link)
+    $jumps = = get jumps from sector $a.sec to sector $b.sec
+    if is datatyp[ $jumps ] == DATATYPE_INT
+     if not $jumps < 0
+      * R_bb uses the smaller of the two ranges: min x 2
+      $r.min = $a.range
+      if $b.range < $r.min
+       $r.min = $b.range
+      end
+      $r.bb = $r.min * 2
+      if not $jumps > $r.bb
+       $link = = array alloc: size=3
+       $link[0] = $dc.a
+       $link[1] = $dc.b
+       $link[2] = $jumps
+       append $link to array $link.table
+      end
+     end
+    end
+   end
+  end
+  inc $j =
+ end
+ inc $i =
+end
+
+$al.Settings[35] = $link.table
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+$n.links = size of array $link.table
+return $n.links

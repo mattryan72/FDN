@@ -17,15 +17,16 @@
 
 * To Do - P3-04b switches Supply.Start and the menu callers from Sector.Array to this script + lib.LI.FDN.Sectors
 
-* Version: 1.0
-* Date: 23/10/2026
-* Tested: TC 23/10/2026
+* Version: 2.0
+* Date: 28/10/2026
+* Tested: not tested (M-03 hub hook)
 * -----------------------------------------------------------------------------------
  * v9.01 B10/B25/P1 changes (Scan):
  *   B10 Sector.Array both scanned and returned a list, and its documented modes 1/2/3 were ignored except 3; split into this task (scan + fill) and lib.LI.FDN.Sectors (wait-free cache reader).
  *   B25 v8 appended docks twice in two find-in-array passes over the same array (O(n^2)); Scan is a single pass - every station is tested once against [3]/[4] with one local copy of each array.
  *   P1  The scan runs from Supply.Start at most every [17] seconds (default 300); this script stamps the playing time into [16].
- *   FL  Approved decision: a station run by Station Manager is dropped via lib.LI.FDN.Is.FL.Managed - never added to [3]/[4], removed if it was tracked, DC cleared once with text 331. Still in [8]: Buy.Ware/Sell.Ware pass [8] as the exclude array to find station so FDN never trades with the player's own stations (fix #1).
+ * v9.01 D6 (M-03): hub assignment after the scan (Route.Build + Hub.Assign, out-of-range log)
+  *   FL  Approved decision: a station run by Station Manager is dropped via lib.LI.FDN.Is.FL.Managed - never added to [3]/[4], removed if it was tracked, DC cleared once with text 331. Still in [8]: Buy.Ware/Sell.Ware pass [8] as the exclude array to find station so FDN never trades with the player's own stations (fix #1).
  * -----------------------------------------------------------------------------------
 
 $al.Settings = get global variable: name='al.LI.FDN.event'
@@ -135,6 +136,28 @@ $al.Settings[8] = $exclude.array
 $al.Settings[15] = $sector.cache
 $now = = playing time
 $al.Settings[16] = $now
+
+ * v9.01 D6 (M-03): hub assignment - build the route table and assign home DCs
+ * only when the settings array has been grown to 40 entries by Upgrade
+$s.size = size of array $al.Settings
+if $s.size >= 40
+ = [THIS] -> call script lib.LI.FDN.Route.Build :
+ $n.fac = size of array $factory.array
+ $fi = 0
+ while $fi < $n.fac
+  $st.hub = $factory.array[$fi]
+  inc $fi =
+  gosub Hub.Sub:
+ end
+ $n.dock = size of array $dock.array
+ $di = 0
+ while $di < $n.dock
+  $st.hub = $dock.array[$di]
+  inc $di =
+  gosub Hub.Sub:
+ end
+end
+
 set global variable: name='al.LI.FDN.event' value=$al.Settings
 return null
 
@@ -164,6 +187,23 @@ else
   write to player logbook $txt.msg
   $txt.log = = sprintf: pageid=$PageID textid=332, $station, null, null, null, null
   $null = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
+endsub
+ * v9.01 D6 (M-03): assign the home DC to $st.hub; log out-of-range once per Scan
+Hub.Sub:
+$home = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$st.hub
+if not $home
+ $range.on.scan = [FALSE]
+ $r.set.scan = $al.Settings[31]
+ if is datatyp[ $r.set.scan ] == DATATYPE_INT
+  if $r.set.scan == 1
+   $range.on.scan = [TRUE]
+  end
+ end
+ if $range.on.scan
+  $txt.log = 'Scan: ' + $st.hub + ' out of range (no DC covers it)'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
 end
 endsub

@@ -1,0 +1,87 @@
+* Script: lib.LI.FDN.Dc.Range  (v1, engine 50)
+* Desc: FDNv9 - Station range R of one DC in jumps (override, else R_base + subtype modifier)
+* Arg 0: dc (Value) 'dc'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 1). Returns the station range R of ONE
+* Distribution Centre as an INT, or null for bad input (not a valid DC, settings
+* missing or smaller than 40):
+* - override: FDN.DC.Cfg[0] when it is an INT of 1 or more replaces everything.
+* - otherwise R = R_base + subtype modifier, minimum 1:
+*     [32] R_base (null or non-INT treated as 3)
+*     Player HQ subtype 62 -> +2
+*     Equipment Dock subtype 6 -> 0
+*     any other dock subtype -> -1
+*   The Trading Station subtype has not been seen on FL yet: it falls into the
+*   'other dock' (-1) branch and becomes +1 once a probe logs its subtype (M-03).
+*
+* Arguments:
+* - dc (Value): Distribution Centre station
+
+* Returns values:
+* - INT range in jumps, or null for bad input
+
+* To Do - Trading Station subtype modifier +1 when the M-03 probe has seen it
+
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-03): new - DC station range for home-DC assignment and backbone links
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $dc ] == DATATYPE_STATION
+ return null
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return null
+end
+$dc.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $dc.ok
+ return null
+end
+
+* override FDN.DC.Cfg[0]: an INT of 1 or more replaces the computed range
+$cfg = $dc  ->  get local variable: name='FDN.DC.Cfg'
+if is datatyp[ $cfg ] == DATATYPE_ARRAY
+ $ovr = $cfg[0]
+ if is datatyp[ $ovr ] == DATATYPE_INT
+  if $ovr >= 1
+   return $ovr
+  end
+ end
+end
+
+* R_base from [32], null or non-INT treated as 3
+$r.base = 3
+$base = $al.Settings[32]
+if is datatyp[ $base ] == DATATYPE_INT
+ if $base >= 0
+  $r.base = $base
+ end
+end
+
+* subtype modifier: Player HQ +2, Equipment Dock 0, other dock -1 (Trading Station
+* unknown yet, treated as other dock until the probe shows its subtype)
+$mod = -1
+$sub.type = $dc  ->  get subtype
+if is datatyp[ $sub.type ] == DATATYPE_INT
+ if $sub.type == 62
+  $mod = 2
+ else
+  if $sub.type == 6
+   $mod = 0
+  end
+ end
+end
+
+$r = $r.base + $mod
+if $r < 1
+ $r = 1
+end
+return $r

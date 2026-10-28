@@ -1,0 +1,70 @@
+* Script: lib.LI.FDN.Dc.List  (v1, engine 50)
+* Desc: FDNv9 - Cleaned DC list [30]: valid DCs only, primary [2] first and unique
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 1). Returns the DC list from settings
+* slot [30], cleaned in place:
+* - every entry is tested with lib.LI.FDN.Is.Valid (need.dock TRUE); dead, non-player
+*   or non-Dock entries are dropped.
+* - when [2] is a valid DC it becomes element 0 and appears only once; other duplicates
+*   of the same station are dropped as well.
+* The cleaned array is written back into [30] (stored in the global) AND returned, so
+* callers can use it immediately. An empty array is returned when there is no valid DC.
+*
+* Arguments:
+* - none
+
+* Returns values:
+* - the cleaned DC list array, or null when settings are missing or smaller than 40
+
+* To Do - N/A (M-06 makes DC.Change add/remove entries into [30])
+
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-03): new - single owner of the DC list for Scan, Supply and Route.Build
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return null
+end
+
+* the primary DC first (element 0 must be the same station as [2])
+$cleaned = = array alloc: size=0
+$primary = $al.Settings[2]
+if is datatyp[ $primary ] == DATATYPE_STATION
+ $p.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$primary need.dock=[TRUE]
+ if $p.ok
+  append $primary to array $cleaned
+ end
+end
+
+* then every entry of the stored list that survived validation and is not a duplicate
+$list.old = $al.Settings[30]
+if is datatyp[ $list.old ] == DATATYPE_ARRAY
+ $ls = size of array $list.old
+ $li = 0
+ while $li < $ls
+  $dc.cand = $list.old[$li]
+  if is datatyp[ $dc.cand ] == DATATYPE_STATION
+   $c.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc.cand need.dock=[TRUE]
+   if $c.ok
+    if not find $dc.cand in array: $cleaned
+     append $dc.cand to array $cleaned
+    end
+   end
+  end
+  inc $li =
+ end
+end
+
+* write the cleaned list back into [30], store and return it
+$al.Settings[30] = $cleaned
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+return $cleaned

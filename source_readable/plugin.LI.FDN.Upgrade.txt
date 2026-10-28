@@ -1,101 +1,314 @@
-* Script: plugin.LI.FDN.Upgrade  (v1, engine 50)
-* Desc: FDNv9 - Upgrade settings schema
+* Script: plugin.LI.FDN.Upgrade  (v2, engine 50)
+* Desc: FDNv9 - Upgrade settings schema (v8.04 save to v9.01)
+
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
-* This script is called by al.LI.FDN.event on 'init' and 'reinit' before Setup runs.
-* It migrates the al.LI.FDN.event settings array from older FDN versions to v9.01.
-* Phase 1 stub: stamps the schema version [14] = 901 and seeds the B9 station registry
-* [29] with the current DC plus every factory and dock, if it is still null.
-* The full migration (record fixes, registry prune, etc.) arrives in Phase 4.
-* This script must stay wait-free: al.LI.FDN.event calls it synchronously.
+* Called by al.LI.FDN.event on 'init' and 'reinit', after Setup (Setup restarts the log).
+* Wait-free, no waits. Safe to run any number of times in a row.
 *
-* Expected values: none - settings are read from the 'al.LI.FDN.event' global.
+* Every run:
+* A. Grows the settings array to 40 entries when it is smaller (a v8 save has 12), copying
+*    every old entry, and stores the new array in the global.
+* B. Fills the config slots that are still empty with their defaults (never overwrites):
+*    [17] scan interval 300, [18] trade counter 0, [19] max trade tasks 4, [20] menu token 0,
+*    [27] max drone loads 5, [28] surplus default 1 (B5, decided 2026-10-17).
+* C. STARTs plugin.LI.FDN.Cleanup (orphan trade-drone sweep, REFERENCE G).
+* D. When the array was grown here, calls plugin.LI.FDN.Setup.Keys, which Setup skipped
+*    because the array was still too small (hotkey, [23] game, [24] FL patch flag).
 *
-* Returns value(s):
-* - null always (the migration is done in place on the settings array; the log shows what was written)
+* Only while [14] is not yet 901 (a v8 save or a fresh install):
+* 1. [12] and [13] are cleared (v8 meanings are gone).
+* 2. [6] (is.dynamic) gets an index 2 (TRUE, as on a fresh install) if it is missing.
+* 3. [2] (DC) is cleared when it is not an existing, player-owned Dock, and the player
+*    gets a logbook line (text 333).
+* 4. Dead or non-player stations are removed from [3] and [4].
+* 5. The station registry [29] is created if missing, pruned of dead or non-player
+*    stations, and every valid station in [2], [3] and [4] is added (lib.LI.FDN.Reg.Add).
+* 6. [14] is stamped 901, then plugin.LI.FDN.Upgrade.Records is STARTed once to migrate
+*    the v8 ware records (surplus flag null becomes 0, B5). It is a separate task
+*    because it may wait; the stamp comes first so it can never be STARTed twice.
 *
-* To Do: Phase 4 completes the migration ([28], B5 record fix, registry prune).
+* Expected values:
+* - none (settings are read from the 'al.LI.FDN.event' global)
 *
-* Version: 1.0
-* Date: 19/10/2026
+* Returns values:
+* - null always
+*
+* To Do - the P4-04b card makes Supply.Dock read [28]; until then [28] is stored only
+*
+* Version: 3.0
+* Date: 28/10/2026
 * Tested: not tested
 * -----------------------------------------------------------------------------------
-$script = = get script name
-$al.Settings = get global variable: name='al.LI.FDN.event'
+ * v9.01 D6 (P4-04): full v8.04 to v9.01 migration, Phase 1 stub replaced
+ * v9.01 D6 (M-03): grow to 40, fill [30]-[36], [31]/[33] rule
+ * v9.01 D6 (M-03b): [31]/[33] null -> 0 on saves already at 901
+ * -----------------------------------------------------------------------------------
+
+$script.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
 if not $al.Settings
  return null
 end
 $PageID = $al.Settings[1]
-$DebugID = 0 + $PageID
+$n.settings = 30
+$grown = [FALSE]
+$purged = 0
 
-* v9.01 B16: stamp the schema version on first run (fresh install or old save)
-if not $al.Settings[14]
- $al.Settings[14] = 901
- if $al.Settings[7]
-  $txt.debug = 'B16: settings schema stamped to 901'
-  gosub Debug.Sub:
+* A. grow the settings array to 30 entries
+$size = size of array $al.Settings
+if $size < $n.settings
+ $new.settings = = array alloc: size=$n.settings
+ $i = 0
+ while $i < $size
+  $new.settings[$i] = $al.Settings[$i]
+  inc $i =
  end
+ $al.Settings = $new.settings
  set global variable: name='al.LI.FDN.event' value=$al.Settings
+ $grown = [TRUE]
+ $txt.log = 'Upgrade: settings array grown from ' + $size + ' to ' + $n.settings + ' entries'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
 end
 
-* v9.01 B9/B16: seed the station registry [29] from the current DC and arrays, if null
-$registry = $al.Settings[29]
-if not $registry
- $registry = = array alloc: size=0
- $al.Settings[29] = $registry
- * seed with the DC (may be null on a fresh install)
+ * v9.01 D6 (M-03): grow to 40 entries for the multi-DC slots [30]-[39]
+$n.settings.40 = 40
+if $size < $n.settings.40
+ $new.settings.40 = = array alloc: size=$n.settings.40
+ $i = 0
+ while $i < $size
+  $new.settings.40[$i] = $al.Settings[$i]
+  inc $i =
+ end
+ $al.Settings = $new.settings.40
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ $grown = [TRUE]
+ $txt.log = 'Upgrade: settings array grown from ' + $size + ' to ' + $n.settings.40 + ' entries (M-03)'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+end
+
+* is this save already on schema 901?
+$upgrade = [TRUE]
+$ver = $al.Settings[14]
+if is datatyp[ $ver ] == DATATYPE_INT
+ if $ver >= 901
+  $upgrade = [FALSE]
+ end
+end
+
+* B. defaults for empty config slots (an existing value is never changed)
+$idx = 17
+$val = 300
+gosub Fill.Default.Sub:
+$idx = 18
+$val = 0
+gosub Fill.Default.Sub:
+$idx = 19
+$val = 4
+gosub Fill.Default.Sub:
+$idx = 20
+$val = 0
+gosub Fill.Default.Sub:
+$idx = 27
+$val = 5
+gosub Fill.Default.Sub:
+$idx = 28
+$val = 1
+gosub Fill.Default.Sub:
+
+ * v9.01 D6 (M-03): fill the multi-DC slots [30]-[36] only when they are empty
+* [30] DC list: a new array holding [2] when [2] is a valid DC, else an empty array
+$dc.list.new = = array alloc: size=0
+$dc.check = $al.Settings[2]
+if is datatyp[ $dc.check ] == DATATYPE_STATION
+ $dc.ok2 = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc.check need.dock=[TRUE]
+ if $dc.ok2
+  append $dc.check to array $dc.list.new
+ end
+end
+$cur30 = $al.Settings[30]
+if not is datatyp[ $cur30 ] == DATATYPE_ARRAY
+ $al.Settings[30] = $dc.list.new
+end
+* [32] R_base default 3 (Fill.Default.Sub: only when no INT yet)
+$idx = 32
+$val = 3
+gosub Fill.Default.Sub:
+* [34] global reserve floor percent default 25
+$idx = 34
+$val = 25
+gosub Fill.Default.Sub:
+* [35] route table cache: empty array when missing (not an INT, so not via Fill.Default)
+$cur35 = $al.Settings[35]
+if not is datatyp[ $cur35 ] == DATATYPE_ARRAY
+ $route.empty = = array alloc: size=0
+ $al.Settings[35] = $route.empty
+end
+* [36] last network Energy Cell check time default 0
+$idx = 36
+$val = 0
+gosub Fill.Default.Sub:
+
+if $upgrade
+ * v9.01 D6 (M-03): set [31] and [33] per the fresh-versus-upgraded rule, only when null
+ * valid [2] at this moment = existing network -> range off, cost off (v8 behaviour)
+ $dc.check2 = $al.Settings[2]
+ $dc.valid.now = [FALSE]
+ if is datatyp[ $dc.check2 ] == DATATYPE_STATION
+  $dc.ok3 = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc.check2 need.dock=[TRUE]
+  if $dc.ok3
+   $dc.valid.now = [TRUE]
+  end
+ end
+ $cur31 = $al.Settings[31]
+ if is datatyp[ $cur31 ] == DATATYPE_NULL
+  if $dc.valid.now
+   $al.Settings[31] = 0
+  else
+   $al.Settings[31] = 1
+  end
+ end
+ $cur33 = $al.Settings[33]
+ if is datatyp[ $cur33 ] == DATATYPE_NULL
+  if $dc.valid.now
+   $al.Settings[33] = 0
+  else
+   $al.Settings[33] = 1
+  end
+ end
+
+ * 1. v8 meanings of [12] and [13] are gone
+ $al.Settings[12] = null
+ $al.Settings[13] = null
+
+ * 2. is.dynamic [6]: make sure index 2 exists (index 1 is no longer read)
+ $dyn = $al.Settings[6]
+ $dyn.size = 0
+ if is datatyp[ $dyn ] == DATATYPE_ARRAY
+  $dyn.size = size of array $dyn
+ end
+ if $dyn.size < 3
+  $dyn.new = = array alloc: size=10
+  $j = 0
+  while $j < $dyn.size
+   $dyn.new[$j] = $dyn[$j]
+   inc $j =
+  end
+  while $j < 3
+   $dyn.new[$j] = [TRUE]
+   inc $j =
+  end
+  $al.Settings[6] = $dyn.new
+ end
+
+ * 3. DC [2] must be an existing, player-owned Dock
  $dc = $al.Settings[2]
- if $dc -> exists
-  append $dc to array $registry
- end
- * then every factory in [3]
- $factory.array = $al.Settings[3]
- if $factory.array
-  $count = size of array $factory.array
-  $i = 0
-  while $i < $count
-   $station = $factory.array[$i]
-   inc $i =
-   if not $station -> exists
-    continue
-   end
-   if not find $station in array: $registry
-    append $station to array $registry
-   end
+ if not is datatyp[ $dc ] == DATATYPE_NULL
+  $dc.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+  if not $dc.ok
+   $al.Settings[2] = null
+   $txt.msg = = read text: page=$PageID id=333
+   write to player logbook $txt.msg
+   $txt.log = 'Upgrade: DC was not a valid player Dock, cleared'
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
   end
  end
- * then every dock in [4]
- $dock.array = $al.Settings[4]
- if $dock.array
-  $count = size of array $dock.array
-  $i = 0
-  while $i < $count
-   $station = $dock.array[$i]
-   inc $i =
-   if not $station -> exists
-    continue
-   end
-   if not find $station in array: $registry
-    append $station to array $registry
-   end
-  end
+
+ * 4. purge dead or non-player stations from [3] and [4]
+ $arr = $al.Settings[3]
+ if not is datatyp[ $arr ] == DATATYPE_ARRAY
+  $arr = = array alloc: size=0
+  $al.Settings[3] = $arr
  end
+ gosub Purge.Sub:
+ $arr = $al.Settings[4]
+ if not is datatyp[ $arr ] == DATATYPE_ARRAY
+  $arr = = array alloc: size=0
+  $al.Settings[4] = $arr
+ end
+ gosub Purge.Sub:
+
+ * 5. station registry [29]: create, prune, then add the DC, factories and docks
+ $registry = $al.Settings[29]
+ if not is datatyp[ $registry ] == DATATYPE_ARRAY
+  $registry = = array alloc: size=0
+  $al.Settings[29] = $registry
+ end
+ $arr = $registry
+ gosub Purge.Sub:
  set global variable: name='al.LI.FDN.event' value=$al.Settings
- if $al.Settings[7]
-  $count.registry = size of array $registry
-  $txt.debug = 'B9: station registry seeded with ' + $count.registry + ' stations'
-  gosub Debug.Sub:
+ $dc = $al.Settings[2]
+ if is datatyp[ $dc ] == DATATYPE_STATION
+  = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$dc
  end
+ $arr = $al.Settings[3]
+ gosub Reg.Sub:
+ $arr = $al.Settings[4]
+ gosub Reg.Sub:
+
+ * 6. stamp the schema first, then START the record migration once
+ $al.Settings[14] = 901
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ $txt.log = 'FDN upgraded 8.04 to 9.01 (stations purged: ' + $purged + ')'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+ START  = [THIS] -> call script plugin.LI.FDN.Upgrade.Records :
 end
 
+ * v9.01 D6 (M-03b): a save already stamped 901 never ran the [31]/[33] rule above, so any of
+ * them still null gets 0 (range off, cost off = v8 behaviour). Runs every init/reinit; existing values are kept.
+$cur31.fix = $al.Settings[31]
+if is datatyp[ $cur31.fix ] == DATATYPE_NULL
+ $al.Settings[31] = 0
+end
+$cur33.fix = $al.Settings[33]
+if is datatyp[ $cur33.fix ] == DATATYPE_NULL
+ $al.Settings[33] = 0
+end
+
+* C. orphan trade-drone sweep on every init and reinit
+START  = null -> call script plugin.LI.FDN.Cleanup :
+
+* D. Setup.Keys was skipped by Setup on a small array, run it now
+if $grown
+ = [THIS] -> call script plugin.LI.FDN.Setup.Keys :
+end
+
+set global variable: name='al.LI.FDN.event' value=$al.Settings
 return null
 * -----------------------------------------------------------------------------------
 
-* Debug Massage handling
-Debug.Sub:
-$d.time = = playing time
-$d.time = = format time: $d.time
-$txt = $d.time + ';' + $script + ';' + $txt.debug
-write to log file $DebugID  append=[TRUE]  value=$txt
+* sub - store $val in slot $idx only when the slot holds no integer yet
+Fill.Default.Sub:
+$cur = $al.Settings[$idx]
+if not is datatyp[ $cur ] == DATATYPE_INT
+ $al.Settings[$idx] = $val
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* sub - remove every entry of array $arr that is not an existing, player-owned station
+Purge.Sub:
+$ps = size of array $arr
+while $ps > 0
+ dec $ps =
+ $st = $arr[$ps]
+ $st.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$st need.dock=[FALSE]
+ if not $st.ok
+  remove element from array $arr at index $ps
+  inc $purged =
+ end
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* sub - add every station of array $arr to the registry (Reg.Add checks and never duplicates)
+Reg.Sub:
+$rs = size of array $arr
+$ri = 0
+while $ri < $rs
+ $st = $arr[$ri]
+ inc $ri =
+ = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$st
+end
 endsub
 * -----------------------------------------------------------------------------------

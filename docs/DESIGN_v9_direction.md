@@ -173,3 +173,35 @@ Mapping to v8 fields for the upgrade:
 - **Docks:** a dock found short goes on a "hot list" checked every tick until satisfied. Others stay on the slow ~175 s pass.
 - **Budget:** keep the factory budget `[22]` per tick and the round-robin cursor `[13]`.
 - **Open questions:** Q8.1 Is cycle-start supply OK with the economy (factories hold 3 cycles of resources)? Q8.2 Hot-list size cap?
+
+## Decisions 2026-10-28 (Matt): multi-DC, range and energy cost go into v9.01
+
+Status change: items 2 (multiple DCs, range, backbone) and 3 (Energy Cell transfer cost) are now SCHEDULED for v9.01, before release. Items 4-8 stay proposals.
+
+- **Every transfer to or from a DC costs Energy Cells** (DC to DC, DC to station/dock, station/dock to DC), so FDN never feels like a free teleport. One setting turns the cost off. Energy Cell moves cost too (no exemption; this replaces the earlier Q3.2 proposal).
+- **Who pays:** the sending DC pays (DC to station, DC to DC). For station/dock to DC the sender is a station that may hold no Energy Cells, so the receiving DC pays (assumption, to confirm).
+- **Closest DC first:** the DC with the fewest jumps to a station always serves it; the tie-break is the larger range, then the older DC.
+- **Paying with Energy Cells:** take from virtual storage first, then physical. Respect the Energy Cell maintain level settings (the DC does not pay below its maintain level unless nothing else is possible; exact rule to settle in M-02).
+- **A DC short of Energy Cells** requests them from the DC network (same pull mechanism as any ware, nearest DC by route first, above that DC floor and maintain level). If the whole network is short, FDN shows a warning and writes a log line, and the transfer is deferred (never partial).
+- **Network Energy Cell check (Matt, proposal to settle):** a periodic check across the DC network compares each DC Energy Cell stock with its maintain level and moves Energy Cells from DCs above it to DCs below it. This is the one exception to Q2.8 (no proactive rebalancing), limited to Energy Cells, and its moves cost Energy Cells like any other.
+- **Running cost:** every station, dock and DC keeps a total of Energy Cells spent on transfers touching it plus an Energy Cells per hour figure, shown in its menu view. A DC shows what it paid.
+- **Defaults (recommended, confirmed by silence on 28/10):** new installs have range and cost on; upgraded v8 saves start with both off.
+## Cost formula revised 2026-10-28 (Matt, after the FL probe M-01)
+
+Supersedes the item 3 formula and constants. Reason: the class multiplier counted size twice (volume already measures it). Ore (volume 8, class XL) cost 16 % of its value against 4 % for Energy Cells.
+
+```
+leg cost_EC = ceil( U * vol * (B + J * jumps) * T[maintype] * V[tier] * H[DC] / 10^9 / 1000 )   (B_bb, J_bb on a backbone leg)
+```
+- No cargo-class multiplier. Volume per unit comes from `get volume of ware` (verified on FL).
+- `T[maintype]` (per-mille, from `get maintype of ware`): energy, natural, bio, food, minerals 1000; tech 1500; laser, shield, missile 2000; any other maintype 1000.
+- `V[tier]` by average price: under 1,000 / under 10,000 / under 100,000 / higher = 1000 / 1250 / 1500 / 2000.
+- `H[DC]` by DC type (class text or subtype, not SS_DOCK_P_* constants): Player HQ (subtype 62) 800, Trading Station 900, Equipment Dock (subtype 6) 1000, other docks 1200. Trading Station subtype not yet seen.
+- B 20, J 10, B_bb 10, J_bb 2 (milli-EC per volume unit); still example values, tune after the first in-game runs.
+- Overflow: divide after each multiplier, never multiply all of them first.
+- Worked table, 3 jumps from a Player HQ (FL probe volumes and prices, FL 28/10/2026):
+  - 1,000 Energy Cells: 40 EC (4 % of value).
+  - 1,000 Ore: 320 EC (4 % of value; was 1,280).
+  - 1,000 Cloth Rimes: 80 EC.
+  - 1,000 Mosquito Missiles (type x2.0): 80 EC.
+  - 10 x 1 GJ Shield (volume 77, type x2.0, tier x2.0): 124 EC.

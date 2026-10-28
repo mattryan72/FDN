@@ -1,0 +1,456 @@
+* Script: test.LI.FDN.Hub  (v1, engine 50)
+* Desc: FDNv9 - M-03b test lib.LI.FDN.Dc.Range / Dc.List / Route.Build / Hub.Assign
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* M-03b test. Writes every TEST line to log 9910 and log 9911 (9911 restarted at start).
+* Follows notes/M-03-test-plan.md, checks 1-8 plus the self case (M-03b: a DC is its own hub).
+* Interfaces used only: Dc.Range : dc=, Dc.List :, Route.Build : (no args), Hub.Assign : station=.
+* The only range override is the DC local FDN.DC.Cfg[0] built with array alloc: size=4.
+* [35] is the route table (array of [dcA, dcB, jumps] links), NOT an override list.
+* Prerequisite: a valid DC in [2], settings grown to 40 slots (run Upgrade first).
+* Checks: 1 Dc.Range computed; 2 Dc.Range override via FDN.DC.Cfg[0]=5; 3 Dc.List dedup + primary first;
+* 4 Route.Build zero links with one DC (SKIP if [30] has >1 DC); self case Hub.Assign on the DC;
+* 5 Hub.Assign on a factory in range; 6 out-of-range with [31]=1, [32]=0, override 1;
+* 7 same far station with [31]=0 (range off); 8 restore all settings and locals.
+* Settings touched and restored: [30], [31], [32], [35] and the DC local FDN.DC.Cfg.
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-03b): new - M-03 hub assignment test
+* -----------------------------------------------------------------------------------
+
+$pass = 0
+$total = 0
+$txt = 'TEST Hub: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $g
+ $txt = 'TEST Hub: FAIL no settings array, test stopped'
+ gosub Log.Sub:
+ return null
+end
+$s.size = size of array $g
+if $s.size < 40
+ $txt = 'TEST Hub: FAIL settings smaller than 40 (' + $s.size + '), run Upgrade first, stop'
+ gosub Log.Sub:
+ return null
+end
+$dc = $g[2]
+$dc.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $dc.ok
+ $txt = 'TEST Hub: FAIL [2] is not a valid player DC, stop'
+ gosub Log.Sub:
+ return null
+end
+
+* ---------- save [30], [31], [32], [35] and the DC local FDN.DC.Cfg ----------
+$save.30 = $g[30]
+$save.31 = $g[31]
+$save.32 = $g[32]
+$save.35 = $g[35]
+$save.cfg = $dc -> get local variable: name='FDN.DC.Cfg'
+* ---------- check 1. Dc.Range computed value (R_base + subtype modifier) ----------
+* clear any override so the computed path is used
+$dc -> set local variable: name='FDN.DC.Cfg' value=null
+set global variable: name='al.LI.FDN.event' value=$g
+$r = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$sub.type = $dc -> get subtype
+$base = $g[32]
+if not is datatyp[ $base ] == DATATYPE_INT
+ $exp.base = 3
+else
+ if $base < 0
+  $exp.base = 3
+ else
+  $exp.base = $base
+ end
+end
+$mod = -1
+if is datatyp[ $sub.type ] == DATATYPE_INT
+ if $sub.type == 62
+  $mod = 2
+ else
+  if $sub.type == 6
+   $mod = 0
+  end
+ end
+end
+$exp.range = $exp.base + $mod
+if $exp.range < 1
+ $exp.range = 1
+end
+$ok = [FALSE]
+if is datatyp[ $r ] == DATATYPE_INT
+ if $r == $exp.range
+  $ok = [TRUE]
+ end
+end
+$id = '1a Dc.Range computed'
+$det = 'range=' + $r + ' expected=' + $exp.range + ' subtype=' + $sub.type + ' R_base=' + $base
+gosub Result.Sub:
+
+* ---------- check 2. Dc.Range override via FDN.DC.Cfg[0] = 5 ----------
+$cfg.ovr = = array alloc: size=4
+$cfg.ovr[0] = 5
+$cfg.ovr[1] = -1
+$cfg.ovr[2] = null
+$cfg.ovr[3] = null
+$dc -> set local variable: name='FDN.DC.Cfg' value=$cfg.ovr
+set global variable: name='al.LI.FDN.event' value=$g
+$r = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$ok = [FALSE]
+if is datatyp[ $r ] == DATATYPE_INT
+ if $r == 5
+  $ok = [TRUE]
+ end
+end
+$id = '2 Dc.Range override'
+$det = 'range=' + $r + ' expected=5 (FDN.DC.Cfg[0]=5)'
+gosub Result.Sub:
+
+* restore the saved DC local before any further check
+$dc -> set local variable: name='FDN.DC.Cfg' value=$save.cfg
+set global variable: name='al.LI.FDN.event' value=$g
+
+
+* ---------- check 3. Dc.List drops a bad entry, keeps the primary DC first ----------
+$dc.list.raw = $g[30]
+$n30 = 0
+if is datatyp[ $dc.list.raw ] == DATATYPE_ARRAY
+ $n30 = size of array $dc.list.raw
+end
+* fixed-size buffer (no arithmetic in array alloc); copy the old DCs, append one null at a safe index
+$tampered = = array alloc: size=8
+$i = 0
+while $i < $n30
+ $t.elm = $dc.list.raw[$i]
+ if is datatyp[ $t.elm ] == DATATYPE_STATION
+  $tampered[$i] = $t.elm
+ end
+ inc $i =
+end
+if not $n30 > 7
+ $tampered[$n30] = null
+end
+$g[30] = $tampered
+set global variable: name='al.LI.FDN.event' value=$g
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+$n.list = 0
+if is datatyp[ $list ] == DATATYPE_ARRAY
+ $n.list = size of array $list
+end
+$el0 = null
+$ok = [FALSE]
+if is datatyp[ $list ] == DATATYPE_ARRAY
+ if not $n.list > 1
+  $el0 = $list[0]
+  if $el0 == $dc
+   $ok = [TRUE]
+  end
+ end
+end
+$id = '3 Dc.List dedup'
+$det = 'size=' + $n.list + ' expected=1 element[0]==' + $el0
+gosub Result.Sub:
+
+* ---------- check 4. Route.Build zero links with one DC (SKIP if [30] has >1) ----------
+$list.pre = $g[30]
+$n.dc.pre = 0
+if is datatyp[ $list.pre ] == DATATYPE_ARRAY
+ $n.dc.pre = size of array $list.pre
+end
+if not $n.dc.pre > 1
+ $links = [THIS] -> call script lib.LI.FDN.Route.Build :
+ $ok = [FALSE]
+ if is datatyp[ $links ] == DATATYPE_INT
+  if not $links > 0
+   $r35 = $g[35]
+   $sz35 = -1
+   if is datatyp[ $r35 ] == DATATYPE_ARRAY
+    $sz35 = size of array $r35
+   end
+   if not $sz35 > 0
+    $ok = [TRUE]
+   end
+  end
+ end
+ $id = '4 Route.Build zero links'
+ $det = 'links=' + $links + ' expected=0 routeTable[35]size=' + $sz35
+ gosub Result.Sub:
+else
+ $txt = 'TEST Hub: 4 SKIP [30] has more than one DC (' + $n.dc.pre + ')'
+ gosub Log.Sub:
+end
+
+
+* ---------- check 5. Hub.Assign on a factory in range ----------
+$fac = null
+$list.fac = $g[3]
+gosub Pick.Sub:
+if not $fac
+ * no factory in [3]: try the dock list [4] as an assignable station
+ $list.fac = $g[4]
+ gosub Pick.Sub:
+end
+if not $fac
+ $txt = 'TEST Hub: 5 SKIP no valid player factory or dock to assign'
+ gosub Log.Sub:
+else
+ * set [31]=0 so the range check is off and any reachable station gets a home DC
+ $g[31] = 0
+ set global variable: name='al.LI.FDN.event' value=$g
+ $home = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$fac
+ * expected jumps from the DC sector to the factory sector
+ $dc.sec = $dc -> get sector
+ $fac.sec = $fac -> get sector
+ $exp.jumps = null
+ if $dc.sec
+  $dj = = get jumps from sector $dc.sec to sector $fac.sec
+  if is datatyp[ $dj ] == DATATYPE_INT
+   $exp.jumps = $dj
+  end
+ end
+ * read back the FDN.Hub local written by Hub.Assign
+ $hub = $fac -> get local variable: name='FDN.Hub'
+ $hub.1 = -99
+ if is datatyp[ $hub ] == DATATYPE_ARRAY
+  $h.elm = $hub[1]
+  if is datatyp[ $h.elm ] == DATATYPE_INT
+   $hub.1 = $h.elm
+  end
+ end
+ * pass when home == DC, jumps match the computed distance and it was not -1
+ $ok5 = [FALSE]
+ if $home == $dc
+  if is datatyp[ $exp.jumps ] == DATATYPE_INT
+   if $hub.1 == $exp.jumps
+    $ok5 = [TRUE]
+   end
+  else
+   * distance unreachable: still pass when the hub jumps are not -1
+   if not $hub.1 < 0
+    $ok5 = [TRUE]
+   end
+  end
+ end
+  $id = '5 Hub.Assign factory in range'
+  $det = 'home==' + $home + ' expected=' + $dc + ' hub[1]=' + $hub.1 + ' expJumps=' + $exp.jumps
+  $ok = $ok5
+  gosub Result.Sub:
+end
+
+* ---------- self case (M-03b): Hub.Assign on the DC returns itself with 0 jumps ----------
+$g[31] = 0
+set global variable: name='al.LI.FDN.event' value=$g
+$self.home = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$dc
+$self.hub = $dc -> get local variable: name='FDN.Hub'
+$self.1 = -99
+if is datatyp[ $self.hub ] == DATATYPE_ARRAY
+ $s.elm = $self.hub[1]
+ if is datatyp[ $s.elm ] == DATATYPE_INT
+  $self.1 = $s.elm
+ end
+end
+$ok.self = [FALSE]
+if $self.home == $dc
+ if not $self.1 < 0
+  if $self.1 == 0
+   $ok.self = [TRUE]
+  end
+ end
+end
+$id = '5b self case (DC is its own hub)'
+$det = 'home==' + $self.home + ' expected=' + $dc + ' hub[1]=' + $self.1 + ' expected=0'
+$ok = $ok.self
+gosub Result.Sub:
+
+
+* ---------- checks 6-7. out-of-range with range on, then range off ----------
+$far = null
+$list.far = $g[3]
+gosub Far.Sub:
+if not $far
+ $list.far = $g[4]
+ gosub Far.Sub:
+end
+if not $far
+ $txt = 'TEST Hub 6: SKIP no station more than 1 jump away'
+ gosub Log.Sub:
+else
+ * check 6. [31]=1 (range on), [32]=0, override FDN.DC.Cfg[0]=1 -> range=1; the far station is out of range
+ $g[31] = 1
+ set global variable: name='al.LI.FDN.event' value=$g
+ $g[32] = 0
+ set global variable: name='al.LI.FDN.event' value=$g
+ $cfg.ovr6 = = array alloc: size=4
+ $cfg.ovr6[0] = 1
+ $cfg.ovr6[1] = -1
+ $cfg.ovr6[2] = null
+ $cfg.ovr6[3] = null
+ $dc -> set local variable: name='FDN.DC.Cfg' value=$cfg.ovr6
+ set global variable: name='al.LI.FDN.event' value=$g
+ $home6 = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$far
+ $hub6 = $far -> get local variable: name='FDN.Hub'
+ $hub6.1 = 999
+ if is datatyp[ $hub6 ] == DATATYPE_ARRAY
+  $h.elm = $hub6[1]
+  if is datatyp[ $h.elm ] == DATATYPE_INT
+   $hub6.1 = $h.elm
+  end
+ end
+ * out of range: Hub.Assign returns the DC itself (M-03b self case) OR null; hub jumps must be -1 or 0
+ $ok6 = [FALSE]
+ if not is datatyp[ $home6 ] == DATATYPE_STATION
+  * home is null -> expected for a truly out-of-range non-self station
+  if $hub6.1 < 0
+   $ok6 = [TRUE]
+  end
+ else
+  if $home6 == $far
+   * self case: a DC returns itself with 0 jumps, that is acceptable too
+   if not $hub6.1 > 0
+    $ok6 = [TRUE]
+   end
+  end
+ end
+ $id = '6 out-of-range (range on, override 1)'
+ $det = 'home==' + $home6 + ' hub[1]=' + $hub6.1 + ' expected -1 or 0'
+ $ok = $ok6
+ gosub Result.Sub:
+
+ * check 7. same far station with [31]=0 (range off): the closest DC serves it
+ $g[31] = 0
+ set global variable: name='al.LI.FDN.event' value=$g
+ $home7 = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$far
+ $hub7 = $far -> get local variable: name='FDN.Hub'
+ $hub7.1 = 999
+ if is datatyp[ $hub7 ] == DATATYPE_ARRAY
+  $h.elm = $hub7[1]
+  if is datatyp[ $h.elm ] == DATATYPE_INT
+   $hub7.1 = $h.elm
+  end
+ end
+ * range off: home must be a DC (the primary) and hub jumps >= 0
+ $ok7 = [FALSE]
+ if not is datatyp[ $home7 ] == DATATYPE_STATION
+  $ok7 = [FALSE]
+ else
+  if not $hub7.1 < 0
+   $ok7 = [TRUE]
+  end
+ end
+ $id = '7 range-off (closest DC serves far station)'
+ $det = 'home==' + $home7 + ' hub[1]=' + $hub7.1 + ' expected >=0'
+ $ok = $ok7
+ gosub Result.Sub:
+
+ * restore the override and [32] before the final restore step
+ $dc -> set local variable: name='FDN.DC.Cfg' value=$save.cfg
+ set global variable: name='al.LI.FDN.event' value=$g
+end
+
+* ---------- check 8. restore all changed settings and locals, confirm computed range returns ----------
+$g[30] = $save.30
+set global variable: name='al.LI.FDN.event' value=$g
+$g[31] = $save.31
+set global variable: name='al.LI.FDN.event' value=$g
+$g[32] = $save.32
+set global variable: name='al.LI.FDN.event' value=$g
+$g[35] = $save.35
+set global variable: name='al.LI.FDN.event' value=$g
+$dc -> set local variable: name='FDN.DC.Cfg' value=$save.cfg
+set global variable: name='al.LI.FDN.event' value=$g
+
+* recompute the range now that everything is restored and compare with check 1's expectation
+$r8 = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$ok8 = [FALSE]
+if is datatyp[ $r8 ] == DATATYPE_INT
+ if $r8 == $exp.range
+  $ok8 = [TRUE]
+ end
+end
+$id = '8 restore settings and locals'
+$det = 'range=' + $r8 + ' expected=' + $exp.range + ' (back to computed)'
+$ok = $ok8
+gosub Result.Sub:
+
+$txt = 'TEST Hub: ' + $pass + '/' + $total + ' PASS'
+gosub Log.Sub:
+return null
+* -----------------------------------------------------------------------------------
+
+* sub - first valid player station in $list.fac into $fac (need.dock FALSE)
+Pick.Sub:
+if is datatyp[ $list.fac ] == DATATYPE_ARRAY
+ $p.n = size of array $list.fac
+ $p.i = 0
+ while $p.i < $p.n
+  $cand = $list.fac[$p.i]
+  inc $p.i =
+  if not is datatyp[ $cand ] == DATATYPE_STATION
+   continue
+  end
+  $ok.c = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$cand need.dock=[FALSE]
+  if $ok.c
+   $fac = $cand
+   $p.i = $p.n
+  end
+ end
+end
+endsub
+
+* sub - first station in $list.far that is more than 1 jump from the DC into $far
+Far.Sub:
+if is datatyp[ $list.far ] == DATATYPE_ARRAY
+$dc.sec = $dc -> get sector
+$f.n = size of array $list.far
+$f.i = 0
+while $f.i < $f.n
+ $cand = $list.far[$f.i]
+ inc $f.i =
+ if not is datatyp[ $cand ] == DATATYPE_STATION
+  continue
+ end
+ $ok.c = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$cand need.dock=[FALSE]
+ if not $ok.c
+  continue
+ end
+ if not $cand == $dc
+  $c.sec = $cand -> get sector
+  if not $c.sec
+   continue
+  end
+  if $dc.sec
+   $dj = = get jumps from sector $dc.sec to sector $c.sec
+   if is datatyp[ $dj ] == DATATYPE_INT
+    if $dj > 1
+     $far = $cand
+     $f.i = $f.n
+    end
+   end
+  end
+ end
+end
+end
+endsub
+
+* sub - write $txt to both logs
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub
+
+* sub - count and log one result using $ok / $id / $det
+Result.Sub:
+inc $total =
+$rs = 'FAIL'
+if $ok
+ inc $pass =
+ $rs = 'PASS'
+end
+$txt = 'TEST Hub: ' + $id + ': ' + $rs + ' ' + $det
+gosub Log.Sub:
+endsub

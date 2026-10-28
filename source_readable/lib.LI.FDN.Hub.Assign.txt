@@ -1,0 +1,160 @@
+* Script: lib.LI.FDN.Hub.Assign  (v1, engine 50)
+* Desc: FDNv9 - Assign the home DC to one station and write its FDN.Hub local
+* Arg 0: station (Value) 'station'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 1). For ONE factory or dock it works out
+* the home DC from the cleaned list (lib.LI.FDN.Dc.List):
+* - for every DC: jumps from the DC sector to the station sector plus its range
+*   (lib.LI.FDN.Dc.Range); a DC is a candidate when the jumps are an INT >= 0 and
+*   either the range check is off ([31] not 1) or the jumps fit in the range;
+* - pick: fewest jumps first, on a tie the larger range, then the earlier DC in [30];
+* - a DC itself gets ITSELF as home with 0 jumps (no range test);
+* - writes the station local FDN.Hub = [home DC or null, jumps or -1, playing time]
+*   and returns the home DC (null when out of range, no valid DC, or bad input).
+* Out-of-range stations keep their records untouched apart from this local: Scan logs
+* them once per run in its own loop.
+*
+* Arguments:
+* - station (Value): factory or dock to assign
+
+* Returns values:
+* - the home DC, or null when out of range / no valid DC / bad input
+
+* To Do - N/A
+
+* Version: 1.1
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-03): new - per-station home DC for Scan and Supply
+ * v9.01 D6 (M-03b): a DC is always its own home with 0 jumps, no matter what other DCs exist
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $station ] == DATATYPE_STATION
+ return null
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return null
+end
+$st.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$station need.dock=[FALSE]
+if not $st.ok
+ return null
+end
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ return null
+end
+
+* range check on or off ([31] = 1 means on)
+$range.on = [FALSE]
+$r.set = $al.Settings[31]
+if is datatyp[ $r.set ] == DATATYPE_INT
+ if $r.set == 1
+  $range.on = [TRUE]
+ end
+end
+
+* best candidate so far: null home, -1 jumps, no range yet (null never compares)
+$best.dc = null
+$best.jumps = -1
+$best.range = -1
+$st.sec = $station  ->  get sector
+$n.dc = size of array $dc.list
+$i = 0
+while $i < $n.dc
+ $dc.cand = $dc.list[$i]
+ $cand.ok = [TRUE]
+ if not $dc.cand == $station
+  if not $st.sec
+   $cand.ok = [FALSE]
+  end
+  if $cand.ok
+   $d.sec = $dc.cand  ->  get sector
+   if not $d.sec
+    $cand.ok = [FALSE]
+   end
+   if $cand.ok
+    $jumps = = get jumps from sector $d.sec to sector $st.sec
+    * negative or unreachable distance: no candidate (VERIFY item, M-01)
+    $jump.ok = is datatyp[ $jumps ] == DATATYPE_INT
+    if not $jump.ok
+     $cand.ok = [FALSE]
+    end
+   end
+   if $cand.ok
+    if $jumps < 0
+     * negative distance: unreachable, no candidate (VERIFY item, M-01)
+     $cand.ok = [FALSE]
+    end
+   end
+  end
+  if $cand.ok
+   $d.range = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc.cand
+   if $range.on
+    if not is datatyp[ $d.range ] == DATATYPE_INT
+     * range check on but the DC has no usable range: skip this DC
+     $cand.ok = [FALSE]
+    end
+   end
+  end
+  if $cand.ok
+   if $range.on
+    if $jumps > $d.range
+     $cand.ok = [FALSE]
+    end
+   end
+  end
+ end
+ * a station that IS one of the DCs gets itself as home with 0 jumps (no range test)
+ if $dc.cand == $station
+  $best.dc = $station
+  $best.jumps = 0
+  $best.range = -1
+  * v9.01 D6 (M-03b): stop looking - this station is its own home with 0 jumps
+  $i = $n.dc
+  $cand.ok = [FALSE]
+ end
+ if $cand.ok
+  * candidate: fewer jumps, or equal jumps with larger range (equal range keeps the
+  * earlier DC in [30], which this strict test does not replace)
+  if $best.jumps < 0
+   $take = [TRUE]
+  else
+   if $jumps < $best.jumps
+    $take = [TRUE]
+   else
+    if $jumps == $best.jumps
+     if $d.range > $best.range
+      $take = [TRUE]
+     else
+      $take = [FALSE]
+     end
+    else
+     $take = [FALSE]
+    end
+   end
+  end
+  if $take
+   $best.dc = $dc.cand
+   $best.jumps = $jumps
+   $best.range = $d.range
+  end
+ end
+ inc $i =
+end
+
+* stamp and store the FDN.Hub local: [home DC or null, jumps or -1, playing time]
+$now = = playing time
+ * v9.01 D6 (M-03): 3-slot array via array alloc (create new array takes exactly 5 arguments)
+$hub = = array alloc: size=3
+$hub[0] = $best.dc
+$hub[1] = $best.jumps
+$hub[2] = $now
+= $station  ->  set local variable: name='FDN.Hub' value=$hub
+return $best.dc
