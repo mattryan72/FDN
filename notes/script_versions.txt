@@ -1,0 +1,67 @@
+# name | installed version | description (installed copy in addon2\scripts) | repo-vs-installed. Generated 28/10/2026. PROD = ships, TEST = test script (does not ship)
+PROD al.LI.FDN.event | 3 | FDNv9 - AL Event | same
+PROD al.plugin.LI.FDN.register | 8 | v4 AL Plugin registration script | same
+PROD lib.BW.isAP | 0 | isAP Tests whether the current script enginer version is from AP or TC | same
+PROD lib.LI.FDN.Cfg.Get | 1 | FDNv9 - Return the live al.LI.FDN.event settings array | not in repo
+PROD lib.LI.FDN.Fac.Cfg | 1 | FDNv9 - Get-or-create a station's FDN.Settings local and apply auto-manage on first sight | not in repo
+PROD lib.LI.FDN.Game | 1 | FDN v9.01 - Which game is running: 1 = TC, 2 = AP, 3 = FL | same
+PROD lib.LI.FDN.Is.Factory | 1 | FDNv9 - TRUE if a station is a managed factory per the D10 rule | not in repo
+PROD lib.LI.FDN.Is.FL.Managed | 2 | FDNv9 - TRUE if a station is run by FL Station Manager and must be dropped from the network | same
+PROD lib.LI.FDN.Is.Valid | 1 | FDNv9 - TRUE if an object exists, is player owned and - when asked - is a Dock | not in repo
+PROD lib.LI.FDN.Lock | 1 | FDNv9 - try/release a playing-time lock on an object local or a settings index | not in repo
+PROD lib.LI.FDN.Log | 1 | FDNv9 - Write one timestamped debug line to the FDN log file when [7] is on | not in repo
+PROD lib.LI.FDN.Menu.ObjLine | 1 | FDNv9 - lib menu object header line | not in repo
+PROD lib.LI.FDN.Menu.Row | 1 | FDNv9 - lib menu row | not in repo
+PROD lib.LI.FDN.Menu.Toggle | 1 | FDNv9 - lib menu toggle row | not in repo
+PROD lib.LI.FDN.Menu.WareRow | 1 | FDNv9 - lib menu ware row | not in repo
+PROD lib.LI.FDN.Reg.Add | 1 | FDNv9 - Add a station to the B9 registry in settings [29] | not in repo
+PROD lib.LI.FDN.Sectors | 1 | FDNv9 - Read cached sector list from settings [15] (1=factories, 2=docks, 3/4=trade) | not in repo
+PROD lib.LI.FDN.Trade | 1 | FDNv9 - Wait-free docked drone buy/sell between $home and an NPC partner station | not in repo
+PROD lib.LI.FDN.Ware.Rec | 1 | FDNv9 - Get or create the ware record array for a station's ware | not in repo
+PROD plugin.LI.FDN.Buy.Ware | 3 | FDN v9.01 - Buy ware for factory | DIFFERENT
+PROD plugin.LI.FDN.Cleanup | 2 | FDNv9 - Clears FDND.* dynamic-menu globals and sweeps orphan trade drones | DIFFERENT
+PROD plugin.LI.FDN.Config.Menu | 3 | FDNv9 - Config menu (view 7) | same
+PROD plugin.LI.FDN.DC.Change | 1 | FDNv9 - change the Distribution Centre | not in repo
+PROD plugin.LI.FDN.FL.Remove.Tradeable | 1 | FDNv9 - FL only: remove a ware from a dock's tradeable list | not in repo
+PROD plugin.LI.FDN.Format.Name | 3 | FDN v9.01 - Formats object name for menus | DIFFERENT
+PROD plugin.LI.FDN.Main.Menu | 2 | FDNv9 - Main Menu controller | DIFFERENT
+PROD plugin.LI.FDN.Menu.AP.DC.Details | 1.0 | FDNv9 - STUB (P3-10): DC Menu for AP | same
+PROD plugin.LI.FDN.Menu.AP.Dock.Details | 1.0 | FDNv9 - STUB (P3-10): Dock Detail Menu for AP | same
+PROD plugin.LI.FDN.Menu.AP.Dock.List | 2 | FDN v9.01 - Dock List Menu | not in repo
+PROD plugin.LI.FDN.Menu.AP.Factory.List | 1.0 | FDNv9 - STUB (P3-10): Factory List Menu for AP | same
+PROD plugin.LI.FDN.Menu.Command | 1 | FDNv9 - Menu command dispatcher | not in repo
+PROD plugin.LI.FDN.Menu.DC.Details | 1.0 | FDNv9 - STUB (P3-10): DC Menu for TC | same
+PROD plugin.LI.FDN.Menu.DC.Details_D | 2 | FDNv9 - STUB (P3-10): Dynamic updates for the DC Details menu | same
+PROD plugin.LI.FDN.Menu.Dock.Details | 1.0 | FDNv9 - STUB (P3-10): Dock Detail Menu for TC | same
+PROD plugin.LI.FDN.Menu.Dock.Details_D | 2 | FDNv9 - STUB (P3-10): Dynamic updates for the Dock Details menu | same
+PROD plugin.LI.FDN.Menu.Dock.List | 2 | FDN v9.01 - Dock List Menu (TC) | not in repo
+PROD plugin.LI.FDN.Menu.Factory.Details | 3 | FDN v9.01 - Factory details view of the menu | DIFFERENT
+PROD plugin.LI.FDN.Menu.Factory.List | 1.0 | FDNv9 - STUB (P3-10): Factory List Menu for TC | same
+PROD plugin.LI.FDN.Menu.Refresh | 1 | FDNv9 - Live refresh of the DC and dock views | not in repo
+PROD plugin.LI.FDN.Menu.Station | 1 | FDN v9.01 - Build the DC or dock view of the menu (one script for both) | not in repo
+PROD plugin.LI.FDN.Menu.Stations | 1 | FDN v9.01 - Build the Stations view of the menu (factories and docks by sector) | not in repo
+PROD plugin.LI.FDN.Menu.Ware.Details | 3 | FDNv9 - Ware details menu (view 6) | same
+PROD plugin.LI.FDN.Move.Ware | 3 | FDN v9.01 - Handles the user inputs for moving wares | DIFFERENT
+PROD plugin.LI.FDN.Reset | 2 | FDNv9 - Reset clears all locally stored FDN values | DIFFERENT
+PROD plugin.LI.FDN.Scan | 1 | FDN v9.01 - Single-pass station scan: fills [3] factories, [4] docks, [8] exclude array and the [15] sector cache, stamps [16] | not in repo
+PROD plugin.LI.FDN.Sector.Array | 3 | FDN v9.01 - Sector array wrapper over lib.LI.FDN.Sectors | DIFFERENT
+PROD plugin.LI.FDN.Sell.Ware | 3 | FDN v9.01 - Sell ware from dock | DIFFERENT
+PROD plugin.LI.FDN.Setup | 3 | FDNv9 - Setup | same
+PROD plugin.LI.FDN.Setup.FL | 1.0 | FDN v9.01 - Optional FL entries: script options entry; removes the old sidebar entry | same
+PROD plugin.LI.FDN.Setup.Keys | 1.0 | FDN v9.01 - Hotkey fallback, game flag [23] and FL patch flag [24] | same
+PROD plugin.LI.FDN.Sort.Wares | 2 | FDNv9 - Sort wares by main type | DIFFERENT
+PROD plugin.LI.FDN.Supply.Dock | 5 | FDN v9.01 - Supply Dock logic | same
+PROD plugin.LI.FDN.Supply.Dock.Check | 3 | FDN v9.01 - Dock check | DIFFERENT
+PROD plugin.LI.FDN.Supply.Factory | 3 | FDN v9.01 - Supply Factory logic | DIFFERENT
+PROD plugin.LI.FDN.Supply.Factory.Check | 4 | FDN v9.01 - Factory check round-robin | DIFFERENT
+PROD plugin.LI.FDN.Supply.Start | 2 | FDN v9.01 - Starts supply process | DIFFERENT
+PROD plugin.LI.FDN.Update.Ware | 8 | FDN v9.01 - Update ware stock (physical + virtual) | DIFFERENT
+PROD plugin.LI.FDN.Upgrade | 2 | FDNv9 - Upgrade settings schema (v8.04 save to v9.01) | same
+PROD plugin.LI.FDN.Upgrade.Records | 1.0 | FDNv9 - One-off migration of v8 ware records (surplus flag null becomes 0) | same
+PROD plugin.LI.FDN.Wares.Summary | 1.0 | FDNv9 - STUB (P3-10): Returnd ware summary for menu | same
+TEST test.LI.FDN.Event | 1 | FDNv9 - P4-05 test al.LI.FDN.event | same
+TEST test.LI.FDN.FL.Managed | 1 | FDNv9 - P4-06 test lib.LI.FDN.Is.FL.Managed | same
+TEST test.LI.FDN.Setup.Keys | 1 | FDNv9 - P4-03 test plugin.LI.FDN.Setup.Keys | same
+TEST test.LI.FDN.SurplusRule | 1 | FDNv9 - P4-04b test Surplus.Effective.Sub (B5 rule) | same
+TEST test.LI.FDN.Upgrade | 1 | FDNv9 - P4-04 test plugin.LI.FDN.Upgrade | same
+TEST plugin.LI.FDN.T6.KillHandler | 1 | FDN v9 Phase 0 C2 - T6 secondary SIGNAL_KILLED handler for the test drone | not in repo (helper for test T6, does not ship)
