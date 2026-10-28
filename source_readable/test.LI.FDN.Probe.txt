@@ -1,0 +1,234 @@
+* Script: test.LI.FDN.Probe  (v1, engine 50)
+* Desc: FDNv9 - M-01 read-only probe: jumps, ware volume/class/price, dock capacity, station type
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-01): read-only probe for the multi-DC / range / Energy Cell cost design VERIFY items
+* Changes no game object and no setting. Writes 'TEST Probe:' lines to log 9910 and log 9911
+* (9911 restarted at start). Items: 1) jumps between sectors, 2) ware volume, 3) transport class
+* and average price, 4) max storable amount on the DC and the first dock, 5) station type codes.
+* Ware constants below are shown by their XScript names (SS_...); the Script Editor shows the
+* in-game ware or station type name instead. Built from the .xs on the box (P4 pipeline).
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+$txt = 'TEST Probe: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$game = [THIS] -> call script lib.LI.FDN.Game :
+$engine = = script engine version
+$txt = 'TEST Probe: game=' + $game + ' engine=' + $engine
+gosub Log.Sub:
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $g
+ $txt = 'TEST Probe: no settings array, station probes n/a'
+ gosub Log.Sub:
+end
+$stations = = array alloc: size=0
+$docks = = array alloc: size=0
+$dc = null
+if $g
+ $cand = $g[2]
+ $ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$cand need.dock=[FALSE]
+ if $ok
+  $dc = $cand
+  append $dc to array $stations
+ end
+ $list = $g[3]
+ $max = 3
+ gosub Pick.Sub:
+ $list = $g[4]
+ $max = 5
+ gosub Pick.Sub:
+end
+$ns = size of array $stations
+$nd = size of array $docks
+$txt = 'TEST Probe: DC=' + $dc + ' stations picked=' + $ns + ' docks=' + $nd
+gosub Log.Sub:
+
+* 1) jumps
+$ps = = get player ship
+$psec = null
+if $ps
+ $psec = $ps -> get sector
+end
+$txt = 'TEST Probe: 1) player sector=' + $psec
+gosub Log.Sub:
+if $psec
+ $j = = get jumps from sector $psec to sector $psec
+ $txt = 'TEST Probe: 1) jumps same sector=' + $j + ' (expect 0)'
+ gosub Log.Sub:
+ $nosec = null
+ $j = = get jumps from sector $psec to sector $nosec
+ $txt = 'TEST Probe: 1) jumps to null sector=' + $j
+ gosub Log.Sub:
+ $n = size of array $stations
+ $i = 0
+ while $i < $n
+  $st = $stations[$i]
+  inc $i =
+  $ssec = $st -> get sector
+  $j = = get jumps from sector $psec to sector $ssec
+  $j2 = = get jumps from sector $ssec to sector $psec
+  $txt = 'TEST Probe: 1) ' + $st + ' sector=' + $ssec + ' jumps player->st=' + $j + ' st->player=' + $j2
+  gosub Log.Sub:
+ end
+else
+ $txt = 'TEST Probe: 1) n/a no player sector'
+ gosub Log.Sub:
+end
+
+* 2) and 3) volume, transport class, average price
+$wares = = array alloc: size=4
+$wares[0] = SS_WARE_ENERGY
+$wares[1] = SS_WARE_ORE
+$wares[2] = SS_MISSILE_A
+$wares[3] = SS_SHIELD_E
+if $dc
+ $tw = $dc -> get tradeable ware array from station
+ if is datatyp[ $tw ] == DATATYPE_ARRAY
+  $tn = size of array $tw
+  $ti = 0
+  while $ti < $tn
+   $w = $tw[$ti]
+   inc $ti =
+   append $w to array $wares
+   if $ti >= 2
+    $ti = $tn
+   end
+  end
+ end
+end
+$wn = size of array $wares
+$wi = 0
+while $wi < $wn
+ $w = $wares[$wi]
+ inc $wi =
+ $vol = = get volume of ware $w
+ $tc = = get transport class of ware $w
+ $avg = = get average price of ware $w
+ $txt = 'TEST Probe: 2/3) ware=' + $w + ' volume=' + $vol + ' transport class=' + $tc + ' average price=' + $avg
+ gosub Log.Sub:
+end
+
+* 4) max storable amount on the DC and the first dock
+$cap = = array alloc: size=0
+if $dc
+ append $dc to array $cap
+end
+$dn = size of array $docks
+if $dn > 0
+ $d0 = $docks[0]
+ append $d0 to array $cap
+end
+$cn = size of array $cap
+if $cn == 0
+ $txt = 'TEST Probe: 4) n/a no DC and no dock'
+ gosub Log.Sub:
+end
+$ci = 0
+while $ci < $cn
+ $st = $cap[$ci]
+ inc $ci =
+ $k = 0
+ while $k < 2
+  $w = SS_WARE_ENERGY
+  if $k == 1
+   $w = SS_WARE_ORE
+   if $wn > 4
+    $w = $wares[4]
+   end
+  end
+  inc $k =
+  $mx = $st -> get max amount of ware $w that can be stored in cargo bay
+  $ph = $st -> get amount of ware $w in cargo bay
+  $rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$st ware=$w create=[FALSE]
+  $virt = 'n/a'
+  $outside = 'n/a'
+  if is datatyp[ $rec ] == DATATYPE_ARRAY
+   $virt = $rec[0]
+   $outside = 'no'
+   if $virt > $mx
+    $outside = 'yes'
+   end
+  end
+  $txt = 'TEST Probe: 4) ' + $st + ' ware=' + $w + ' max storable=' + $mx + ' physical=' + $ph + ' virtual=' + $virt + ' virtual above max=' + $outside
+  gosub Log.Sub:
+ end
+end
+
+* 5) station type of the DC and the first 5 docks
+$types = = array alloc: size=0
+if $dc
+ append $dc to array $types
+end
+$ti = 0
+while $ti < $dn
+ $d = $docks[$ti]
+ inc $ti =
+ append $d to array $types
+end
+$yn = size of array $types
+$yi = 0
+while $yi < $yn
+ $st = $types[$yi]
+ inc $yi =
+ $type = $st -> get ware type code of object
+ $cls = $st -> get object class
+ $mt = $st -> get maintype
+ $stp = $st -> get subtype
+ $kind = 'other'
+ if $type == SS_DOCK_P_HQ
+  $kind = 'Player HQ'
+ end
+ if $type == SS_DOCK_P_TRADE
+  $kind = 'Player trading station'
+ end
+ if $type == SS_DOCK_P_EQUIP
+  $kind = 'Player equipment dock'
+ end
+ $sm = 'n/a'
+ if $game == 3
+  $sm = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$st
+ end
+ $txt = 'TEST Probe: 5) ' + $st + ' type=' + $type + ' class=' + $cls + ' maintype=' + $mt + ' subtype=' + $stp + ' kind=' + $kind + ' FL station manager=' + $sm
+ gosub Log.Sub:
+end
+$txt = 'TEST Probe: done'
+gosub Log.Sub:
+return null
+* -----------------------------------------------------------------------------------
+
+* sub - add up to $max valid stations from $list (not the DC); $max 5 = docks list
+Pick.Sub:
+if is datatyp[ $list ] == DATATYPE_ARRAY
+ $pn = size of array $list
+ $pi = 0
+ $got = 0
+ while $pi < $pn
+  $c = $list[$pi]
+  inc $pi =
+  $ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$c need.dock=[FALSE]
+  if $ok
+   if not $c == $dc
+    append $c to array $stations
+    if $max == 5
+     append $c to array $docks
+    end
+    inc $got =
+    if $got >= $max
+     $pi = $pn
+    end
+   end
+  end
+ end
+end
+endsub
+
+* sub - write $txt to both logs
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub

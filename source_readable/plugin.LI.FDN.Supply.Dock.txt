@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Supply.Dock  (v4, engine 50)
+* Script: plugin.LI.FDN.Supply.Dock  (v5, engine 50)
 * Desc: FDN v9.01 - Supply Dock
 * Arg 0: dock (Value) 'dock'
 * Arg 1: flag (Value) 'flag'
@@ -16,9 +16,9 @@
 * 
 * To Do - P2-12a switches the Update.Ware 'create' call to Ware.Rec create=[TRUE]
 * 
-* Version: 4.0
-* Date: 26/10/2026
-* Tested: TC 26/10/2026
+* Version: 5.0
+* Date: 28/10/2026
+* Tested: FL 28/10/2026 (test.LI.FDN.SurplusRule 18/18 on the shipped sub; live dock pass not seen; AP and TC not seen)
 * -----------------------------------------------------------------------------------
 
 * v9.01 Phase 2 changes (P2-10b) - closes D1, D2 (one of nine), D3, B3, part of B12, B4:
@@ -40,6 +40,13 @@
 *   DC stock <= remote level) or a 'moved=' summary with the DC stock and remote level.
 *   The pass-end line is now 'Pass finished: wares=<n> moved=<n> skipped=<n>'. The counters are
 *   plain locals and nothing reads them except that log line.
+* -----------------------------------------------------------------------------------
+
+* v9.01 Phase 4 changes (P4-04b) - B5, approved by Matt 2026-10-17: 'pass surplus to DC' is now an effective flag.
+*   The old two-line read ($surplus.flag = record [7]) moved into Surplus.Effective.Sub; the main body gosub's it then uses $surplus.flag as before.
+*   Rule (raw = record [7], mode = settings [28]; a null or non-INT mode counts as 1, and any INT mode other than 0 or 2 also counts as 1):
+*     raw INT 1 = on;  raw INT 0 = off;  raw null = on only when the mode is 1 (v8: null meant the player switched it off);
+*     any other INT (normally -1) = on for mode 1 or 2, off for mode 0.  New records keep [7] = -1, so they follow the global default.
 * -----------------------------------------------------------------------------------
 
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
@@ -202,7 +209,8 @@ if not $flag
       $ctx = $ctx + ' stock=' + $virtual.stock + '+' + $physical.stock + ' need=' + $dbg.need
      end
      if not $required.at.dock > 0
-      $surplus.flag = $ware.settings[7]
+      * v9.01 B5: effective surplus flag - record [7] vs global default [28]; rule in Surplus.Effective.Sub below
+      gosub Surplus.Effective.Sub:
       if $surplus.flag
        $surplus = $stock - $maintain.level
        if $surplus > 0
@@ -441,3 +449,51 @@ Sell.Ware.Sub:
 
 endsub
 
+* v9.01 B5: effective surplus flag - sets $surplus.flag from record [7] ($ware.settings) and the global default [28]
+Surplus.Effective.Sub:
+ $surplus.raw = $ware.settings[7]
+ $surplus.mode = $al.Settings[28]
+ * mode: 0 off, 2 v8 compatible, anything else (1, null, other values) counts as 1 (on)
+ $mode.val = 1
+ if is datatyp[ $surplus.mode ] == DATATYPE_INT
+  if $surplus.mode == 0
+   $mode.val = 0
+  end
+  if $surplus.mode == 2
+   $mode.val = 2
+  end
+ end
+ * raw kind: 0 = default (-1 or any other value), 1 = on, 2 = off, 3 = null
+ $raw.kind = 0
+ if is datatyp[ $surplus.raw ] == DATATYPE_NULL
+  $raw.kind = 3
+ end
+ if is datatyp[ $surplus.raw ] == DATATYPE_INT
+  if $surplus.raw == 1
+   $raw.kind = 1
+  end
+  if $surplus.raw == 0
+   $raw.kind = 2
+  end
+ end
+ $surplus.flag = [FALSE]
+ * explicit per-ware on
+ if $raw.kind == 1
+  $surplus.flag = [TRUE]
+ end
+ * -1 or other value: follows the default (on for mode 1 and 2)
+ if $raw.kind == 0
+  if $mode.val == 1
+   $surplus.flag = [TRUE]
+  end
+  if $mode.val == 2
+   $surplus.flag = [TRUE]
+  end
+ end
+ * null: on only for mode 1 (v8: null meant the player switched it off)
+ if $raw.kind == 3
+  if $mode.val == 1
+   $surplus.flag = [TRUE]
+  end
+ end
+endsub

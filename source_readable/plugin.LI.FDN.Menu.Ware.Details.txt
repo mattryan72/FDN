@@ -254,11 +254,12 @@ $s7 = $rec[7]
 if is datatyp[ $s7 ] == DATATYPE_NULL
  $s7 = -1
 end
+* v9.01 P4-07b: an explicit On or Off uses the coloured texts 148 (green ON) and 149 (red OFF); Default (%s) keeps the plain On, Off or v8 compatible text
 if $s7 == 1
- $surplus.txt = = read text: page=$PageID id=321
+ $surplus.txt = = read text: page=$PageID id=148
 else
  if $s7 == 0
-  $surplus.txt = = read text: page=$PageID id=322
+  $surplus.txt = = read text: page=$PageID id=149
  else
   * Default: the global default surplus state (setting [28], null-safe, v9.01 B5)
   $g = $al.Settings[28]

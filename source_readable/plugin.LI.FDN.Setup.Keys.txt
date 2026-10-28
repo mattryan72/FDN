@@ -1,0 +1,82 @@
+* Script: plugin.LI.FDN.Setup.Keys  (v1, engine 50)
+* Desc: FDN v9.01 - Hotkey fallback, game flag [23] and FL patch flag [24]
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Called by plugin.LI.FDN.Setup at the end of every init, reinit, start and stop, and
+* again by plugin.LI.FDN.Upgrade (P4-04) after it has grown a v8 settings array. It is
+* wait-free and safe to call any number of times in a row.
+*
+* What it does, in this order:
+* 1. Returns at once when the settings array is missing or still smaller than 30 entries
+*    (a v8 save before Upgrade has run), because [21], [23] and [24] do not exist yet.
+* 2. Stores the game in [23] (lib.LI.FDN.Game: 1 TC, 2 AP, 3 FL) and the FL patch flag in
+*    [24] (1 when the game is FL, otherwise 0; decision P4-02).
+* 3. Unregisters the hotkey whose id is stored in [21], if there is one, and clears [21].
+*    This is done on every call so a hotkey that did survive the save is never registered
+*    twice, and a stale id from a save that did not keep it is simply dropped.
+* 4. When FDN is switched on ([0]), registers the hotkey (label text 102 on page 9910,
+*    calling plugin.LI.FDN.Main.Menu) and stores the new id in [21]. The player binds the key
+*    in the game's controls.
+* 5. When FDN is on and [24] is 1, calls plugin.LI.FDN.Setup.FL for the optional FL entries.
+*
+* Expected values:
+* - none (settings are read from the 'al.LI.FDN.event' global)
+*
+* Returns values:
+* - null
+*
+* To Do - VERIFY in game: that the hotkey shows in the controls menu, that unregistering a
+* stale id does not raise an error, and the AP 3.3 engine number (see lib.LI.FDN.Game)
+*
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: FL 27/10/2026 (test.LI.FDN.Setup.Keys 5/5; hotkey id 1545, [23]=3, [24]=1; AP and TC not seen)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P4-03): hotkey fallback for the menu when Community Plugin Configuration is absent
+ * -----------------------------------------------------------------------------------
+
+$script.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$s = size of array $al.Settings
+if $s < 30
+ $txt.log = 'Setup.Keys: settings array has ' + $s + ' entries (v8 save, Upgrade has not run), hotkey and flags skipped'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+ return null
+end
+$PageID = $al.Settings[1]
+$status = $al.Settings[0]
+
+* Game and FL patch flag
+$game = [THIS] -> call script lib.LI.FDN.Game :
+$al.Settings[23] = $game
+if $game == 3
+ $al.Settings[24] = 1
+else
+ $al.Settings[24] = 0
+end
+
+* Drop any earlier hotkey before registering again
+$old.key = $al.Settings[21]
+if is datatyp[ $old.key ] == DATATYPE_INT
+ unregister hotkey $old.key
+ $al.Settings[21] = null
+ $txt.log = 'Setup.Keys: hotkey ' + $old.key + ' unregistered'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+end
+
+if $status == [TRUE]
+ $key = register hotkey: page=$PageID id=102, to call script plugin.LI.FDN.Main.Menu
+ $al.Settings[21] = $key
+ $txt.log = 'Setup.Keys: hotkey registered id=' + $key + ' game=' + $game
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+ $fl = $al.Settings[24]
+ if $fl == 1
+  = [THIS] -> call script plugin.LI.FDN.Setup.FL :
+ end
+end
+
+return null

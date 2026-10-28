@@ -1,4 +1,4 @@
-* Script: al.LI.FDN.event  (v2, engine 50)
+* Script: al.LI.FDN.event  (v3, engine 50)
 * Desc: FDNv9 - AL Event
 * Arg 0: al.PluginID (Var/String) 'Plugin ID'
 * Arg 1: al.Event (Var/String) 'AL Event'
@@ -32,10 +32,13 @@
 027  if $al.Event == 'init' OR $al.Event == 'reinit'
 028   
 029   $plugin.description = = sprintf: pageid=$PageID textid=100, null, null, null, null, null
+ * v9.01 P4-05: show the version in the plugin description (text 100 stays unchanged)
+ $plugin.description = $plugin.description + ' v9.01'
 030   al engine: set plugin $al.PluginID description to $plugin.description
 031   al engine: set plugin $al.PluginID timer interval to 25 s
 032   
 033    = [THIS] -> call script plugin.LI.FDN.Setup :
+ * v9.01 P4-05: Upgrade also STARTs plugin.LI.FDN.Cleanup, so no Cleanup start is needed here
  * v9.01 B16: run the settings upgrade after Setup (Setup resets the log); wait-free
  = [THIS] -> call script plugin.LI.FDN.Upgrade :
 034   

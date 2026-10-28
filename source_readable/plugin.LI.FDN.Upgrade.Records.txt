@@ -1,0 +1,82 @@
+* Script: plugin.LI.FDN.Upgrade.Records  (v1, engine 50)
+* Desc: FDNv9 - One-off migration of v8 ware records (surplus flag null becomes 0)
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* STARTed once by plugin.LI.FDN.Upgrade when it upgrades a save (never called inline,
+* because it waits). It goes through every station in the registry [29] and, for every
+* ware record FDN.Ware.<ware> on it, changes record index 7 (pass surplus to DC) from
+* null to 0 (B5, approved by Matt 2026-10-17). In v8 a null there only came from the
+* player switching surplus off, so 0 keeps their choice. -1 and 1 are left alone.
+*
+* After each wait the station is validated again (exists, player owned) before it is used.
+* Running it a second time changes nothing, because v9 never writes null to that slot.
+*
+* Expected values:
+* - none (stations come from the registry in settings [29])
+*
+* Returns values:
+* - null always (the log shows how many records were changed)
+*
+* To Do - N/A
+*
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: FL 28/10/2026 (test.LI.FDN.Upgrade step d: null [7] became 0 on a registry station; run on 19 stations; AP and TC not seen)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P4-04): B5 record migration, split out of Upgrade so Upgrade stays wait-free
+ * -----------------------------------------------------------------------------------
+
+$script.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$registry = $al.Settings[29]
+if not is datatyp[ $registry ] == DATATYPE_ARRAY
+ return null
+end
+$count = size of array $registry
+$i = 0
+$stations.done = 0
+$recs.done = 0
+while $i < $count
+ $station = $registry[$i]
+ inc $i =
+ * short wait between stations keeps the game responsive; validate again afterwards
+ = wait 1 ms
+ $st.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$station need.dock=[FALSE]
+ if $st.ok
+  gosub Migrate.Station.Sub:
+  inc $stations.done =
+ end
+ $count = size of array $registry
+end
+
+$txt.log = 'Upgrade.Records: surplus null set to 0 on ' + $recs.done + ' records at ' + $stations.done + ' stations'
+= [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+return null
+* -----------------------------------------------------------------------------------
+
+* sub - change null to 0 in index 7 of every FDN.Ware.<ware> record on $station
+Migrate.Station.Sub:
+$names = $station  ->  get local variables: regular expression='^FDN\.Ware\.'
+$ns = size of array $names
+while $ns > 0
+ dec $ns =
+ $var = $names[$ns]
+ $rec = $station  ->  get local variable: name=$var
+ if is datatyp[ $rec ] == DATATYPE_ARRAY
+  $rsz = size of array $rec
+  if $rsz > 7
+   $surplus = $rec[7]
+   if is datatyp[ $surplus ] == DATATYPE_NULL
+    $rec[7] = 0
+    $station  ->  set local variable: name=$var value=$rec
+    inc $recs.done =
+   end
+  end
+ end
+end
+endsub
+* -----------------------------------------------------------------------------------

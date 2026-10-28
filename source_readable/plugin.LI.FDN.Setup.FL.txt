@@ -1,0 +1,52 @@
+* Script: plugin.LI.FDN.Setup.FL  (v1, engine 50)
+* Desc: FDN v9.01 - Optional FL entries: script options entry; removes the old sidebar entry
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Called by plugin.LI.FDN.Setup.Keys only when settings [24] is 1 (the game is FL, engine
+* 60 or more, P4-02) and FDN is switched on. It is its own script so that commands which
+* may not exist in every FL install fail here and nowhere else.
+*
+* It adds the script options entry that Community Plugin Configuration adds for itself on FL
+* (init.community.config), with the FDN menu name (text 102 on page 9910), calling
+* plugin.LI.FDN.Main.Menu. It does not add the script global command.
+*
+* It does NOT add a personal sidebar entry. The sidebar calls its script as a menu script
+* (object, event, data) as soon as the icon is hovered, and Main.Menu opens a menu on any
+* call. A first version of this script did add one, so it now removes any entry with that id
+* (left over in a save from that version). Remove this line once no test save has it.
+*
+* Nothing is removed when FDN is switched off: Main.Menu works whatever the FDN flag is.
+*
+* Expected values:
+* - none (settings are read from the 'al.LI.FDN.event' global)
+*
+* Returns values:
+* - null
+*
+* To Do - VERIFY in game: the script options entry appears once after reloads, and removing a sidebar id that is not registered raises no error
+*
+* Version: 1.0
+* Date: 27/10/2026
+* Tested: FL 27/10/2026 (ran 2x without error via test.LI.FDN.Setup.Keys; remove of an unregistered sidebar id raised no error; UI result of the removal not confirmed)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (P4-03): optional FL patch entry (script options), behind the [24] feature flag; old sidebar entry removed
+ * -----------------------------------------------------------------------------------
+
+$script.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$PageID = $al.Settings[1]
+$fl = $al.Settings[24]
+if not $fl == 1
+ return null
+end
+
+add script options: script=plugin.LI.FDN.Main.Menu pageid=$PageID textid=102
+remove sidebar custom entry, personal: id='plugin.LI.FDN.Main.Menu'
+$txt.log = 'Setup.FL: script options entry added, old sidebar entry removed'
+= [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script.name
+
+return null

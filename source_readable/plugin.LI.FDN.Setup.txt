@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Setup  (v2, engine 50)
+* Script: plugin.LI.FDN.Setup  (v3, engine 50)
 * Desc: FDNv9 - Setup
 
 001  * Author: Logain Abler
@@ -7,7 +7,9 @@
 * v9.01 B6 - CPC (Community Plugin Configuration) is an optional dependency.
 * The addscript call is guarded by the CPC registry global 'plugin.config'
 * (CPC's init.community.config creates it on every game load); if it is missing,
-* FDN skips registration and a hotkey fallback comes in Phase 4 (P4-03).
+* FDN skips the CPC registration.
+* v9.01 D6 (P4-03) - at the very end it calls plugin.LI.FDN.Setup.Keys, which registers or
+* unregisters the hotkey fallback, stores the game in [23] and the FL patch flag in [24].
 004  
 005  * Expected values:
 006  * - dock
@@ -19,7 +21,7 @@
 012  
 013  * Version: 1.0
 014  * Date: 23/05/2012
-015  * Tested: 23/05/2012
+015  * Tested: FL 27/10/2026 (v3 call to Setup.Keys, test.LI.FDN.Setup.Keys step f; CPC branch not seen)
 016  * -----------------------------------------------------------------------------------
 017  
 018  * Fetch values saved in the AL Plugin global variable:
@@ -73,6 +75,9 @@ $this.script = = get script name
 054   end
 055  end
 056  
+* v9.01 D6 (P4-03): hotkey fallback and the game / FL flags (own script; skips itself on a v8-size settings array)
+ = [THIS] -> call script plugin.LI.FDN.Setup.Keys :
+
 057  return null
 * v9.01 B6 - standard debug sub (pattern from P1-11 Reset)
 Debug.Sub:
