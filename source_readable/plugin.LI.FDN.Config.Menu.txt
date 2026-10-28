@@ -135,11 +135,12 @@ $g = $al.Settings[28]
 if is datatyp[ $g ] == DATATYPE_NULL
  $g = 1
 end
+* v9.01 P4-07b: On and Off use the coloured texts 148 (green ON) and 149 (red OFF) like the other rows; v8 compatible stays plain
 if $g == 1
- $g.txt = = read text: page=$PageID id=321
+ $g.txt = = read text: page=$PageID id=148
 else
  if $g == 0
-  $g.txt = = read text: page=$PageID id=322
+  $g.txt = = read text: page=$PageID id=149
  else
   $g.txt = = read text: page=$PageID id=323
  end

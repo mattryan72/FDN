@@ -102,6 +102,8 @@
 - [D6] `al.LI.FDN.event` (v3): the plugin description now reads text 100 plus " v9.01" (text 100 unchanged); comment records that `Upgrade` STARTs `Cleanup`, so the event script does not. The Upgrade call after Setup and the scheduler START on timer were already in place from Phase 1.
 - [D6] `lib.LI.FDN.Is.FL.Managed` (v2): the Phase 2 stub is replaced by the approved Station Manager check. FL only ([23] == 3, FALSE on AP/TC and when the settings are missing or short); TRUE only when the station local `egosoft.stationmgr.time` is a number no more than 10 s older than playing time; null for a non-station or a station that does not exist. Scan and DC.Change already call it.
 - [D6] `t/9910-L044.xml` (P4-07, text edits approved by Matt 28/10/2026): typos fixed in text 132 (Dock Details) and 186 (Confirm), the stray L after text 135 removed, the empty page 17 removed, "Center" changed to "Centre" in texts 104, 111, 115 and 121. All 168 text ids are unchanged. New `t/9910-L049.xml` is a copy of the English text (language id 49) so German installs show text.
+- [D6] `plugin.LI.FDN.Config.Menu` (P4-07b): the Surplus to DC row shows the coloured ON and OFF texts 148 and 149 like the other toggles (was the plain On and Off, texts 321 and 322); v8 compatible stays plain.
+- [D6] `plugin.LI.FDN.Menu.Ware.Details` (P4-07b): a ware surplus set explicitly to On or Off shows the coloured ON and OFF texts 148 and 149; the Default (%s) line keeps the plain texts.
 
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:
