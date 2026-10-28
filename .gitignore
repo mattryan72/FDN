@@ -4,3 +4,5 @@ package/*.zip
 __pycache__/
 Thumbs.db
 prompts/
+_*
+*.bak-*
