@@ -1,0 +1,176 @@
+* Script: test.LI.FDN.FL.Managed  (v1, engine 50)
+* Desc: FDNv9 - P4-06 test lib.LI.FDN.Is.FL.Managed
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* P4-06 test. Writes every TEST line to log 9910 and log 9911 (9911 restarted at start).
+* Station: DC [2] if valid, else the first valid station in [3], else in [4].
+* Cases: a) bad argument -> null; b) save local + [23]; c) no local -> FALSE;
+* d) fresh local -> TRUE; e) local 20 s old -> FALSE; f) non-number -> FALSE;
+* g) [23]=2 with fresh local -> FALSE; h) restore local and [23].
+* c-e are SKIPped when [23] is not 3.
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+
+$pass = 0
+$total = 0
+$lv = 'egosoft.stationmgr.time'
+$txt = 'TEST FLManaged: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $g
+ $txt = 'TEST FLManaged: FAIL no settings array, test stopped'
+ gosub Log.Sub:
+ return null
+end
+$st = null
+$cand = $g[2]
+$ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$cand need.dock=[FALSE]
+if $ok
+ $st = $cand
+end
+if not $st
+ $list = $g[3]
+ gosub Pick.Sub:
+end
+if not $st
+ $list = $g[4]
+ gosub Pick.Sub:
+end
+
+* a) bad argument
+$r = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=null
+$ok = [FALSE]
+if is datatyp[ $r ] == DATATYPE_NULL
+ $r2 = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station='x'
+ if is datatyp[ $r2 ] == DATATYPE_NULL
+  $ok = [TRUE]
+ end
+end
+$id = 'a) bad argument'
+$det = 'null->' + $r + ' x->' + $r2
+gosub Result.Sub:
+
+if not $st
+ $txt = 'TEST FLManaged: b-h) SKIP no valid player station in [2], [3] or [4]'
+ gosub Log.Sub:
+ $txt = 'TEST FLManaged: ' + $pass + '/' + $total + ' PASS'
+ gosub Log.Sub:
+ return null
+end
+* b) save the local and [23]
+$orig.lv = $st -> get local variable: name=$lv
+$orig.23 = $g[23]
+$txt = 'TEST FLManaged: b) station=' + $st + ' saved local=' + $orig.lv + ' saved [23]=' + $orig.23
+gosub Log.Sub:
+
+$fl = [FALSE]
+if is datatyp[ $orig.23 ] == DATATYPE_INT
+ if $orig.23 == 3
+  $fl = [TRUE]
+ end
+end
+if $fl
+ * c) no local
+ $st -> set local variable: name=$lv value=null
+ $exp = 0
+ $id = 'c) no local'
+ gosub Case.Sub:
+ * d) fresh local
+ $now = = playing time
+ $st -> set local variable: name=$lv value=$now
+ $exp = 1
+ $id = 'd) fresh local'
+ gosub Case.Sub:
+ * e) stale local
+ $old = $now - 20
+ $st -> set local variable: name=$lv value=$old
+ $exp = 0
+ $id = 'e) stale local (-20 s)'
+ gosub Case.Sub:
+else
+ $txt = 'TEST FLManaged: c-e) SKIP settings [23] is not 3 (' + $orig.23 + ')'
+ gosub Log.Sub:
+end
+
+* f) non-number
+$st -> set local variable: name=$lv value='x'
+$exp = 0
+$id = 'f) non-number local'
+gosub Case.Sub:
+
+* g) [23] = 2 with a fresh local
+$g[23] = 2
+$now = = playing time
+$st -> set local variable: name=$lv value=$now
+$exp = 0
+$id = 'g) [23]=2 fresh local'
+gosub Case.Sub:
+$g[23] = $orig.23
+
+* h) restore
+$st -> set local variable: name=$lv value=$orig.lv
+$g[23] = $orig.23
+$chk.lv = $st -> get local variable: name=$lv
+$chk.23 = $g[23]
+$txt = 'TEST FLManaged: h) RESTORED local=' + $chk.lv + ' [23]=' + $chk.23
+gosub Log.Sub:
+
+$txt = 'TEST FLManaged: ' + $pass + '/' + $total + ' PASS'
+gosub Log.Sub:
+return null
+* -----------------------------------------------------------------------------------
+
+* sub - first valid player station in $list into $st
+Pick.Sub:
+if is datatyp[ $list ] == DATATYPE_ARRAY
+ $n = size of array $list
+ $i = 0
+ while $i < $n
+  $cand = $list[$i]
+  inc $i =
+  $ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$cand need.dock=[FALSE]
+  if $ok
+   $st = $cand
+   $i = $n
+  end
+ end
+end
+endsub
+
+* sub - run the lib on $st and compare with $exp (1/0)
+Case.Sub:
+$r = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$st
+$got = 0
+if $r
+ $got = 1
+end
+$ok = [FALSE]
+if $got == $exp
+ $ok = [TRUE]
+end
+$cur = $st -> get local variable: name=$lv
+$det = 'local=' + $cur + ' result=' + $r + ' expected=' + $exp
+gosub Result.Sub:
+endsub
+
+* sub - write $txt to both logs
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub
+
+* sub - count and log one result
+Result.Sub:
+inc $total =
+$rs = 'FAIL'
+if $ok
+ inc $pass =
+ $rs = 'PASS'
+end
+$txt = 'TEST FLManaged: ' + $id + ': ' + $rs + ' ' + $det
+gosub Log.Sub:
+endsub
