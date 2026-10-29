@@ -1188,9 +1188,370 @@ end
 
  * ---------- end of Pay checks P1-P7; R (restore) runs next regardless of whether these ran or skipped ----------
  end
+
+  * ---------- restore R - put every touched value back exactly, then re-read each one (EqChk) ----------
+  $rv.ok = [TRUE]
+  * settings first: [30] and [33] back to their saved values so the global is left as found
+  $g[30] = $save.30
+  $g[33] = $save.33
+  set global variable: name='al.LI.FDN.event' value=$g
+  * DC first (the payer): EC record [0]/[1]/[2], FDN.DC.Cfg and FDN.Cost back to the saved values (null stays null)
+  $stn = $dc
+  gosub RestoreStn.Sub:
+  if not $rv.ok
+   * a DC field did not come back as found; keep restoring the rest so nothing is left dirty, then report one FAIL at the end
+  end
+  * peer (second DC in [30]) - only when one exists; its saved slots hold null/0 defaults otherwise
+  if not $peer.dc
+   * no peer: nothing to roll back
+  else
+   $stn = $peer.dc
+   gosub RestoreStn.Sub:
+   if not $rv.ok
+    * a peer field did not come back as found; continue so the served station is still restored
+   end
+  end
+  * served station (first valid player factory in [3]) - only its FDN.Cost was touched, restore it when one exists
+  if not $srv
+   * no served station: nothing to roll back
+  else
+   $stn = $srv
+   gosub RestoreStn.Sub:
+   if not $rv.ok
+    * a served-station field did not come back as found; continue so the settings are still re-read below
+   end
+  end
+  * re-read every restored value and build one self-describing detail line (EqChk) for the single R result
+  gosub EqChk.Sub:
+  $id = 'R restore'
+  $det = $r.det
+  $ok = $rv.ok
+  gosub Result.Sub:
+  * final summary line - every PASS/FAIL above is already counted in $pass / $total (this log-only line adds nothing)
+  $txt = 'TEST Cost: ' + $pass + '/' + $total + ' PASS'
+  gosub Log.Sub:
+ return null
 * -----------------------------------------------------------------------------------
 * subs - each ends with endsub. In-line helpers: SetAvail, ReadEC, ReadCost, CostChk; result/logging: Log, Result.
 * (R restore + its EqChk/RestoreStn helpers are added next.)
+
+ * ---------- sub - restore every value of $stn that the test touched back to its saved original ----------
+ * input: $kind = 'dc' | 'peer' | 'srv'; reads the matching $sav.* / $save.peer.* slot.
+ * EC record [0]/[1]/[2] written when a live Ware.Rec array exists; FDN.DC.Cfg and FDN.Cost always
+ * written back (null stays null). Served stations get only their FDN.Cost restored.
+RestoreStn.Sub:
+$ro.kind = $kind
+if not is datatyp[ $ro.kind ] == DATATYPE_INT
+ * no kind passed - default to the DC (the payer), which is the common case for R
+  $ro.kind = 'dc'
+ end
+if $ro.kind != 'dc'
+ if $ro.kind != 'peer'
+  if $ro.kind != 'srv'
+   * unknown kind: treat as the DC so we never skip restoring a touched station silently
+    $ro.kind = 'dc'
+   end
+  end
+ end
+$kind = $ro.kind
+$ro.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
+if is datatyp[ $ro.rec ] == DATATYPE_ARRAY
+ * EC record exists - write each saved field back exactly (null stays null via the INT guard)
+  if $kind == 'dc'
+   if is datatyp[ $sav.dc.v0 ] == DATATYPE_NULL
+    $ro.rec[0] = null
+   else
+    $ro.rec[0] = $sav.dc.v0
+   end
+   if is datatyp[ $sav.dc.r1 ] == DATATYPE_NULL
+    $ro.rec[1] = null
+   else
+    $ro.rec[1] = $sav.dc.r1
+   end
+   if is datatyp[ $sav.dc.r2 ] == DATATYPE_NULL
+    $ro.rec[2] = null
+   else
+    $ro.rec[2] = $sav.dc.r2
+   end
+  end
+  if not $kind == 'dc'
+   if $kind == 'peer'
+    if is datatyp[ $save.peer.v0 ] == DATATYPE_NULL
+     $ro.rec[0] = null
+    else
+     $ro.rec[0] = $save.peer.v0
+    end
+    if is datatyp[ $save.peer.r1 ] == DATATYPE_NULL
+     $ro.rec[1] = null
+    else
+     $ro.rec[1] = $save.peer.r1
+    end
+    if is datatyp[ $save.peer.r2 ] == DATATYPE_NULL
+     $ro.rec[2] = null
+    else
+     $ro.rec[2] = $save.peer.r2
+    end
+   end
+  end
+ end
+if not $kind == 'srv'
+ if $kind == 'dc'
+  if is datatyp[ $sav.dc.cfg ] == DATATYPE_ARRAY
+   $stn -> set local variable: name='FDN.DC.Cfg' value=$sav.dc.cfg
+  else
+   $stn -> set local variable: name='FDN.DC.Cfg' value=null
+  end
+  if is datatyp[ $sav.dc.cost ] == DATATYPE_ARRAY
+   $stn -> set local variable: name='FDN.Cost' value=$sav.dc.cost
+  else
+   $stn -> set local variable: name='FDN.Cost' value=null
+  end
+ end
+ if not $kind == 'dc'
+  if $kind == 'peer'
+   if is datatyp[ $save.peer.cfg ] == DATATYPE_ARRAY
+    $stn -> set local variable: name='FDN.DC.Cfg' value=$save.peer.cfg
+   else
+    $stn -> set local variable: name='FDN.DC.Cfg' value=null
+   end
+   if is datatyp[ $save.peer.cost ] == DATATYPE_ARRAY
+    $stn -> set local variable: name='FDN.Cost' value=$save.peer.cost
+   else
+    $stn -> set local variable: name='FDN.Cost' value=null
+   end
+  end
+ end
+end
+if not $kind == 'dc'
+ if not $kind == 'peer'
+  if is datatyp[ $sav.srv.cost ] == DATATYPE_ARRAY
+   $stn -> set local variable: name='FDN.Cost' value=$sav.srv.cost
+  else
+   * it was absent before P6 and Pay created one; reset the test's effect to a fresh all-zero FDN.Cost (the mod treats an unused record as zero)
+   $sr.reset = = array alloc: size=4
+   $sr.reset[0] = 0
+   $sr.reset[1] = 0
+   $stn -> set local variable: name='FDN.Cost' value=$sr.reset
+  end
+ end
+end
+endsub
+
+ * ---------- sub - re-read every restored field for the single R result into $r.det (no extra Result lines) ----------
+ * Uses ReadEC.Sub / ReadCost.Sub so no extra Ware.Rec calls are needed. Sets $rv.ok = FALSE on any mismatch.
+ * Caller has already run RestoreStn.Sub for DC, peer (when present) and served station (when present).
+EqChk.Sub:
+$r.det = ''
+$eq.ok = [TRUE]
+ * settings: [30] and [33] must be back to the saved values
+ $g.now = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+ if is datatyp[ $g.now ] == DATATYPE_ARRAY
+  if not $g.now[30] == $save.30
+   * [30] did not come back exactly - mark FAIL and record the mismatch for the detail line
+   $eq.ok = [FALSE]
+   $r.det = 'g30=' + $g.now[30] + '/exp' + $save.30
+  else
+   if not $g.now[33] == $save.33
+    * [33] did not come back exactly - mark FAIL and record the mismatch for the detail line
+    $eq.ok = [FALSE]
+    $r.det = 'g33=' + $g.now[33] + '/exp' + $save.33
+   end
+  end
+ end
+ * DC EC virtual: back to the saved value (null stays null)
+ $stn = $dc
+ gosub ReadEC.Sub:
+ if is datatyp[ $sav.dc.v0 ] == DATATYPE_INT
+  if not $ec.v == $sav.dc.v0
+   * DC virtual did not come back exactly - mark FAIL and record the mismatch for the detail line
+   $eq.ok = [FALSE]
+   $r.det = 'dcV=' + $ec.v + '/exp' + $sav.dc.v0
+  end
+ else
+  if not is datatyp[ $ec.v ] == DATATYPE_INT
+   * DC virtual should be absent but came back INT - mark FAIL and record the mismatch for the detail line
+   $eq.ok = [FALSE]
+   $r.det = 'dcV=' + $ec.v + '/exp null'
+  end
+ end
+ * DC FDN.Cost: each slot present-and-equal, or absent both times (null stays null)
+ gosub ReadCost.Sub:
+ if is datatyp[ $sav.dc.cost ] == DATATYPE_ARRAY
+  if not is datatyp[ $k0 ] == DATATYPE_NULL
+   if is datatyp[ $sav.dc.cost[0] ] == DATATYPE_INT
+    * saved [0] was INT; it must come back as the same INT
+    if not is datatyp[ $k0 ] == DATATYPE_INT
+     * DC FDN.Cost[0] was present before but is now missing - mark FAIL and record the mismatch for the detail line
+     $eq.ok = [FALSE]
+     $r.det = 'dcC0=' + $k0 + '/exp INT'
+    else
+     if not $k0 == $sav.dc.cost[0]
+      * DC FDN.Cost[0] did not come back exactly - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'dcC0=' + $k0 + '/exp' + $sav.dc.cost[0]
+     end
+    end
+   else
+    * saved [0] was not INT; it must be absent now (null stays null)
+    if not is datatyp[ $k0 ] == DATATYPE_NULL
+     * DC FDN.Cost[0] appeared as INT when the original had none - mark FAIL and record the mismatch for the detail line
+     $eq.ok = [FALSE]
+     $r.det = 'dcC0=' + $k0 + '/exp non-INT'
+    end
+   end
+  else
+   * saved [0] was absent; it must be absent now (a fresh record from a defer would have been restored to null)
+   if not is datatyp[ $k0 ] == DATATYPE_NULL
+    * DC FDN.Cost[0] appeared out of nothing on restore - mark FAIL and record the mismatch for the detail line
+    $eq.ok = [FALSE]
+    $r.det = 'dcC0=' + $k0 + '/exp null'
+   end
+  end
+ else
+  * DC FDN.Cost was absent before; it must be absent now (the served-station reset path only affects the served station, not the DC)
+  if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
+   * a record exists when it should not - mark FAIL and record the mismatch for the detail line
+   $eq.ok = [FALSE]
+   $r.det = 'dcC0=record/exp null'
+  end
+ end
+ * peer EC virtual + FDN.Cost, only when a peer exists (its saved slots hold real values in that case)
+ if not $peer.dc
+  * no peer: nothing to re-read on the peer side
+ else
+  $stn = $peer.dc
+  gosub ReadEC.Sub:
+  if is datatyp[ $save.peer.v0 ] == DATATYPE_INT
+   if not $ec.v == $save.peer.v0
+    * peer virtual did not come back exactly - mark FAIL and record the mismatch for the detail line
+    $eq.ok = [FALSE]
+    $r.det = 'pV=' + $ec.v + '/exp' + $save.peer.v0
+   end
+  else
+   if not is datatyp[ $ec.v ] == DATATYPE_INT
+    * peer virtual should be absent but came back INT - mark FAIL and record the mismatch for the detail line
+    $eq.ok = [FALSE]
+    $r.det = 'pV=' + $ec.v + '/exp null'
+   end
+  end
+  gosub ReadCost.Sub:
+  if is datatyp[ $save.peer.cost ] == DATATYPE_ARRAY
+   if not is datatyp[ $k0 ] == DATATYPE_NULL
+    if is datatyp[ $save.peer.cost[0] ] == DATATYPE_INT
+     * saved peer [0] was INT; it must come back as the same INT
+     if not is datatyp[ $k0 ] == DATATYPE_INT
+      * peer FDN.Cost[0] was present before but is now missing - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'pC0=' + $k0 + '/exp INT'
+     else
+      if not $k0 == $save.peer.cost[0]
+       * peer FDN.Cost[0] did not come back exactly - mark FAIL and record the mismatch for the detail line
+       $eq.ok = [FALSE]
+       $r.det = 'pC0=' + $k0 + '/exp' + $save.peer.cost[0]
+      end
+     end
+    else
+     * saved peer [0] was not INT; it must be absent now (null stays null)
+     if not is datatyp[ $k0 ] == DATATYPE_NULL
+      * peer FDN.Cost[0] appeared as INT when the original had none - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'pC0=' + $k0 + '/exp non-INT'
+     end
+    end
+   else
+    * saved peer [0] was absent; it must be absent now
+    if not is datatyp[ $k0 ] == DATATYPE_NULL
+     * peer FDN.Cost[0] appeared out of nothing on restore - mark FAIL and record the mismatch for the detail line
+     $eq.ok = [FALSE]
+     $r.det = 'pC0=' + $k0 + '/exp null'
+    end
+   end
+  else
+   * peer FDN.Cost was absent before; it must be absent now (a top-up would have created a record that R restores to null)
+   if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
+    * a peer record exists when it should not - mark FAIL and record the mismatch for the detail line
+    $eq.ok = [FALSE]
+    $r.det = 'pC0=record/exp null'
+   end
+  end
+ end
+ * served station FDN.Cost, only when one exists (its saved slot holds its pre-P6 record or null)
+ if not $srv
+  * no served station: nothing to re-read on the served side
+ else
+  $stn = $srv
+  gosub ReadCost.Sub:
+  if is datatyp[ $sav.srv.cost ] == DATATYPE_ARRAY
+   if not is datatyp[ $k0 ] == DATATYPE_NULL
+    if is datatyp[ $sav.srv.cost[0] ] == DATATYPE_INT
+     * saved served [0] was INT; it must come back as the same INT
+     if not is datatyp[ $k0 ] == DATATYPE_INT
+      * served FDN.Cost[0] was present before but is now missing - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'sC0=' + $k0 + '/exp INT'
+     else
+      if not $k0 == $sav.srv.cost[0]
+       * served FDN.Cost[0] did not come back exactly - mark FAIL and record the mismatch for the detail line
+       $eq.ok = [FALSE]
+       $r.det = 'sC0=' + $k0 + '/exp' + $sav.srv.cost[0]
+      end
+     end
+    else
+     * saved served [0] was not INT; it must be absent now (null stays null)
+     if not is datatyp[ $k0 ] == DATATYPE_NULL
+      * served FDN.Cost[0] appeared as INT when the original had none - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'sC0=' + $k0 + '/exp non-INT'
+     end
+    end
+   else
+    * saved served [0] was absent; it must be absent now (or the harmless all-zero reset case)
+    if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
+     if is datatyp[ $k0 ] == DATATYPE_INT
+      if not $k0 == 0
+       * served FDN.Cost[0] non-zero on restore of an absent record - mark FAIL and record the mismatch for the detail line
+       $eq.ok = [FALSE]
+       $r.det = 'sC0=' + $k0 + '/exp null'
+      end
+     else
+      * served FDN.Cost[0] absent but a fresh all-zero record exists - acceptable (the mod treats an unused record as zero)
+     end
+    else
+     if not is datatyp[ $rc.cost ] == DATATYPE_NULL
+      * served FDN.Cost record exists but was absent before and is non-zero-free - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'sC0=record/exp null'
+     end
+    end
+   end
+  else
+   * served FDN.Cost was absent before; a fresh all-zero or absent record is acceptable, anything non-zero marks FAIL
+   if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
+    if is datatyp[ $k0 ] == DATATYPE_INT
+     if not $k0 == 0
+      * served FDN.Cost[0] non-zero on restore of an absent record - mark FAIL and record the mismatch for the detail line
+      $eq.ok = [FALSE]
+      $r.det = 'sC0=' + $k0 + '/exp null'
+     end
+    else
+     * served FDN.Cost[0] absent but a fresh all-zero record exists - acceptable (the mod treats an unused record as zero)
+    end
+   else
+    if not is datatyp[ $rc.cost ] == DATATYPE_NULL
+     * served FDN.Cost record exists when it should be absent or all-zero - mark FAIL and record the mismatch for the detail line
+     $eq.ok = [FALSE]
+     $r.det = 'sC0=record/exp null'
+    end
+   end
+  end
+ end
+ * collapse the local ok into the caller's shared variable so the single R result reflects every field checked here
+ if not $eq.ok
+  $rv.ok = [FALSE]
+ else
+  * all fields came back as found; leave $rv.ok as the caller set it (TRUE unless an earlier RestoreStn.Sub already marked it FALSE)
+ end
+endsub
 
 * sub - write $txt to both logs
 Log.Sub:
