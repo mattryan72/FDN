@@ -1,0 +1,350 @@
+* Script: lib.LI.FDN.Pull  (v1, engine 50)
+* Desc: FDNv9 - Shortage pull of a ware over the DC backbone to one home DC
+* Arg 0: home (Value) 'home'
+* Arg 1: ware (Value) 'ware'
+* Arg 2: need (Number) 'need'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * Synchronous wait-free helper (multi-DC part 3, M-05d). When a home DC still needs more of
+ * one ware than its own stock covers, this lib pulls units over the backbone from the other
+ * DCs - nearest first - until the need is met or no source has anything above its level.
+
+ * Steps (M-05 contract):
+ * 1. Bad input -> 0: settings missing or smaller than 40, home not a valid DC (Is.Valid
+ *    need.dock TRUE), or need not an INT > 0. One DC only (Matt's FL save) has no other
+ *    source and returns 0 the same way via the empty-source path below.
+ * 2. The cleaned DC list from lib.LI.FDN.Dc.List. For every OTHER DC a route to home is found
+ *    with lib.LI.FDN.Route.Find : from= to= (legs [sender, receiver, jumps] in travel order;
+ *    null when no route). A source keeps its legs and the total of all leg jumps.
+ * 3. The sources are visited NEAREST first: each round picks the not-yet-visited source with
+ *    the smallest total jumps (first found wins a tie, matching Route.Find's tie rule). At most
+ *    $max.sources = 4 sources run, and only while something is still needed.
+ * 4. For a source: the ware record via lib.LI.FDN.Ware.Rec create=[FALSE] (a pay/pull run must
+ *    not write settings - no record means skip). Stock above level:
+ *      level = larger of floor and remote [1]; for Energy Cells also the maintain [2].
+ *      floor = ceil(capacity x pct / 100); pct from FDN.DC.Cfg[1] (INT 0-100), else [34]
+ *            (INT 0-100), else 25 - exactly the Cost.Pay reserve-floor rule.
+ *      available = virtual [0] + physical cargo bay stock - level; <= 0 -> skip the source.
+ *    Take = smaller of available and still needed.
+ * 5. The units move leg by leg in travel order: for each leg lib.LI.FDN.Leg.Pay : ware= units=
+ *    payer=$s served=null jumps=$j backbone=[TRUE] charges first; only a [TRUE] return moves
+ *    anything - then plugin.LI.FDN.Update.Ware remove at $s (the actual number moved, non-INT = 0)
+ *    and add the same amount at $r. A deferred leg or a 0 removal stops this source whole: the
+ *    units already moved stay where they are, one debug line is written, and nothing from this
+ *    source counts toward the result (never partial). [33] = 0 makes Leg.Pay return [TRUE] at
+ *    once, so the pull works with no cost - the cost-off rule.
+ * 6. When the LAST leg ends at home, $take is added to the result and subtracted from still
+ *    needed; one debug line 'backbone: <ware> <n> <source> -> <home> (<hops> hops, <jumps> j)'.
+
+ * Arguments:
+ * - home (Value): The home Distribution Centre station that needs the ware
+ * - ware (Value): Ware to pull
+ * - need (Number): Units still needed at home (INT > 0)
+
+ * Returns values:
+ * - INT number of units that reached home (0 when nothing moved or on bad input)
+
+ * To Do - N/A (M-06 wires the call in where a DC shortage is detected)
+
+ * Version: 1.0
+ * Date: 29/10/2026
+ * Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-05d): new - shortage pull over the backbone, nearest source first
+* -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return 0
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return 0
+end
+
+* ware must be set (a record name would be sprintf'd from it) and need a positive INT
+if not $ware
+ return 0
+end
+if not is datatyp[ $need ] == DATATYPE_INT
+ return 0
+end
+$still.needed = $need
+if not $still.needed > 0
+ return 0
+end
+
+* home must be a valid DC (exists, player owned, Dock) before any -> call on it
+$h.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$home need.dock=[TRUE]
+if not $h.ok == [TRUE]
+ return 0
+end
+
+* the cleaned DC list ([2] first); Dc.List rewrites [30] in place, so its result is used as-is
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $list ] == DATATYPE_ARRAY
+ return 0
+end
+$n.dc = size of array $list
+* collect the other DCs with a route to home: total jumps = sum of all leg jumps (M-05 step 2).
+ * A source with no route is skipped; one DC only leaves the arrays empty and the loop below
+ * returns 0 straight away. Every element is copied to a local before any condition or call.
+$src.dc = = array alloc: size=0
+$src.jumps = = array alloc: size=0
+$i = 0
+while $i < $n.dc
+ $cand = $list[$i]
+ inc $i =
+ if not $cand == $home
+  $route = [THIS] -> call script lib.LI.FDN.Route.Find : from=$cand to=$home
+  if is datatyp[ $route ] == DATATYPE_ARRAY
+   $total.j = 0
+   $nl = size of array $route
+   $li = 0
+   while $li < $nl
+    $leg = $route[$li]
+    if is datatyp[ $leg ] == DATATYPE_ARRAY
+     $lj = $leg[2]
+     if is datatyp[ $lj ] == DATATYPE_INT
+      $total.j = $total.j + $lj
+     end
+    end
+    inc $li =
+   end
+   append $cand to array $src.dc
+   append $total.j to array $src.jumps
+  end
+ end
+end
+$n.src = size of array $src.dc
+
+* nearest-first visit: each round Pick.Source.Sub finds the not-yet-visited source with the
+ * smallest total jumps (-1 when none is left). At most 4 sources run, only while something
+ * is still needed (M-05 step 3). No break/continue - the loop ends by making its flag false.
+$max.sources = 4
+$got.total = 0
+$sources.used = 0
+$pull.go = [TRUE]
+while $pull.go == [TRUE]
+ if $sources.used >= $max.sources
+  $pull.go = [FALSE]
+ else
+  if not $still.needed > 0
+   $pull.go = [FALSE]
+  else
+   gosub Pick.Source.Sub:
+   if not $pick.i < 0
+    * mark it visited (a -1 jumps value would otherwise win every pick round)
+    $src.jumps[$pick.i] = -1
+    inc $sources.used =
+    * fresh route for this source - the legs are read again, never a cached copy
+    $route = [THIS] -> call script lib.LI.FDN.Route.Find : from=$pick.dc to=$home
+    if is datatyp[ $route ] == DATATYPE_ARRAY
+     gosub Source.Avail.Sub:
+     if not $avail < 1
+      $take = $still.needed
+      if $avail < $take
+       $take = $avail
+      end
+      * move leg by leg (M-05 step 5); Move.Legs.Sub fills $done with what reached home, or 0
+      gosub Move.Legs.Sub:
+      if not $done == 0
+       $got.total = $got.total + $done
+       $still.needed = $still.needed - $done
+      end
+     end
+     else
+      * route vanished between pick and move (a DC died): leave the stock where it is
+      $txt.log = 'Pull: no route ' + $pick.dc + ' -> ' + $home + ' for ' + $ware
+       = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+     end
+   else
+    $pull.go = [FALSE]
+    end
+   end
+  end
+ end
+
+return $got.total
+
+Pick.Source.Sub:
+* fills $pick.i (source index) and $pick.dc; -1 when no unvisited source is left. The smallest
+ * total jumps wins, first found on a tie (matches Route.Find's equal-total rule).
+$pick.i = -1
+$pick.best = 2147483647
+$pi = 0
+while $pi < $n.src
+ $pj = $src.jumps[$pi]
+ if is datatyp[ $pj ] == DATATYPE_INT
+  if not $pj < 0
+   if $pj < $pick.best
+    $pick.i = $pi
+    $pick.best = $pj
+    $pick.dc = $src.dc[$pi]
+   end
+  end
+ end
+ inc $pi =
+end
+endsub
+
+Source.Avail.Sub:
+* fills $avail = units of $ware at the source in $pick.dc that are above its level (M-05 step 4).
+ * Never writes settings: the record is read with create=[FALSE], so a pull run adds nothing.
+ * A missing or gone station counts as having no stock ($avail 0, the caller skips it).
+$avail = 0
+$src.exists = $pick.dc  ->  exists
+if $src.exists
+ * virtual [0] and remote/reserve [1] from the record (non-INT treated as 0)
+ $virt = 0
+ $remote = 0
+ $rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$pick.dc ware=$ware create=[FALSE]
+ if is datatyp[ $rec ] == DATATYPE_ARRAY
+  $v.cand = $rec[0]
+  if is datatyp[ $v.cand ] == DATATYPE_INT
+   if not $v.cand < 0
+    $virt = $v.cand
+   end
+  end
+  $r.cand = $rec[1]
+  if is datatyp[ $r.cand ] == DATATYPE_INT
+   if not $r.cand < 1
+    $remote = $r.cand
+   end
+  end
+ end
+ * physical stock in the cargo bay (non-INT treated as 0)
+ $phys = $pick.dc  ->  get amount of ware $ware in cargo bay
+ if not is datatyp[ $phys ] == DATATYPE_INT
+  $phys = 0
+ end
+ * floor percent, exactly the Cost.Pay reserve-floor chain: FDN.DC.Cfg[1] (INT 0-100), else
+ * settings [34] (INT 0-100), else 25
+ $pct = -1
+ $dc.cfg = $pick.dc  ->  get local variable: name='FDN.DC.Cfg'
+ if is datatyp[ $dc.cfg ] == DATATYPE_ARRAY
+  $p.cand = $dc.cfg[1]
+  if is datatyp[ $p.cand ] == DATATYPE_INT
+   if not $p.cand < 0
+    if not $p.cand > 100
+     $pct = $p.cand
+    end
+   end
+  end
+ end
+ if $pct < 0
+  $global.pct = $al.Settings[34]
+  if is datatyp[ $global.pct ] == DATATYPE_INT
+   if not $global.pct < 0
+    if not $global.pct > 100
+     $pct = $global.pct
+    end
+   end
+  end
+ end
+ if $pct < 0
+  $pct = 25
+ end
+ * floor = ceil(capacity x pct / 100); level = the larger of floor and remote, plus for Energy
+ * Cells the maintain [2] when it is an INT > 0 (a DC never drains below its own EC keep)
+ $cap = $pick.dc  ->  get max amount of ware $ware that can be stored in cargo bay
+ if not is datatyp[ $cap ] == DATATYPE_INT
+  $cap = 0
+ end
+ $floor.w = ($cap * $pct + 99) / 100
+ $level = $remote
+ if $floor.w > $level
+  $level = $floor.w
+ end
+if $ware == [SS_WARE_ENERGY]
+ if is datatyp[ $rec ] == DATATYPE_ARRAY
+  $m.cand = $rec[2]
+  if is datatyp[ $m.cand ] == DATATYPE_INT
+   if not $m.cand < 1
+    if $m.cand > $level
+     $level = $m.cand
+    end
+   end
+  end
+ end
+end
+ * available above level, never negative (a source at or below its floor gives 0 and is skipped)
+ $avail = $virt + $phys - $level
+ if $avail < 0
+  $avail = 0
+ end
+end
+endsub
+
+Move.Legs.Sub:
+* moves $take units of $ware from the source in $pick.dc to home, leg by leg over $route
+ * (M-05 steps 5 and 6). Fills $done with what actually reached home - 0 when the pull stopped
+ * part-way. Per leg, in travel order: Leg.Pay charges FIRST (backbone rates, the sending DC
+ * pays); only a [TRUE] return moves anything - Update.Ware remove at the sender gives back the
+ * number that could come out (non-INT = 0), add puts exactly that on the receiver. A deferred
+ * leg or a 0 removal stops this source whole: what already moved stays where it is, one debug
+ * line is written and $done is 0 - never partial. [33] = 0 makes Leg.Pay return [TRUE] at once
+ * (the cost-off rule).
+$done = 0
+$n.legs = size of array $route
+$k = 0
+$stop.go = [FALSE]
+while $k < $n.legs
+ if not $stop.go
+  $leg = $route[$k]
+  if is datatyp[ $leg ] == DATATYPE_ARRAY
+   $l.s = $leg[0]
+   $l.r = $leg[1]
+   $l.j = $leg[2]
+   * charge before anything moves (the sending DC of the leg pays)
+   $ok.leg = [THIS] -> call script lib.LI.FDN.Leg.Pay : ware=$ware units=$take payer=$l.s served=null jumps=$l.j backbone=[TRUE]
+   if not $ok.leg == [TRUE]
+    * deferred: Leg.Pay already wrote 'Leg.Pay: deferred ...' and grew [37]; note where the stock stays
+    $txt.log = 'Pull: leg deferred, ' + $take + ' of ' + $ware + ' stay at ' + $l.s
+     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+    $stop.go = [TRUE]
+   else
+    * remove at the sender: Update.Ware gives back what could actually come out (virtual first)
+    $got.move = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=$ware amount=$take station=$l.s action='remove'
+    if not is datatyp[ $got.move ] == DATATYPE_INT
+     $got.move = 0
+    end
+    if $got.move <= 0
+     * the source ran dry mid-route (stock changed in the last instant): nothing left to move
+     $stop.go = [TRUE]
+    else
+     * add exactly what came out at the receiver, and carry it on for the next leg
+      = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=$ware amount=$got.move station=$l.r action='add'
+     $take = $got.move
+    end
+   end
+  else
+   * a malformed leg stops this source (no route data is ever invented)
+   $stop.go = [TRUE]
+  end
+ end
+ inc $k =
+end
+* only a clean run ends the last leg at home - that is when $take counts toward the result,
+ * with one debug line 'backbone: <ware> <n> <source> -> <home> (<hops> hops, <jumps> j)'
+if not $stop.go
+ if not $take <= 0
+  $done = $take
+  $src.str = 'n/a'
+  $home.str = 'n/a'
+  $src.exists2 = $pick.dc  ->  exists
+  if $src.exists2
+   $src.str = $pick.dc  ->  get name
+  end
+  $home.exists2 = $home  ->  exists
+  if $home.exists2
+   $home.str = $home  ->  get name
+  end
+  $txt.log = 'backbone: ' + $ware + ' ' + $take + ' ' + $src.str + ' -> ' + $home.str + ' (' + $n.legs + ' hops, ' + $pick.best + ' j)'
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
+endsub
+

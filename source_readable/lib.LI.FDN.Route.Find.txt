@@ -1,0 +1,250 @@
+* Script: lib.LI.FDN.Route.Find  (v1, engine 50)
+* Desc: FDNv9 - Fewest-jumps route between two DCs over the backbone links [35]
+* Arg 0: from (Value) 'from'
+* Arg 1: to (Value) 'to'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 2). Given two DCs it returns the route
+* between them as the legs in travel order, using only the backbone link table [35]
+* written by lib.LI.FDN.Route.Build. A link works in both directions and its cost is
+* its jump count; the search finds the fewest TOTAL jumps (label setting / Dijkstra),
+* not the fewest hops: a longer hop path that covers fewer jumps wins.
+* - nodes are the cleaned DC list from lib.LI.FDN.Dc.List (at most 16, Matt's limit);
+* - every leg is [sender, receiver, jumps] and the first leg starts at 'from' while
+*   the last ends at 'to';
+* - a route never revisits a node: once a distance is final it can only improve by
+*   going through an already-finalised (and therefore equal or closer) node, which
+*   would re-enter that node, so the 16-hop cap on path length is safety only.
+* Equal totals keep the first route found (no extra tie rule).
+*
+* Arguments:
+* - from (Value): source Distribution Centre station
+* - to   (Value): destination Distribution Centre station
+
+* Returns values:
+* - null when settings are missing or smaller than 40, 'from' or 'to' is not a DC in
+*   the list, or there is no route between them;
+* - an empty array (size 0) when from and to are the same DC;
+* - otherwise the legs in travel order: an array of [sender, receiver, jumps].
+
+* To Do - N/A (M-05d Pull consumes this; M-06 wires it into Scan/Supply)
+
+* Version: 1.0
+* Date: 29/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-05c): new - fewest-total-jumps route between two DCs over [35]
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return null
+end
+$nodes = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $nodes ] == DATATYPE_ARRAY
+ return null
+end
+$n = size of array $nodes
+if $n < 1
+ return null
+end
+
+* node index of from and to (compare element by element: 'find in array' may return a
+* boolean rather than an index on some games, so the loop is the portable form)
+$start = -1
+$i = 0
+while $i < $n
+ $cand = $nodes[$i]
+ if $cand == $from
+  $start = $i
+ end
+ inc $i =
+end
+$goal = -1
+$i = 0
+while $i < $n
+ $cand = $nodes[$i]
+ if $cand == $to
+  $goal = $i
+ end
+ inc $i =
+end
+if $start < 0
+ return null
+end
+if $goal < 0
+ return null
+end
+
+* same DC: an empty route (zero legs) is the contract answer
+if $from == $to
+ $empty = = array alloc: size=0
+ return $empty
+end
+
+* the backbone link table [35] (a list of [dcA, dcB, jumps]); it may be null or an empty
+* array on a fresh save - treat both as 'no links', which then means only same-DC routes
+$links = $al.Settings[35]
+$n.links = 0
+if is datatyp[ $links ] == DATATYPE_ARRAY
+ $n.links = size of array $links
+end
+
+* label-setting (Dijkstra) over the link table. best/prev/hops are indexed by node;
+* -1 means unknown. All values are integers, so a plain comparison is safe.
+$best = = array alloc: size=$n
+$prev = = array alloc: size=$n
+$hops = = array alloc: size=$n
+$done = = array alloc: size=$n
+$i = 0
+while $i < $n
+ $best[$i] = -1
+ $prev[$i] = -1
+ $hops[$i] = 0
+ $done[$i] = 0
+ inc $i =
+end
+$best[$start] = 0
+$hops[$start] = 0
+
+* repeat n times: finalise the not-done node with the smallest known best, then relax
+* every link that touches it (a link works in both directions)
+$rnd = 0
+while $rnd < $n
+ $cur = -1
+ $cand.best = -1
+ $i = 0
+ while $i < $n
+  $d = $done[$i]
+  if not $d == 1
+   $b = $best[$i]
+   if $b >= 0
+    if $cur < 0
+     $cur = $i
+     $cand.best = $b
+    else
+     if $b < $cand.best
+      $cur = $i
+      $cand.best = $b
+     end
+    end
+   end
+  end
+  inc $i =
+ end
+ if $cur < 0
+  * nothing reachable is left: end the outer loop (no break)
+  $rnd = $n
+ else
+  $done[$cur] = 1
+  $na = $nodes[$cur]
+  $h.cur = $hops[$cur]
+  $next.hops = $h.cur + 1
+  $b.cur = $best[$cur]
+  $k = 0
+  while $k < $n.links
+   $link = $links[$k]
+   $o = -1
+   $j = 0
+   if is datatyp[ $link ] == DATATYPE_ARRAY
+    $a = $link[0]
+    $b = $link[1]
+    $j = $link[2]
+    if is datatyp[ $j ] == DATATYPE_INT
+     * the other end of this link (a link works in both directions)
+     $other = null
+     if $na == $a
+      $other = $b
+     else
+      if $na == $b
+       $other = $a
+      end
+     end
+     if not is datatyp[ $other ] == DATATYPE_NULL
+      $i = 0
+      while $i < $n
+       $cand = $nodes[$i]
+       if $cand == $other
+        $o = $i
+       end
+       inc $i =
+      end
+     end
+    end
+   end
+   if $o >= 0
+    $done.o = $done[$o]
+    if not $done.o == 1
+     if $next.hops <= 16
+      $new.best = $b.cur + $j
+      $b.o = $best[$o]
+      $take = 0
+      if $b.o < 0
+       $take = 1
+      else
+       if $new.best < $b.o
+        $take = 1
+       end
+      end
+      if $take == 1
+       $best[$o] = $new.best
+       $prev[$o] = $cur
+       $hops[$o] = $next.hops
+      end
+     end
+    end
+   end
+   inc $k =
+  end
+ end
+ inc $rnd =
+end
+
+* no route when the goal was never reached
+$g.best = $best[$goal]
+if not is datatyp[ $g.best ] == DATATYPE_INT
+ return null
+end
+if $g.best < 0
+ return null
+end
+
+* walk prev back from goal to start, building legs as [sender, receiver, jumps]; each
+* leg's jump count is best(receiver) - best(sender). The walk yields them in reverse
+* travel order, so the whole list is reversed at the end.
+$legs = = array alloc: size=0
+$node = $goal
+$walk.ok = 1
+while $walk.ok == 1
+ $p = $prev[$node]
+ if $p < 0
+  $walk.ok = 0
+ else
+  $sender = $nodes[$p]
+  $receiver = $nodes[$node]
+  $b.r = $best[$node]
+  $b.s = $best[$p]
+  $leg.jumps = $b.r - $b.s
+  $leg = = array alloc: size=3
+  $leg[0] = $sender
+  $leg[1] = $receiver
+  $leg[2] = $leg.jumps
+  append $leg to array $legs
+  $node = $p
+ end
+end
+
+* sanity: a valid route always ends the walk at start (it can only fail on corrupt data)
+if not $node == $start
+ return null
+end
+$nl = size of array $legs
+if $nl < 1
+ return null
+end
+$result = reverse array $legs
+return $result

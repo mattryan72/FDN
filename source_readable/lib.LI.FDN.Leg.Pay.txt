@@ -1,0 +1,123 @@
+* Script: lib.LI.FDN.Leg.Pay  (v1, engine 50)
+* Desc: FDNv9 - Charge one transfer leg before it moves: pay the Energy Cell cost or defer
+* Arg 0: ware (Value) 'ware'
+* Arg 1: units (Number) 'units'
+* Arg 2: payer (Value) 'payer'
+* Arg 3: served (Value) 'served'
+* Arg 4: jumps (Number) 'jumps'
+* Arg 5: backbone (Value) 'backbone'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * Synchronous wait-free helper (multi-DC part 2, M-05b). Charges the Energy Cell cost of ONE
+ * transfer leg BEFORE any stock moves. It prices the planned amount with lib.LI.FDN.Cost and
+ * takes it from the paying DC with lib.LI.FDN.Cost.Pay; callers move stock only after a [TRUE]
+ * return, so a charge never happens against stock that did not actually move (never partial).
+
+ * Returns values:
+ * - [TRUE] when the transfer may go ahead (paid, or free because no cost applies);
+ * - [FALSE] when it must be skipped whole (deferred): nothing was taken and [37] grew by 1.
+
+ * Steps, in order (M-05 contract):
+ * 1. Settings missing -> [TRUE] (no cost system: exactly today's behaviour).
+ * 2. Settings smaller than 40 -> [TRUE] (the multi-DC slots do not exist yet).
+ * 3. [33] is the Energy Cell cost on/off switch; when it is not 1 -> [TRUE]. Cost off must
+ *    behave exactly like today: lib.LI.FDN.Cost and lib.LI.FDN.Cost.Pay are NOT called.
+ * 4. units not an INT or <= 0 -> [TRUE] (nothing to move, nothing to charge).
+ * 5. jumps not an INT or < 0 -> use 0 for the price (Cost re-clamps internally anyway).
+ * 6. Price with lib.LI.FDN.Cost; a result that is not an INT or <= 0 means free -> [TRUE].
+ * 7. Take it with lib.LI.FDN.Cost.Pay : payer= served= cost=.
+ * 8. Cost.Pay returned [TRUE] (paid, incl. the all-clear case) -> [TRUE].
+ * 9. Otherwise (Cost.Pay deferred): [37] is 'deferred transfers this tick' - read it (non-INT
+ *    treated as 0), add 1 and write it back to the global; log one debug line; return [FALSE].
+ *    Cost.Pay already wrote its own 'Cost: deferred ...' line and FDN.Cost[3]; this script does
+ *    not repeat that. Supply.Start (a later card) shows the player warning for [37] > 0 and resets it.
+
+ * Arguments:
+ * - ware (Value): Ware to move
+ * - units (Number): Number of units planned to move on this leg
+ * - payer (Value): The paying Distribution Centre station (the one Cost.Pay takes EC from)
+ * - served (Value): The station, dock, factory or DC on the other end of the leg (may be null)
+ * - jumps (Number): Jump count of the leg (non-INT or < 0 treated as 0)
+ * - backbone (Value): [TRUE] = price with the backbone rates B_bb/J_bb, anything else station rates
+
+ * To Do - N/A (callers Supply.Factory / Supply.Dock / Pull switch to this lib in M-05d and later)
+
+ * Version: 1.0
+ * Date: 29/10/2026
+ * Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-05b): new - charge one transfer leg before it moves, defer whole on network short
+* -----------------------------------------------------------------------------------
+
+ $s.name = = get script name
+
+ * 1. settings guard - no cost system when FDN is not set up (Cfg.Get returns null)
+ $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+ if not $al.Settings
+  return [TRUE]
+ end
+
+ * 2. below 40 the multi-DC slots do not exist yet: free, as on an old save
+ $s.size = size of array $al.Settings
+ if $s.size < 40
+  return [TRUE]
+ end
+
+ * 3. [33] is the Energy Cell cost on/off switch; anything that is not 1 means off (free)
+ $on = $al.Settings[33]
+ if not is datatyp[ $on ] == DATATYPE_INT
+  return [TRUE]
+ end
+ if not $on == 1
+  return [TRUE]
+ end
+
+ * 4. units must be a positive INT, otherwise there is nothing to charge for
+ if not is datatyp[ $units ] == DATATYPE_INT
+  return [TRUE]
+ end
+ $u = $units
+ if not $u > 0
+  return [TRUE]
+ end
+
+ * 5. jumps: null or non-INT treated as 0, a negative value clamped to 0 (Cost re-clamps 0-50)
+ $j = 0
+ if is datatyp[ $jumps ] == DATATYPE_INT
+  if not $jumps < 0
+   $j = $jumps
+  end
+ end
+
+ * 6. price the planned leg; a non-INT or <= 0 result means free (e.g. a ware with no volume)
+ $cost = [THIS] -> call script lib.LI.FDN.Cost : ware=$ware units=$u jumps=$j dc=$payer backbone=$backbone
+ if not is datatyp[ $cost ] == DATATYPE_INT
+  return [TRUE]
+ end
+ $c.ec = $cost
+ if not $c.ec > 0
+  return [TRUE]
+ end
+
+ * 7. take the cost from the paying DC (virtual EC first, then physical; peers help in order)
+ $paid = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$payer served=$served cost=$c.ec
+
+ * 8. paid (or Cost.Pay saw nothing to take) - the leg may go ahead
+ if not $paid == [TRUE]
+  * 9. deferred: count this transfer in [37] for Supply.Start's end-of-tick warning, log and hold
+  $d = $al.Settings[37]
+  if is datatyp[ $d ] == DATATYPE_INT
+   inc $d =
+  else
+   $d = 1
+  end
+  $al.Settings[37] = $d
+  set global variable: name='al.LI.FDN.event' value=$al.Settings
+  * one debug line only (Cost.Pay already wrote 'Cost: deferred ...' and FDN.Cost[3])
+  $txt.log = 'Leg.Pay: deferred ' + $u + ' ' + $ware + ' payer ' + $payer + ' cost ' + $c.ec
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+  return [FALSE]
+ end
+
+ * paid - the transfer may move its stock now (never partial: the whole leg was charged)
+return [TRUE]

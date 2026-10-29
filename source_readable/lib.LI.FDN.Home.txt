@@ -1,0 +1,116 @@
+* Script: lib.LI.FDN.Home  (v1, engine 50)
+* Desc: FDNv9 - Home DC of one factory or dock, from its FDN.Hub local when it is still valid
+* Arg 0: station (Value) 'station'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 1). Returns the home DC for ONE factory or
+* dock, in this order:
+* - settings missing -> null;
+* - settings smaller than 40 (save not upgraded yet): return [2] when it is a valid DC,
+*   else null - there are no multi-DC slots to read on an old save;
+* - station not a DATATYPE_STATION -> null;
+* - the cleaned DC list (lib.LI.FDN.Dc.List) missing or empty -> null;
+* - FDN.Hub local is an array: [0] null means out of range at the last Scan and stays
+*   null here (Scan reassigns); a station in [30] that still passes Is.Valid need.dock
+*   TRUE is returned untouched; anything else (stale DC removed or dead) falls through;
+* - FDN.Hub missing, not an array, or stale -> lib.LI.FDN.Hub.Assign runs for the
+*   station and its result is returned (Hub.Assign writes a fresh FDN.Hub). One debug
+*   line "Home: <station> reassigned -> <home>" goes to the log via lib.LI.FDN.Log only
+*   on this path (it prints when [7] is on).
+
+* Arguments:
+* - station (Value): factory or dock whose home DC is wanted
+
+* Returns values:
+* - the home DC, or null (bad input, no valid DC, or out of range at the last Scan)
+
+* To Do - N/A (M-05 callers switch to this lib)
+
+* Version: 1.0
+* Date: 29/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-05a): new - single owner of the home DC for Supply and Scan callers
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+
+* below 40 the multi-DC slots do not exist: fall back to the primary DC [2] only
+$s.size = size of array $al.Settings
+if $s.size < 40
+ $primary = $al.Settings[2]
+ if is datatyp[ $primary ] == DATATYPE_STATION
+  $p.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$primary need.dock=[TRUE]
+  if not $p.ok == [TRUE]
+   return null
+  end
+  return $primary
+ end
+ return null
+end
+
+* station datatype check before any -> call (a number or string would throw a script error)
+if not is datatyp[ $station ] == DATATYPE_STATION
+ return null
+end
+
+* the cleaned DC list ([2] first); Dc.List rewrites [30] in place, so its result is used as-is
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $list ] == DATATYPE_ARRAY
+ return null
+end
+$l.size = size of array $list
+if $l.size < 1
+ return null
+end
+
+* the stored FDN.Hub local: [home DC or null, jumps or -1, playing time] (written by Hub.Assign)
+$hub = $station  ->  get local variable: name='FDN.Hub'
+if is datatyp[ $hub ] == DATATYPE_ARRAY
+ $h = $hub[0]
+ if not is datatyp[ $h ] == DATATYPE_STATION
+  * [0] null: out of range at the last Scan - do NOT reassign here, Scan does that
+  return null
+ end
+ $in.list = find $h in array: $list
+ if not $in.list
+  * stale: this DC is no longer in [30], fall through to Hub.Assign below
+ else
+  $h.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$h need.dock=[TRUE]
+  if not $h.ok == [TRUE]
+   * stale: the stored DC is dead or no longer ours, fall through to Hub.Assign below
+  else
+   return $h
+  end
+ end
+end
+
+* FDN.Hub missing, not an array, or stale: assign a fresh home (writes FDN.Hub itself)
+$s.name = = get script name
+$st.id.str = 'n/a'
+$st.exists = $station  ->  exists
+if $st.exists
+ $st.id.str = $station  ->  get ID code
+end
+$home.dc = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$station
+* one debug line on this path only: "Home: <id> reassigned -> <id>" (all names in locals first)
+$st.name.str = $station  ->  get name
+if is datatyp[ $home.dc ] == DATATYPE_STATION
+ $dc.exists = $home.dc  ->  exists
+ if $dc.exists
+  $dc.name.str = $home.dc  ->  get name
+  $dc.id.str = $home.dc  ->  get ID code
+ else
+  $dc.name.str = 'n/a'
+  $dc.id.str = 'n/a'
+ end
+else
+ $dc.name.str = 'n/a'
+ $dc.id.str = 'n/a'
+end
+$txt.log = 'Home: [' + $st.id.str + '] ' + $st.name.str + ' reassigned -> [' + $dc.id.str + '] ' + $dc.name.str
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+return $home.dc
