@@ -5,24 +5,23 @@
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-04c): trimmed rewrite of the M-04 cost and payment test
 * -----------------------------------------------------------------------------------
-* M-04c in-game test for the Energy Cell leg cost (lib.LI.FDN.Cost) and its payment
-* (lib.LI.FDN.Cost.Pay). Writes every TEST line to log 9910 and log 9911 (9911 restarted
-* at start), same layout as test.LI.FDN.Hub. C checks: C1 [33]=0 -> 0; C2 [33]=null -> 0;
-* C3 units=0 -> 0; C4 worked set with dc=null (row 1.0); C5 EC at an HQ DC (row 0.8) or
-* SKIP; C6 1000 EC at an equipment dock (50) and any other dock (60), each or SKIP;
-* C7 backbone rates (16, 13 with HQ); C8 jumps clamp (99/50 -> 520, -5 -> 20) and minimum
-* 1 EC; C9 5,000,000 x shield at 50 jumps exact. P checks: P1/P2 Pay free ([33]=0 / null);
-* P3 payer sufficient (virtual first); P4 peer covers a shortfall or SKIP without a second
-* DC; P5 network short defers with +999 to FDN.Cost[3]; P6 served station records the cost
-* or SKIP; P7 null payer defers without a crash. R restores [30], [33] and every touched
-* local exactly, then re-reads each value (EqChk). Worked values guard against ware data
-* drift: vol/price is compared with the assumption (1/8/1/77 at tier 1.0 except shield
-* 2.0) and a mismatch logs SKIP data differs for that one value. Pay checks never touch
-* physical stock: FDN.DC.Cfg[1]=0, virtual [0] raised +10000 over the saved value; R puts
-* every saved record field back (null stays null). Prerequisite: a valid DC in [2],
-* settings grown to 40 slots (run Upgrade first). Version: 1.0
+* In-game test for lib.LI.FDN.Cost (EC leg cost) and lib.LI.FDN.Cost.Pay (payment).
+* Writes every TEST line to log 9910 and log 9911 (9911 restarted at start).
+* C1 [33]=0 -> 0; C2 [33]=null -> 0; C3 units 0 -> 0; C4 worked set dc=null (H 1.0);
+* C5 worked set at an HQ (H 0.8) or SKIP; C6 1000 EC at equipment dock (50) / other
+* dock (60) or SKIP; C7 backbone 16 (HQ 13); C8 clamp 99/50 -> 520, -5 -> 20, min 1;
+* C9 5,000,000 x 1 GJ Shield at 50 jumps = 800800093.
+* Worked values check ware volume and price tier first; a difference logs SKIP data differs.
+* P1/P2 Pay free with [33]=0 / null; P3 payer pays from virtual; P4 peer tops up, charge
+* on the payer; P5 network short defers (cost 999); P6 served station records the cost;
+* P7 null payer defers. Pay checks never touch physical stock: floor FDN.DC.Cfg[1]=0,
+* reserve [1]=0, virtual [0] = saved + 10000, maintain [2] = [0] + physical - target.
+* R restores [30], [33], EC [0]/[1]/[2], FDN.DC.Cfg and FDN.Cost (null stays null) for the
+* DC, the peer and the served station, then re-reads and compares every value.
+* Prerequisite: a valid DC in [2], settings grown to 40 slots (run Upgrade first).
+* Version: 1.0
 * Date: 29/10/2026
-* Tested: not tested
+* Tested: 2026-10-29 FL 22/22 PASS (test.LI.FDN.Cost; C5/C6b/C7b/P4 skipped, one DC)
 * -----------------------------------------------------------------------------------
 
 $pass = 0
@@ -50,77 +49,49 @@ if not $dc.ok
  return null
 end
 
-* ---------- wares (proven EC; the rest from test.LI.FDN.Probe with data guard) ----------
+* ---------- wares ----------
 $w.ec = SS_WARE_ENERGY
- * VERIFY: ware constant for Ore - form taken from test.LI.FDN.Probe; must render as 'Ore' in the Script Editor
+* VERIFY: ware constants for Ore, Mosquito Missile and 1 GJ Shield (data guard SKIPs on drift)
 $w.ore = SS_WARE_ORE
- * VERIFY: ware constant for Mosquito Missile - form taken from test.LI.FDN.Probe; if it renders wrong, C4/C5 mosquito SKIP until then
 $w.mosq = SS_MISSILE_A
- * VERIFY: ware constant for 1 GJ Shield (vol 77) - form taken from test.LI.FDN.Probe; if it renders wrong, C4/C5/C9 shield SKIP until then
 $w.shield = SS_SHIELD_E
 
-* ---------- DC search: peer (first other DC), HQ subtype 62, equip 6, any other dock ----------
+* ---------- DC search: peer (first other DC), HQ (62), equipment dock (6), other dock ----------
 $peer.dc = null
 $hq.dc = null
 $eq.dc = null
 $oth.dc = null
+$n.dcs = 0
 $dcl = [THIS] -> call script lib.LI.FDN.Dc.List :
 if is datatyp[ $dcl ] == DATATYPE_ARRAY
- $dn0 = size of array $dcl
- $di0 = 0
- while $di0 < $dn0
-  $dstn = $dcl[$di0]
-  inc $di0 =
-  if not is datatyp[ $dstn ] == DATATYPE_NULL
-   $dok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dstn need.dock=[TRUE]
-   if $dok
-    $peer.set = [FALSE]
-    $hq.set = [FALSE]
-    $eq.set = [FALSE]
-    $oth.set = [FALSE]
-    if not is datatyp[ $peer.dc ] == DATATYPE_NULL
-     $peer.set = [TRUE]
+ $dn = size of array $dcl
+ $di = 0
+ while $di < $dn
+  $dstn = $dcl[$di]
+  inc $di =
+  if is datatyp[ $dstn ] == DATATYPE_STATION
+   inc $n.dcs =
+   if is datatyp[ $peer.dc ] == DATATYPE_NULL
+    if not $dstn == $dc
+     $peer.dc = $dstn
     end
-    if not is datatyp[ $hq.dc ] == DATATYPE_NULL
-     $hq.set = [TRUE]
+   end
+   $dsub = $dstn -> get subtype
+   if not is datatyp[ $dsub ] == DATATYPE_INT
+    $dsub = -1
+   end
+   if $dsub == 62
+    if is datatyp[ $hq.dc ] == DATATYPE_NULL
+     $hq.dc = $dstn
     end
-    if not is datatyp[ $eq.dc ] == DATATYPE_NULL
-     $eq.set = [TRUE]
-    end
-    if not is datatyp[ $oth.dc ] == DATATYPE_NULL
-     $oth.set = [TRUE]
-    end
-    if not $peer.set
-     if not $dstn == $dc
-      $peer.dc = $dstn
-      $peer.set = [TRUE]
-     end
-    end
-    $dsub = $dstn -> get subtype
-    if not is datatyp[ $dsub ] == DATATYPE_INT
-     $dsub = -1
-    end
-    if not $hq.set
-     if $dsub == 62
-      $hq.dc = $dstn
-      $hq.set = [TRUE]
-     end
-    end
-    if not $eq.set
-     if $dsub == 6
+   else
+    if $dsub == 6
+     if is datatyp[ $eq.dc ] == DATATYPE_NULL
       $eq.dc = $dstn
-      $eq.set = [TRUE]
      end
-    end
-    if not $oth.set
-     if not is datatyp[ $peer.dc ] == DATATYPE_NULL
-      if not $dstn == $peer.dc
-       $oth.dc = $dstn
-       $oth.set = [TRUE]
-      end
-     else
+    else
+     if is datatyp[ $oth.dc ] == DATATYPE_NULL
       $oth.dc = $dstn
-      $oth.set = [TRUE]
      end
     end
    end
@@ -128,1438 +99,892 @@ if is datatyp[ $dcl ] == DATATYPE_ARRAY
  end
 end
 
-* ---------- served station: first valid non-dock in [3], nested ifs (no continue) ----------
+* ---------- served station: first valid station in [3] ----------
 $srv = null
-if is datatyp[ $g[3] ] == DATATYPE_ARRAY
- $sn0 = size of array $g[3]
- $si0 = 0
- while $si0 < $sn0
-  $scand = $g[3][$si0]
-  inc $si0 =
-  if not is datatyp[ $scand ] == DATATYPE_NULL
+$list3 = $g[3]
+if is datatyp[ $list3 ] == DATATYPE_ARRAY
+ $sn = size of array $list3
+ $si = 0
+ while $si < $sn
+  $scand = $list3[$si]
+  inc $si =
+  if is datatyp[ $scand ] == DATATYPE_STATION
    $sv.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$scand need.dock=[FALSE]
    if $sv.ok
     $srv = $scand
-    $si0 = $sn0
+    $si = $sn
    end
   end
  end
 end
 
-* ---------- save settings and every local the test will touch (null stays null) ----------
+* ---------- saves (values copied into new arrays, null stays null) ----------
 $save.30 = $g[30]
 $save.33 = $g[33]
-$dcrec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=$w.ec create=[FALSE]
-if is datatyp[ $dcrec ] == DATATYPE_ARRAY
- $sav.dc.v0 = $dcrec[0]
- $sav.dc.r1 = $dcrec[1]
- $sav.dc.r2 = $dcrec[2]
-else
- $sav.dc.v0 = null
- $sav.dc.r1 = null
- $sav.dc.r2 = null
+$stn = $dc
+gosub SnapStn.Sub:
+$sv.dc = $s.arr
+$sv.pr = null
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $stn = $peer.dc
+ gosub SnapStn.Sub:
+ $sv.pr = $s.arr
 end
-$sav.dc.phy = $dc -> get amount of ware SS_WARE_ENERGY in cargo bay
-if not is datatyp[ $sav.dc.phy ] == DATATYPE_INT
- $sav.dc.phy = 0
+$sv.srv = null
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $stn = $srv
+ gosub SnapStn.Sub:
+ $sv.srv = $s.arr
 end
-$sav.dc.cfg = $dc -> get local variable: name='FDN.DC.Cfg'
-$sav.dc.cost = $dc -> get local variable: name='FDN.Cost'
-$save.peer.v0 = null
-$save.peer.r1 = null
-$save.peer.r2 = null
-$save.peer.phy = 0
-$save.peer.cfg = null
-$save.peer.cost = null
-if not is datatyp[ $peer.dc ] == DATATYPE_NULL
- $precrec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$peer.dc ware=$w.ec create=[FALSE]
- if is datatyp[ $precrec ] == DATATYPE_ARRAY
-  $save.peer.v0 = $precrec[0]
-  $save.peer.r1 = $precrec[1]
-  $save.peer.r2 = $precrec[2]
- end
- $save.peer.phy = $peer.dc -> get amount of ware SS_WARE_ENERGY in cargo bay
- if not is datatyp[ $save.peer.phy ] == DATATYPE_INT
-  $save.peer.phy = 0
- end
- $save.peer.cfg = $peer.dc -> get local variable: name='FDN.DC.Cfg'
- $save.peer.cost = $peer.dc -> get local variable: name='FDN.Cost'
-end
-$sav.srv.cost = null
-if not is datatyp[ $srv ] == DATATYPE_NULL
- $sav.srv.cost = $srv -> get local variable: name='FDN.Cost'
+$sv.dc.v0 = $sv.dc[1]
+$sv.pr.v0 = null
+if is datatyp[ $sv.pr ] == DATATYPE_ARRAY
+ $sv.pr.v0 = $sv.pr[1]
 end
 $stop = [FALSE]
 
-* ---------- check C1. [33]=0 -> cost 0 ----------
+* ---------- C1-C3 ----------
+$bb = [FALSE]
+$dcx = null
+$ware = $w.ec
+$units = 1000
+$jumps = 3
 $g[33] = 0
 set global variable: name='al.LI.FDN.event' value=$g
-$ware = $w.ec
-$units = 1000
-$jumps = 3
-$dcx = null
-$bb = [FALSE]
 $exp = 0
-$id = 'C1 settings off ([33]=0)'
+$id = 'C1 [33]=0 gives 0'
 gosub CostChk.Sub:
-
-* ---------- check C2. [33]=null -> cost 0 ----------
 $g[33] = null
 set global variable: name='al.LI.FDN.event' value=$g
-$ware = $w.ec
-$units = 1000
-$jumps = 3
-$dcx = null
-$bb = [FALSE]
-$exp = 0
-$id = 'C2 settings null ([33]=null)'
+$id = 'C2 [33]=null gives 0'
 gosub CostChk.Sub:
-
-* ---------- check C3. units=0 -> cost 0 (from here on [33]=1) ----------
 $g[33] = 1
 set global variable: name='al.LI.FDN.event' value=$g
-$ware = $w.ec
 $units = 0
-$jumps = 3
-$dcx = null
-$bb = [FALSE]
-$exp = 0
-$id = 'C3 zero units'
+$id = 'C3 units 0 gives 0'
 gosub CostChk.Sub:
 
-* ---------- check C4. worked set with dc=null (row H=1.0), 3 jumps, data guard ----------
-$vol.ec = = get volume of ware $w.ec
-if not is datatyp[ $vol.ec ] == DATATYPE_INT
- $vol.ec = -1
-end
-$pr.ec = = get average price of ware $w.ec
-if not is datatyp[ $pr.ec ] == DATATYPE_INT
- $pr.ec = -1
-end
-$ware = $w.ec
-$units = 1000
-$jumps = 3
+* ---------- C4 worked set, dc=null (H 1.0) ----------
 $dcx = null
-$bb = [FALSE]
-$exp = 50
-$id = 'C4a worked EC (H=1.0)'
-gosub CostChk.Sub:
-$vol.ore = = get volume of ware $w.ore
-if not is datatyp[ $vol.ore ] == DATATYPE_INT
- $vol.ore = -1
-end
-$pr.ore = = get average price of ware $w.ore
-if not is datatyp[ $pr.ore ] == DATATYPE_INT
- $pr.ore = -1
-end
-$ware = $w.ore
-$units = 1000
-$jumps = 3
-$dcx = null
-$bb = [FALSE]
-$exp = 400
-$id = 'C4b worked Ore (H=1.0)'
-gosub CostChk.Sub:
-$vol.mosq = = get volume of ware $w.mosq
-if not is datatyp[ $vol.mosq ] == DATATYPE_INT
- $vol.mosq = -1
-end
-$pr.mosq = = get average price of ware $w.mosq
-if not is datatyp[ $pr.mosq ] == DATATYPE_INT
- $pr.mosq = -1
-end
-$ware = $w.mosq
-$units = 1000
-$jumps = 3
-$dcx = null
-$bb = [FALSE]
-$exp = 100
-$id = 'C4c worked Mosquito (H=1.0)'
-gosub CostChk.Sub:
-$vol.shd = = get volume of ware $w.shield
-if not is datatyp[ $vol.shd ] == DATATYPE_INT
- $vol.shd = -1
-end
-$pr.shd = = get average price of ware $w.shield
-if not is datatyp[ $pr.shd ] == DATATYPE_INT
- $pr.shd = -1
-end
-$ware = $w.shield
-$units = 10
-$jumps = 3
-$dcx = null
-$bb = [FALSE]
-$exp = 154
-$id = 'C4d worked Shield (H=1.0)'
-gosub CostChk.Sub:
+$id.row = 'C4 dc=null '
+$exp.ec = 50
+$exp.ore = 400
+$exp.mosq = 100
+$exp.shd = 154
+gosub WkSet.Sub:
 
-* ---------- check C5. 1000 EC at an HQ DC (row H=0.8) or SKIP if none ----------
-if not is datatyp[ $hq.dc ] == DATATYPE_NULL
- $ware = $w.ec
- $units = 1000
- $jumps = 3
+* ---------- C5 worked set at an HQ (H 0.8) ----------
+if is datatyp[ $hq.dc ] == DATATYPE_STATION
  $dcx = $hq.dc
- $bb = [FALSE]
- $exp = 40
- $id = 'C5 EC at HQ DC (H=0.8)'
- gosub CostChk.Sub:
+ $id.row = 'C5 HQ '
+ $exp.ec = 40
+ $exp.ore = 320
+ $exp.mosq = 80
+ $exp.shd = 124
+ gosub WkSet.Sub:
 else
- $txt = 'TEST Cost: C5 SKIP no HQ dock found'
+ $txt = 'TEST Cost: C5 SKIP no HQ DC in [30]'
  gosub Log.Sub:
 end
 
-* ---------- check C6a. 1000 EC at an equipment dock (50) or SKIP if none ----------
-if not is datatyp[ $eq.dc ] == DATATYPE_NULL
- $ware = $w.ec
- $units = 1000
- $jumps = 3
+* ---------- C6 1000 EC at an equipment dock (50) and another dock (60) ----------
+$ware = $w.ec
+$units = 1000
+$jumps = 3
+$w.vol = 1
+$w.tier = 1000
+if is datatyp[ $eq.dc ] == DATATYPE_STATION
  $dcx = $eq.dc
- $bb = [FALSE]
  $exp = 50
- $id = 'C6a EC at equipment dock (H=1.0)'
- gosub CostChk.Sub:
+ $id = 'C6a EC at equipment dock'
+ gosub WkChk.Sub:
 else
- $txt = 'TEST Cost: C6a SKIP no equipment dock found'
+ $txt = 'TEST Cost: C6a SKIP no equipment dock DC in [30]'
+ gosub Log.Sub:
+end
+if is datatyp[ $oth.dc ] == DATATYPE_STATION
+ $dcx = $oth.dc
+ $exp = 60
+ $id = 'C6b EC at other dock'
+ gosub WkChk.Sub:
+else
+ $txt = 'TEST Cost: C6b SKIP no other dock DC in [30]'
  gosub Log.Sub:
 end
 
-* ---------- check C6b. 1000 EC at any other dock (60) or SKIP if none ----------
-if not is datatyp[ $oth.dc ] == DATATYPE_NULL
- $ware = $w.ec
- $units = 1000
- $jumps = 3
- $dcx = $oth.dc
- $bb = [FALSE]
- $exp = 60
- $id = 'C6b EC at other dock (H=1.2)'
- gosub CostChk.Sub:
-else
- $txt = 'TEST Cost: C6b SKIP no other dock found'
- gosub Log.Sub:
-end
-* ---------- check C7a. backbone rates (B_bb=10 J_bb=2), 1000 EC, dc=null -> 16 ----------
+* ---------- C7 backbone (B 10, J 2) ----------
 $ware = $w.ec
 $units = 1000
 $jumps = 3
-$dcx = null
 $bb = [TRUE]
+$dcx = null
 $exp = 16
-$id = 'C7a backbone rates (dc=null)'
+$id = 'C7a backbone dc=null'
 gosub CostChk.Sub:
-
-* ---------- check C7b. backbone with HQ DC -> 13, or SKIP if no HQ dock ----------
-if not is datatyp[ $hq.dc ] == DATATYPE_NULL
- $ware = $w.ec
- $units = 1000
- $jumps = 3
+if is datatyp[ $hq.dc ] == DATATYPE_STATION
  $dcx = $hq.dc
- $bb = [TRUE]
  $exp = 13
- $id = 'C7b backbone rates (HQ)'
+ $id = 'C7b backbone HQ'
  gosub CostChk.Sub:
 else
- $txt = 'TEST Cost: C7b SKIP no HQ dock found'
+ $txt = 'TEST Cost: C7b SKIP no HQ DC in [30]'
  gosub Log.Sub:
 end
+$bb = [FALSE]
 
-* ---------- check C8a. jumps=99 clamped to 50 -> 520 ----------
-$ware = $w.ec
-$units = 1000
+* ---------- C8 jumps clamp and minimum ----------
+$dcx = null
 $jumps = 99
-$dcx = null
-$bb = [FALSE]
 $exp = 520
-$id = 'C8a jumps=99 clamped to 50'
+$id = 'C8a jumps 99 clamped to 50'
 gosub CostChk.Sub:
-
-* ---------- check C8b. jumps=50 -> 520 ----------
-$ware = $w.ec
-$units = 1000
 $jumps = 50
-$dcx = null
-$bb = [FALSE]
-$exp = 520
-$id = 'C8b jumps=50'
+$id = 'C8b jumps 50'
 gosub CostChk.Sub:
-
-* ---------- check C8c. jumps=-5 clamped to 0 -> 20 ----------
-$ware = $w.ec
-$units = 1000
 $jumps = -5
-$dcx = null
-$bb = [FALSE]
 $exp = 20
-$id = 'C8c jumps=-5 clamped to 0'
+$id = 'C8c jumps -5 clamped to 0'
 gosub CostChk.Sub:
-
-* ---------- check C8d. minimum 1 EC (1 unit, 0 jumps) -> 1 ----------
-$ware = $w.ec
 $units = 1
 $jumps = 0
-$dcx = null
-$bb = [FALSE]
 $exp = 1
 $id = 'C8d minimum 1 EC'
 gosub CostChk.Sub:
 
-* ---------- check C9. 5,000,000 x shield at 50 jumps -> exactly 800800093 (guarded) ----------
-$ok.vol = [FALSE]
-if is datatyp[ $vol.shd ] == DATATYPE_INT
- if not $vol.shd == 77
-  $ok.vol = [TRUE]
- end
-end
-$ok.pr = [FALSE]
-if is datatyp[ $pr.shd ] == DATATYPE_INT
- if not $pr.shd == 20
-  $ok.pr = [TRUE]
- end
-end
-if not $ok.vol
- $txt = 'TEST Cost: C9 SKIP data differs vol=' + $vol.shd + ' price=' + $pr.shd
+* ---------- C9 5,000,000 x 1 GJ Shield, 50 jumps, dc=null ----------
+$ware = $w.shield
+$units = 5000000
+$jumps = 50
+$dcx = null
+$w.vol = 77
+$w.tier = 2000
+$exp = 800800093
+$id = 'C9 5M shield 50 jumps'
+gosub WkChk.Sub:
+
+* ---------- Pay setup: VERIFY that writing EC record [0] sticks ----------
+$test.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=SS_WARE_ENERGY create=[FALSE]
+if not is datatyp[ $test.rec ] == DATATYPE_ARRAY
+ $txt = 'TEST Cost: FAIL DC has no EC record, Pay checks skipped'
  gosub Log.Sub:
+ $stop = [TRUE]
 else
- if not $ok.pr
-  $txt = 'TEST Cost: C9 SKIP data differs vol=' + $vol.shd + ' price=' + $pr.shd
-  gosub Log.Sub:
- else
-  $ware = $w.shield
-  $units = 5000000
-  $jumps = 50
-  $dcx = null
-  $bb = [FALSE]
-  $exp = 800800093
-  $id = 'C9 large transfer exact'
-  gosub CostChk.Sub:
+ $stn = $dc
+ $kind = 'dc'
+ $target = 500
+ gosub SetAvail.Sub:
+ $exp.v = $av.newvirt
+ $ok = [FALSE]
+ if $ec.v == $exp.v
+  $ok = [TRUE]
+ end
+ $id = 'VERIFY EC record write sticks'
+ $det = 'wrote=' + $exp.v + ' read=' + $ec.v
+ gosub Result.Sub:
+ if not $ok
+  $stop = [TRUE]
  end
 end
 
-* ---------- sub - set a station's EC availability to $target ($stn = the station) ----------
-* v9.01 D6 (M-04c): floor 0, raise virtual +10000 over the saved value, maintain = virtual + physical - target (min 1) so exactly $target is available; Pay never drains below it
-SetAvail.Sub:
-$av.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
-if is datatyp[ $av.rec ] == DATATYPE_ARRAY
- * no record for this DC: nothing to set, fall through to endsub; the caller's virtual check will SKIP or FAIL
- $dc.cfg.work = $stn -> get local variable: name='FDN.DC.Cfg'
- if not is datatyp[ $dc.cfg.work ] == DATATYPE_ARRAY
-  $dc.cfg.work = = array alloc: size=4
-  $c0 = $dc.cfg.work[0]
-  if not is datatyp[ $c0 ] == DATATYPE_INT
-   $dc.cfg.work[0] = -1
+if not $stop
+ * ---------- P1 [33]=0: free, nothing changes ----------
+ $g[33] = 0
+ set global variable: name='al.LI.FDN.event' value=$g
+ $pay.cost = 100
+ $id = 'P1 [33]=0 free'
+ gosub FreeChk.Sub:
+
+ * ---------- P2 [33]=null: free, nothing changes ----------
+ $g[33] = null
+ set global variable: name='al.LI.FDN.event' value=$g
+ $id = 'P2 [33]=null free'
+ gosub FreeChk.Sub:
+
+ * ---------- P3 payer sufficient (avail 500), cost 100 ----------
+ $g[33] = 1
+ set global variable: name='al.LI.FDN.event' value=$g
+ $stn = $dc
+ $kind = 'dc'
+ $target = 500
+ gosub SetAvail.Sub:
+ $b.v = $ec.v
+ $b.p = $ec.p
+ gosub ReadCost.Sub:
+ $b.k0 = $k0
+ $b.k1 = $k1
+ $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
+ $x.v = $b.v - 100
+ $e.base = $b.k0
+ $e.add = 100
+ gosub ExpAdd.Sub:
+ $x.k0 = $e.out
+ $e.base = $b.k1
+ $e.add = 1
+ gosub ExpAdd.Sub:
+ $x.k1 = $e.out
+ $stn = $dc
+ gosub ReadEC.Sub:
+ gosub ReadCost.Sub:
+ $ok = [FALSE]
+ if $ret == [TRUE]
+  if $ec.v == $x.v
+   if $ec.p == $b.p
+    if $k0 == $x.k0
+     if $k1 == $x.k1
+      $ok = [TRUE]
+     end
+    end
+   end
   end
  end
- $dc.cfg.work[1] = 0
- $stn -> set local variable: name='FDN.DC.Cfg' value=$dc.cfg.work
- $av.rec[1] = 0
- if is datatyp[ $sav.dc.v0 ] == DATATYPE_INT
-  $av.newvirt = $sav.dc.v0 + 10000
+ $id = 'P3 payer pays from virtual'
+ $det = 'ret=' + $ret + ' virt=' + $ec.v + '/' + $x.v + ' phys=' + $ec.p + '/' + $b.p + ' C0=' + $k0 + '/' + $x.k0 + ' C1=' + $k1 + '/' + $x.k1
+ gosub Result.Sub:
+
+ * ---------- P4 DC avail 50, peer avail 500, cost 100 ----------
+ if is datatyp[ $peer.dc ] == DATATYPE_STATION
+  $stn = $peer.dc
+  $kind = 'peer'
+  $target = 500
+  gosub SetAvail.Sub:
+  $q.v = $ec.v
+  gosub ReadCost.Sub:
+  $q.k0 = $k0
+  $q.k1 = $k1
+  $stn = $dc
+  $kind = 'dc'
+  $target = 50
+  gosub SetAvail.Sub:
+  $b.v = $ec.v
+  gosub ReadCost.Sub:
+  $b.k0 = $k0
+  $b.k1 = $k1
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
+  $x.v = $b.v - 50
+  $xq.v = $q.v - 50
+  $e.base = $b.k0
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $x.k0 = $e.out
+  $e.base = $b.k1
+  $e.add = 1
+  gosub ExpAdd.Sub:
+  $x.k1 = $e.out
+  $e.base = $q.k0
+  $e.add = 50
+  gosub ExpAdd.Sub:
+  $xq.k0 = $e.out
+  $stn = $dc
+  gosub ReadEC.Sub:
+  gosub ReadCost.Sub:
+  $a.v = $ec.v
+  $a.k0 = $k0
+  $a.k1 = $k1
+  $stn = $peer.dc
+  gosub ReadEC.Sub:
+  gosub ReadCost.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $a.v == $x.v
+    if $a.k0 == $x.k0
+     if $a.k1 == $x.k1
+      if $ec.v == $xq.v
+       if $k0 == $xq.k0
+        if $k1 == $q.k1
+         $ok = [TRUE]
+        end
+       end
+      end
+     end
+    end
+   end
+  end
+  $id = 'P4 peer tops up, charge on payer'
+  $det = 'ret=' + $ret + ' dcV=' + $a.v + '/' + $x.v + ' dcC0=' + $a.k0 + '/' + $x.k0 + ' dcC1=' + $a.k1 + '/' + $x.k1 + ' pV=' + $ec.v + '/' + $xq.v + ' pC0=' + $k0 + '/' + $xq.k0 + ' pC1=' + $k1 + '/' + $q.k1
+  gosub Result.Sub:
  else
-  $av.newvirt = 10000
+  $txt = 'TEST Cost: P4 SKIP no second DC in [30]'
+  gosub Log.Sub:
  end
+
+ * ---------- P5 network short: DC 10, peer 10, cost 999 -> deferred ----------
+ $p5.run = [TRUE]
+ if $n.dcs > 2
+  $p5.run = [FALSE]
+  $txt = 'TEST Cost: P5 SKIP more than two DCs in [30] (others could cover the cost)'
+  gosub Log.Sub:
+ end
+ if $p5.run
+  if is datatyp[ $peer.dc ] == DATATYPE_STATION
+   $stn = $peer.dc
+   $kind = 'peer'
+   $target = 10
+   gosub SetAvail.Sub:
+   $q.v = $ec.v
+   $q.p = $ec.p
+  end
+  $stn = $dc
+  $kind = 'dc'
+  $target = 10
+  gosub SetAvail.Sub:
+  $b.v = $ec.v
+  $b.p = $ec.p
+  gosub ReadCost.Sub:
+  $b.k0 = $k0
+  $b.k1 = $k1
+  $b.k3 = $k3
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=999
+  $e.base = $b.k3
+  $e.add = 999
+  gosub ExpAdd.Sub:
+  $x.k3 = $e.out
+  $stn = $dc
+  gosub ReadEC.Sub:
+  gosub ReadCost.Sub:
+  $peer.same = [TRUE]
+  if is datatyp[ $peer.dc ] == DATATYPE_STATION
+   $a.v = $ec.v
+   $a.p = $ec.p
+   $stn = $peer.dc
+   gosub ReadEC.Sub:
+   if not $ec.v == $q.v
+    $peer.same = [FALSE]
+   end
+   if not $ec.p == $q.p
+    $peer.same = [FALSE]
+   end
+   $ec.v = $a.v
+   $ec.p = $a.p
+  end
+  $ok = [FALSE]
+  if $ret == [FALSE]
+   if $ec.v == $b.v
+    if $ec.p == $b.p
+     if $k0 == $b.k0
+      if $k1 == $b.k1
+       if $k3 == $x.k3
+        if $peer.same
+         $ok = [TRUE]
+        end
+       end
+      end
+     end
+    end
+   end
+  end
+  $id = 'P5 network short defers'
+  $det = 'ret=' + $ret + ' virt=' + $ec.v + '/' + $b.v + ' phys=' + $ec.p + '/' + $b.p + ' C3=' + $k3 + '/' + $x.k3 + ' peerSame=' + $peer.same
+  gosub Result.Sub:
+  $txt = 'TEST Cost: P5 note - 9910 should hold a line starting Cost: deferred need 999 EC'
+  gosub Log.Sub:
+ end
+
+ * ---------- P6 served station records the cost ----------
+ if is datatyp[ $srv ] == DATATYPE_STATION
+  $g[33] = 1
+  set global variable: name='al.LI.FDN.event' value=$g
+  $stn = $dc
+  $kind = 'dc'
+  $target = 500
+  gosub SetAvail.Sub:
+  $stn = $srv
+  gosub ReadCost.Sub:
+  $b.k0 = $k0
+  $b.k1 = $k1
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=$srv cost=100
+  $e.base = $b.k0
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $x.k0 = $e.out
+  $e.base = $b.k1
+  $e.add = 1
+  gosub ExpAdd.Sub:
+  $x.k1 = $e.out
+  $stn = $srv
+  gosub ReadCost.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $k0 == $x.k0
+    if $k1 == $x.k1
+     $ok = [TRUE]
+    end
+   end
+  end
+  $id = 'P6 served station records the cost'
+  $det = 'ret=' + $ret + ' C0=' + $k0 + '/' + $x.k0 + ' C1=' + $k1 + '/' + $x.k1
+  gosub Result.Sub:
+ else
+  $txt = 'TEST Cost: P6 SKIP no valid station in [3]'
+  gosub Log.Sub:
+ end
+
+ * ---------- P7 null payer -> FALSE, DC unchanged ----------
+ $g[33] = 1
+ set global variable: name='al.LI.FDN.event' value=$g
+ $stn = $dc
+ gosub ReadEC.Sub:
+ gosub ReadCost.Sub:
+ $b.v = $ec.v
+ $b.p = $ec.p
+ $b.k0 = $k0
+ $b.k3 = $k3
+ $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=null served=null cost=100
+ $stn = $dc
+ gosub ReadEC.Sub:
+ gosub ReadCost.Sub:
+ $ok = [FALSE]
+ if $ret == [FALSE]
+  if $ec.v == $b.v
+   if $ec.p == $b.p
+    if $k0 == $b.k0
+     if $k3 == $b.k3
+      $ok = [TRUE]
+     end
+    end
+   end
+  end
+ end
+ $id = 'P7 null payer defers'
+ $det = 'ret=' + $ret + ' virt=' + $ec.v + '/' + $b.v + ' C0=' + $k0 + '/' + $b.k0 + ' C3=' + $k3 + '/' + $b.k3
+ gosub Result.Sub:
+end
+
+* ---------- R restore (always runs) ----------
+$stn = $dc
+$kind = 'dc'
+gosub RestoreStn.Sub:
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $stn = $peer.dc
+ $kind = 'peer'
+ gosub RestoreStn.Sub:
+end
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $stn = $srv
+ $kind = 'srv'
+ gosub RestoreStn.Sub:
+end
+$g[30] = $save.30
+$g[33] = $save.33
+set global variable: name='al.LI.FDN.event' value=$g
+
+$rv.ok = [TRUE]
+$r.det = ''
+$a.l = $g[30]
+$b.l = $save.30
+gosub ListSame.Sub:
+if not $same
+ $rv.ok = [FALSE]
+ $r.det = $r.det + ' [30]'
+end
+$a = $g[33]
+$b = $save.33
+gosub Same.Sub:
+if not $same
+ $rv.ok = [FALSE]
+ $r.det = $r.det + ' [33]'
+end
+$stn = $dc
+$kind = 'dc'
+gosub EqChk.Sub:
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $stn = $peer.dc
+ $kind = 'peer'
+ gosub EqChk.Sub:
+end
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $stn = $srv
+ $kind = 'srv'
+ gosub EqChk.Sub:
+end
+$ok = $rv.ok
+$id = 'R restore'
+$det = 'mismatch:' + $r.det
+if $rv.ok
+ $det = 'all values equal the saved originals'
+end
+gosub Result.Sub:
+$txt = 'TEST Cost: ' + $pass + '/' + $total + ' PASS'
+gosub Log.Sub:
+return null
+
+* -----------------------------------------------------------------------------------
+* subs - each ends with endsub, none contains return
+* -----------------------------------------------------------------------------------
+
+* CostChk: inputs $ware $units $jumps $dcx $bb $exp $id
+CostChk.Sub:
+$cost.got = [THIS] -> call script lib.LI.FDN.Cost : ware=$ware units=$units jumps=$jumps dc=$dcx backbone=$bb
+$ok = [FALSE]
+if is datatyp[ $cost.got ] == DATATYPE_INT
+ if $cost.got == $exp
+  $ok = [TRUE]
+ end
+end
+$det = 'got=' + $cost.got + ' expected=' + $exp
+gosub Result.Sub:
+endsub
+
+* WkChk: like CostChk with a data guard; inputs also $w.vol (volume) and $w.tier (1000/1250/1500/2000)
+WkChk.Sub:
+$bb = [FALSE]
+$d.vol = = get volume of ware $ware
+$d.pr = = get average price of ware $ware
+$d.tier = 0
+if is datatyp[ $d.pr ] == DATATYPE_INT
+ $d.tier = 1000
+ if not $d.pr < 1000
+  $d.tier = 1250
+ end
+ if not $d.pr < 10000
+  $d.tier = 1500
+ end
+ if not $d.pr < 100000
+  $d.tier = 2000
+ end
+end
+$d.ok = [FALSE]
+if is datatyp[ $d.vol ] == DATATYPE_INT
+ if $d.vol == $w.vol
+  if $d.tier == $w.tier
+   $d.ok = [TRUE]
+  end
+ end
+end
+if $d.ok
+ gosub CostChk.Sub:
+else
+ $txt = 'TEST Cost: ' + $id + ': SKIP data differs vol=' + $d.vol + ' price=' + $d.pr
+ gosub Log.Sub:
+end
+endsub
+
+* WkSet: the four worked values at $dcx; inputs $id.row $exp.ec $exp.ore $exp.mosq $exp.shd
+WkSet.Sub:
+$units = 1000
+$jumps = 3
+$ware = $w.ec
+$w.vol = 1
+$w.tier = 1000
+$exp = $exp.ec
+$id = $id.row + '1000 EC'
+gosub WkChk.Sub:
+$ware = $w.ore
+$w.vol = 8
+$exp = $exp.ore
+$id = $id.row + '1000 Ore'
+gosub WkChk.Sub:
+$ware = $w.mosq
+$w.vol = 1
+$exp = $exp.mosq
+$id = $id.row + '1000 Mosquito'
+gosub WkChk.Sub:
+$ware = $w.shield
+$units = 10
+$w.vol = 77
+$w.tier = 2000
+$exp = $exp.shd
+$id = $id.row + '10 x 1 GJ Shield'
+gosub WkChk.Sub:
+endsub
+
+* FreeChk: Pay with the current [33] must return TRUE and change nothing on the DC
+FreeChk.Sub:
+$stn = $dc
+gosub ReadEC.Sub:
+gosub ReadCost.Sub:
+$f.v = $ec.v
+$f.p = $ec.p
+$f.k0 = $k0
+$f.k1 = $k1
+$f.k3 = $k3
+$ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=$pay.cost
+$stn = $dc
+gosub ReadEC.Sub:
+gosub ReadCost.Sub:
+$ok = [FALSE]
+if $ret == [TRUE]
+ if $ec.v == $f.v
+  if $ec.p == $f.p
+   if $k0 == $f.k0
+    if $k1 == $f.k1
+     if $k3 == $f.k3
+      $ok = [TRUE]
+     end
+    end
+   end
+  end
+ end
+end
+$det = 'ret=' + $ret + ' virt=' + $ec.v + '/' + $f.v + ' phys=' + $ec.p + '/' + $f.p + ' C0=' + $k0 + '/' + $f.k0
+gosub Result.Sub:
+endsub
+
+* SetAvail: inputs $stn $kind ('dc' or 'peer') $target; afterwards exactly $target EC is available
+SetAvail.Sub:
+$av.newvirt = -1
+$av.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
+if is datatyp[ $av.rec ] == DATATYPE_ARRAY
+ $av.cfg = $stn -> get local variable: name='FDN.DC.Cfg'
+ if not is datatyp[ $av.cfg ] == DATATYPE_ARRAY
+  $av.cfg = = array alloc: size=4
+ end
+ $av.cfg[1] = 0
+ $stn -> set local variable: name='FDN.DC.Cfg' value=$av.cfg
+ $av.base = $sv.dc.v0
+ if $kind == 'peer'
+  $av.base = $sv.pr.v0
+ end
+ if not is datatyp[ $av.base ] == DATATYPE_INT
+  $av.base = 0
+ end
+ $av.newvirt = $av.base + 10000
  $av.rec[0] = $av.newvirt
+ $av.rec[1] = 0
  $av.phys = $stn -> get amount of ware SS_WARE_ENERGY in cargo bay
  if not is datatyp[ $av.phys ] == DATATYPE_INT
   $av.phys = 0
  end
- $av.maint = $av.rec[0] + $av.phys - $target
- if not is datatyp[ $av.maint ] == DATATYPE_INT
-  $av.maint = 1
- end
+ $av.maint = $av.newvirt + $av.phys - $target
  if $av.maint < 1
   $av.maint = 1
  end
  $av.rec[2] = $av.maint
 end
+gosub ReadEC.Sub:
 endsub
 
-* ---------- sub - read a station's EC record into $ec.v (virtual) / $ec.p (physical) ----------
+* ReadEC: input $stn; output $ec.v (virtual [0]) and $ec.p (physical), -1 when missing
 ReadEC.Sub:
 $ec.v = -1
 $ec.p = -1
-$rc.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
-if is datatyp[ $rc.rec ] == DATATYPE_ARRAY
- $rv0 = $rc.rec[0]
- if is datatyp[ $rv0 ] == DATATYPE_INT
-  $ec.v = $rv0
+$re.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
+if is datatyp[ $re.rec ] == DATATYPE_ARRAY
+ $re.v = $re.rec[0]
+ if is datatyp[ $re.v ] == DATATYPE_INT
+  $ec.v = $re.v
  end
 end
-$rc.phy = $stn -> get amount of ware SS_WARE_ENERGY in cargo bay
-if is datatyp[ $rc.phy ] == DATATYPE_INT
- $ec.p = $rc.phy
+$re.p = $stn -> get amount of ware SS_WARE_ENERGY in cargo bay
+if is datatyp[ $re.p ] == DATATYPE_INT
+ $ec.p = $re.p
 end
 endsub
 
-* ---------- sub - read a station's FDN.Cost local into $k0/$k1/$k2/$k3 (-99 for null or missing) ----------
+* ReadCost: input $stn; output $k0..$k3 from FDN.Cost, -99 for null or missing
 ReadCost.Sub:
 $k0 = -99
 $k1 = -99
 $k2 = -99
 $k3 = -99
-$rc.cost = $stn -> get local variable: name='FDN.Cost'
-if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
- $rv0c = $rc.cost[0]
- if is datatyp[ $rv0c ] == DATATYPE_INT
-  $k0 = $rv0c
+$rc.arr = $stn -> get local variable: name='FDN.Cost'
+if is datatyp[ $rc.arr ] == DATATYPE_ARRAY
+ $rc.x = $rc.arr[0]
+ if is datatyp[ $rc.x ] == DATATYPE_INT
+  $k0 = $rc.x
  end
- $rv1c = $rc.cost[1]
- if is datatyp[ $rv1c ] == DATATYPE_INT
-  $k1 = $rv1c
+ $rc.x = $rc.arr[1]
+ if is datatyp[ $rc.x ] == DATATYPE_INT
+  $k1 = $rc.x
  end
- $rv2c = $rc.cost[2]
- if is datatyp[ $rv2c ] == DATATYPE_INT
-  $k2 = $rv2c
+ $rc.x = $rc.arr[2]
+ if is datatyp[ $rc.x ] == DATATYPE_INT
+  $k2 = $rc.x
  end
- $rv3c = $rc.cost[3]
- if is datatyp[ $rv3c ] == DATATYPE_INT
-  $k3 = $rv3c
+ $rc.x = $rc.arr[3]
+ if is datatyp[ $rc.x ] == DATATYPE_INT
+  $k3 = $rc.x
  end
 end
 endsub
 
-* ---------- sub - run one Cost call and compare it with $exp ----------
-* inputs: $ware $units $jumps $dcx $bb $exp $id (the caller also sets [33] before the gosub)
-CostChk.Sub:
-$cost.got = [THIS] -> call script lib.LI.FDN.Cost : ware=$ware units=$units jumps=$jumps dc=$dcx backbone=$bb
-if not is datatyp[ $cost.got ] == DATATYPE_INT
- * the Cost lib must return an INT; anything else (null / error) fails this check rather than comparing wrong
- $ok = [FALSE]
- $det = 'Cost returned non-INT'
-else
- $ok = [FALSE]
- if $cost.got == $exp
-  $ok = [TRUE]
- end
- $det = 'got=' + $cost.got + ' expected=' + $exp
+* ExpAdd: $e.out = $e.add when $e.base is -99 (null), else $e.base + $e.add
+ExpAdd.Sub:
+$e.out = $e.base + $e.add
+if $e.base == -99
+ $e.out = $e.add
 end
-gosub Result.Sub:
 endsub
 
-* ---------- Pay setup: one-time VERIFY that the EC record is a live reference ----------
-$stop = [FALSE]
-$dc.phys = -1
-$p.c = $dc -> get amount of ware SS_WARE_ENERGY in cargo bay
-if is datatyp[ $p.c ] == DATATYPE_INT
- $dc.phys = $p.c
-end
-* VERIFY: the EC record must be live - writing element [0] (saved virtual + 10000) and re-reading a fresh Ware.Rec call must return that value. On failure set $stop so the Pay checks skip but R still restores everything touched so far
-$test.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=SS_WARE_ENERGY create=[FALSE]
-if not is datatyp[ $test.rec ] == DATATYPE_ARRAY
- * EC record missing: the Pay checks below would write to a null reference, so stop them; R still runs and restores everything set up so far
- $txt = 'TEST Cost: FAIL EC record missing, cannot run Pay checks, stopped'
- gosub Log.Sub:
- $stop = [TRUE]
-else
- if is datatyp[ $sav.dc.v0 ] == DATATYPE_INT
-  $test.new = $sav.dc.v0 + 10000
- else
-  $test.new = 10000
- end
- set global variable: name='al.LI.FDN.event' value=$g
- $test.rec[0] = $test.new
- $dc.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=SS_WARE_ENERGY create=[FALSE]
- $dc.virt = -1
- if is datatyp[ $dc.rec ] == DATATYPE_ARRAY
-  $rv0 = $dc.rec[0]
-  if is datatyp[ $rv0 ] == DATATYPE_INT
-   $dc.virt = $rv0
-  end
- end
- $ok = [FALSE]
- if not $dc.virt < 0
-  if $dc.virt == $test.new
-   $ok = [TRUE]
-  end
- end
- $id = 'VERIFY EC record is live'
- $det = 'wrote=' + $test.new + ' read back=' + $dc.virt
- gosub Result.Sub:
- if not $ok
-  * the EC write did not stick, so Pay checks would be unreliable; stop them (R still runs)
-  $txt = 'TEST Cost: FAIL EC record write did not stick, Pay checks unreliable, stopped'
-  gosub Log.Sub:
-  $stop = [TRUE]
+* SnapStn: input $stn; output $s.arr (new array, size 14) = [0] rec exists, [1]-[3] EC [0]-[2],
+* [4] cfg exists, [5]-[8] FDN.DC.Cfg [0]-[3], [9] cost exists, [10]-[13] FDN.Cost [0]-[3]
+SnapStn.Sub:
+$s.arr = = array alloc: size=14
+$s.arr[0] = [FALSE]
+$s.arr[4] = [FALSE]
+$s.arr[9] = [FALSE]
+$sn.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
+if is datatyp[ $sn.rec ] == DATATYPE_ARRAY
+ $s.arr[0] = [TRUE]
+ $sn.i = 0
+ while $sn.i < 3
+  $sn.x = $sn.rec[$sn.i]
+  $sn.j = $sn.i + 1
+  $s.arr[$sn.j] = $sn.x
+  inc $sn.i =
  end
 end
-
- * ---------- Pay checks P1-P7 (new, helper-based) - run only while $stop is FALSE ----------
- if not $stop
-
-  * ---------- check P1. [33]=0 - Pay returns TRUE free, nothing taken ----------
-  $g[33] = 0
-  set global variable: name='al.LI.FDN.event' value=$g
-  $target.avail = 500
-  gosub SetAvail.Sub:
-  $stn = $dc
-  gosub ReadEC.Sub:
-  $p1.v0 = $ec.v
-  $p1.phy = $ec.p
-  $stn = $dc
-  gosub ReadCost.Sub:
-  $p1.c0 = $k0
-  $p1.c1 = $k1
-  $ok.p1 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
-  $stn = $dc
-  gosub ReadEC.Sub:
-  $ok = [FALSE]
-  if $ok.p1 == [TRUE]
-   if $ec.v == $p1.v0
-    if $ec.p == $p1.phy
-     gosub ReadCost.Sub:
-     if $k0 == $p1.c0
-      if $k1 == $p1.c1
-       $ok = [TRUE]
-      end
-     end
-    end
-   end
-  end
-  $id = 'P1 free case ([33]=0)'
-  $det = 'ret=' + $ok.p1 + ' virt=' + $ec.v + '/' + $p1.v0 + ' phys=' + $ec.p + '/' + $p1.phy + ' C0=' + $k0 + '/' + $p1.c0 + ' C1=' + $k1 + '/' + $p1.c1
-  gosub Result.Sub:
-
-  * ---------- check P2. [33]=null - Pay returns TRUE free, nothing taken ----------
-  $g[33] = null
-  set global variable: name='al.LI.FDN.event' value=$g
-  $target.avail = 500
-  gosub SetAvail.Sub:
-  $stn = $dc
-  gosub ReadEC.Sub:
-  $p2.v0 = $ec.v
-  $p2.phy = $ec.p
-  $stn = $dc
-  gosub ReadCost.Sub:
-  $p2.c0 = $k0
-  $p2.c1 = $k1
-  $ok.p2 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
-  $stn = $dc
-  gosub ReadEC.Sub:
-  $ok = [FALSE]
-  if $ok.p2 == [TRUE]
-   if $ec.v == $p2.v0
-    if $ec.p == $p2.phy
-     gosub ReadCost.Sub:
-     if $k0 == $p2.c0
-      if $k1 == $p2.c1
-       $ok = [TRUE]
-      end
-     end
-    end
-   end
-  end
-  $id = 'P2 free case ([33]=null)'
-  $det = 'ret=' + $ok.p2 + ' virt=' + $ec.v + '/' + $p2.v0 + ' phys=' + $ec.p + '/' + $p2.phy + ' C0=' + $k0 + '/' + $p2.c0 + ' C1=' + $k1 + '/' + $p2.c1
-  gosub Result.Sub:
-
-  * ---------- check P3. [33]=1, DC avail 500 - Pay takes 100 virtual and records it on the DC ----------
-  $g[33] = 1
-  set global variable: name='al.LI.FDN.event' value=$g
-  $target.avail = 500
-  gosub SetAvail.Sub:
-  $stn = $dc
-  gosub ReadEC.Sub:
-  if not is datatyp[ $ec.v ] == DATATYPE_INT
-   $txt = 'TEST Cost: P3 SKIP EC virtual unreadable after SetAvail'
-   gosub Log.Sub:
-  else
-   if not $ec.v >= 100
-    $txt = 'TEST Cost: P3 SKIP DC virtual too low (' + $ec.v + ')'
-    gosub Log.Sub:
-   else
-    $stn = $dc
-    gosub ReadEC.Sub:
-    $p3.v0 = $ec.v
-    $p3.phy = $ec.p
-    $stn = $dc
-    gosub ReadCost.Sub:
-    $p3.c0 = $k0
-    $p3.c1 = $k1
-    $ok.p3 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
-    * virtual-first: exactly 100 out of the virtual, physical untouched; FDN.Cost[0]+100 and [1]+1
-    $exp.p3v = $p3.v0 - 100
-    $stn = $dc
-    gosub ReadEC.Sub:
-    $ok = [FALSE]
-    if $ok.p3 == [TRUE]
-     if $ec.v == $exp.p3v
-      if $ec.p == $p3.phy
-       gosub ReadCost.Sub:
-       if is datatyp[ $k0 ] == DATATYPE_INT
-        if is datatyp[ $p3.c0 ] == DATATYPE_INT
-         if $k0 == $p3.c0 + 100
-          if is datatyp[ $k1 ] == DATATYPE_INT
-           if is datatyp[ $p3.c1 ] == DATATYPE_INT
-            if $k1 == $p3.c1 + 1
-             $ok = [TRUE]
-            end
-           else
-            * saved count was absent (null); first payment must start it at exactly 1
-            if $k1 == 1
-             $ok = [TRUE]
-            end
-           end
-          end
-         else
-          * FDN.Cost was null before the test: first charge starts it fresh with C0=100 and C1=1
-          if is datatyp[ $p3.c0 ] == DATATYPE_INT
-           if not $k0 == 100
-            $ok = [FALSE]
-           else
-            if is datatyp[ $k1 ] == DATATYPE_INT
-             if not $k1 == 1
-              $ok = [FALSE]
-             end
-            end
-           end
-          end
-         end
-        end
-       end
-      end
-     end
-    end
-    $id = 'P3 payer sufficient (avail 500)'
-    $det = 'ret=' + $ok.p3 + ' virt=' + $ec.v + '/exp' + $exp.p3v + ' phys=' + $ec.p + '/' + $p3.phy + ' C0=' + $k0 + ' (was ' + $p3.c0 + ') C1=' + $k1 + ' (was ' + $p3.c1 + ')'
-    gosub Result.Sub:
-   end
-  end
-
-  * ---------- check P4. a peer tops up when the DC cannot cover alone (SKIP without a second DC) ----------
-  if not $peer.dc
-   $txt = 'TEST Cost: P4 SKIP no second DC in [30]'
-   gosub Log.Sub:
-  else
-   $g[33] = 1
-   set global variable: name='al.LI.FDN.event' value=$g
-   * the payer needs exactly 50 available so it gives all it has and the peer tops up the other 50; give the peer 500 to cover
-   $target.avail = 500
-   $stn = $peer.dc
-   gosub SetAvail.Sub:
-   if not is datatyp[ $ec.v ] == DATATYPE_INT
-    * peer virtual unreadable after SetAvail; SKIP rather than assert against an unknown base
-   else
-    $target.avail = 50
-    $stn = $dc
-    gosub SetAvail.Sub:
-    if not is datatyp[ $ec.v ] == DATATYPE_INT
-     * payer virtual unreadable after SetAvail; SKIP rather than assert against an unknown base
-    else
-     * snapshot both stations before the payment (the shared sub variables are overwritten on every call, so read each right away)
-     $stn = $dc
-     gosub ReadEC.Sub:
-     $p4.dc.v0 = $ec.v
-     $p4.dc.phy = $ec.p
-     $stn = $peer.dc
-     gosub ReadEC.Sub:
-     $p4.peer.v0 = $ec.v
-     $p4.peer.phy = $ec.p
-     $stn = $dc
-     gosub ReadCost.Sub:
-     $p4.dc.c0 = $k0
-     $p4.dc.c1 = $k1
-     $stn = $peer.dc
-     gosub ReadCost.Sub:
-     $p4.peer.c0 = $k0
-     $p4.peer.c1 = $k1
-     $ok.p4 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
-     * read the payer back first: virtual -50 (it gave all it had), physical unchanged, FDN.Cost[0]+100 and [1]+1
-     $stn = $dc
-     gosub ReadEC.Sub:
-     $ok = [FALSE]
-     if $ok.p4 == [TRUE]
-      if $ec.v == $p4.dc.v0 - 50
-       if $ec.p == $p4.dc.phy
-        $stn = $dc
-        gosub ReadCost.Sub:
-        * the payer records the full cost it was responsible for (100), not just the 50 it paid out of its own stock
-        if is datatyp[ $k0 ] == DATATYPE_INT
-         if not is datatyp[ $p4.dc.c0 ] == DATATYPE_NULL
-          * payer already had a record: C0 +100, and [1] +1 (or started at 1 when it was absent)
-          if $k0 == $p4.dc.c0 + 100
-           if not is datatyp[ $p4.dc.c1 ] == DATATYPE_NULL
-            * payer count was absent; its first payment must start it at exactly 1
-            if is datatyp[ $k1 ] == DATATYPE_INT
-             if $k1 == 1
-              $ok = [TRUE]
-             end
-            end
-           else
-            if is datatyp[ $k1 ] == DATATYPE_INT
-             if $k1 == $p4.dc.c1 + 1
-              * now read the peer back: it paid only the shortfall (50), so its virtual -50, physical unchanged, FDN.Cost[0]+50 and [1] stays put
-              $stn = $peer.dc
-              gosub ReadEC.Sub:
-              if $ec.v == $p4.peer.v0 - 50
-               if $ec.p == $p4.peer.phy
-                $stn = $peer.dc
-                gosub ReadCost.Sub:
-                if is datatyp[ $k0 ] == DATATYPE_INT
-                 if not is datatyp[ $p4.peer.c0 ] == DATATYPE_NULL
-                  * the peer already had a record: its C0 must be +50 and its count exactly unchanged
-                  if $k0 == $p4.peer.c0 + 50
-                   if is datatyp[ $k1 ] == DATATYPE_INT
-                    if $k1 == $p4.peer.c1
-                     * payer charged the full cost, peer charged only its shortfall: P4 passes
-                     $ok = [TRUE]
-                    end
-                   else
-                    if not is datatyp[ $p4.peer.c1 ] == DATATYPE_NULL
-                     * both count slots absent before and after: still unchanged
-                     $ok = [TRUE]
-                    end
-                   end
-                  end
-                 else
-                  * the peer had no FDN.Cost record before; first contribution lands as C0=50 with [1] left absent (a peer never increments it)
-                  if $k0 == 50
-                   if not is datatyp[ $k1 ] == DATATYPE_NULL
-                    * payer charged the full cost, peer charged only its shortfall: P4 passes
-                    $ok = [TRUE]
-                   end
-                  end
-                 end
-                end
-               end
-              end
-             end
-            end
-           end
-          else
-           * payer C0 present before but now missing, or off by more than 100: a real change
-           $ok = [FALSE]
-          end
-         else
-          * payer had no FDN.Cost at all before; its first charge starts fresh at C0=100, C1=1 (peer assertion only covered when the DC already had a record)
-          if $k0 == 100
-           if is datatyp[ $k1 ] == DATATYPE_INT
-            if $k1 == 1
-             * payer side correct on a fresh record
-             $ok = [TRUE]
-            end
-           end
-          end
-         end
-        else
-         * payer C0 appeared after the call when it had been absent: already covered above; reaching here means they disagree
-         if not is datatyp[ $p4.dc.c0 ] == DATATYPE_NULL
-          $ok = [FALSE]
-         end
-        end
-       end
-      else
-       * payer virtual did not drop by exactly 50: something was taken from the wrong place or in the wrong amount
-       $ok = [FALSE]
-      end
-     end
-     $stn = $peer.dc
-     gosub ReadCost.Sub:
-     $p4.peer.c0a = $k0
-     $id = 'P4 peer tops up the shortfall'
-     $det = 'ret=' + $ok.p4 + ' dcVirtExp' + ($p4.dc.v0 - 50) + ' got' + $ec.v + ' peerC0=' + $p4.peer.c0a
-     gosub Result.Sub:
-    end
-   end
-  end
-
-  * ---------- check P5. the whole network is short - Pay defers into FDN.Cost[3] (SKIP without a peer) ----------
-  if not $peer.dc
-   $txt = 'TEST Cost: P5 SKIP no second DC in [30]'
-   gosub Log.Sub:
-  else
-   * both the payer and every peer are left with only 10 available, so even combined they cannot cover a cost of 999; Pay must defer it
-   $g[33] = 1
-   set global variable: name='al.LI.FDN.event' value=$g
-   $target.avail = 10
-   $stn = $dc
-   gosub SetAvail.Sub:
-   if not is datatyp[ $ec.v ] == DATATYPE_INT
-    * payer virtual unreadable after SetAvail; SKIP rather than assert against an unknown base
-   else
-    $target.avail = 10
-    $stn = $peer.dc
-    gosub SetAvail.Sub:
-    if not is datatyp[ $ec.v ] == DATATYPE_INT
-     * peer virtual unreadable after SetAvail; SKIP rather than assert against an unknown base
-    else
-     * snapshot the payer before the (failing) payment so we can prove nothing was taken and only [3] moved
-     $stn = $dc
-     gosub ReadEC.Sub:
-     $p5.v0 = $ec.v
-     $p5.phy = $ec.p
-     $stn = $dc
-     gosub ReadCost.Sub:
-     $p5.c0 = $k0
-     $p5.c1 = $k1
-     $p5.c3 = $k3
-     $ok.p5 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=999
-     * nothing was actually taken (the network could not cover it): virtual and physical must be exactly as before, FDN.Cost[0]/[1] unchanged, only [3] up by 999
-     $stn = $dc
-     gosub ReadEC.Sub:
-     $ok = [FALSE]
-     if not $ok.p5 == [TRUE]
-      if $ec.v == $p5.v0
-       if $ec.p == $p5.phy
-        $stn = $dc
-        gosub ReadCost.Sub:
-        * the deferred amount lands in element [3]; the other elements must be exactly as they were (or absent both before and after)
-        if is datatyp[ $k3 ] == DATATYPE_INT
-         if not is datatyp[ $p5.c3 ] == DATATYPE_NULL
-          * a deferred total already existed; it must now be 999 more than before
-          if $k3 == $p5.c3 + 999
-           * [0] and [1] must be unchanged (present-and-equal, or absent both times)
-           if is datatyp[ $k0 ] == DATATYPE_INT
-            if is datatyp[ $p5.c0 ] == DATATYPE_NULL
-             * C0 appeared out of nothing: a change, must not pass
-             $ok = [FALSE]
-            else
-             if $k0 == $p5.c0
-              if is datatyp[ $k1 ] == DATATYPE_INT
-               if is datatyp[ $p5.c1 ] == DATATYPE_NULL
-                * C1 appeared out of nothing: a change, must not pass
-                $ok = [FALSE]
-               else
-                if $k1 == $p5.c1
-                 * virtual and physical untouched, only the deferred total moved: P5 passes
-                 $ok = [TRUE]
-                end
-               end
-              else
-               if not is datatyp[ $p5.c1 ] == DATATYPE_NULL
-                * both count slots absent before and after: unchanged
-                $ok = [TRUE]
-               end
-              end
-             end
-            end
-           else
-            * C0 present before but now missing: a change, must not pass
-            $ok = [FALSE]
-           end
-          else
-           * deferred total already existed but did not grow by exactly 999: wrong amount
-           $ok = [FALSE]
-          end
-         else
-          * no deferred total before; the deferral creates one holding exactly 999
-          if $k3 == 999
-           if is datatyp[ $k0 ] == DATATYPE_INT
-            if not is datatyp[ $p5.c0 ] == DATATYPE_NULL
-             * a C0 was present before but is gone now: a change, must not pass
-             $ok = [FALSE]
-            end
-           else
-            if not is datatyp[ $p5.c0 ] == DATATYPE_NULL
-             * C0 appeared out of nothing: a change, must not pass
-             $ok = [FALSE]
-            else
-             * both absent: unchanged
-             if is datatyp[ $k1 ] == DATATYPE_INT
-              if not is datatyp[ $p5.c1 ] == DATATYPE_NULL
-               * C0/C1 both present-and-equal would have passed above; reaching here means a change
-               $ok = [FALSE]
-              end
-             else
-              if not is datatyp[ $p5.c1 ] == DATATYPE_NULL
-               * C1 appeared out of nothing: a change, must not pass
-               $ok = [FALSE]
-              else
-               * both absent before and after: unchanged
-               $ok = [TRUE]
-              end
-             end
-            end
-           end
-          end
-         end
-        else
-         * no deferred total at all after a payment that must have failed to cover 999: the deferral never happened
-         if not is datatyp[ $p5.c3 ] == DATATYPE_NULL
-          * there was a [3] before and it is gone now: a change, must not pass
-          $ok = [FALSE]
-         end
-        end
-       end
-      else
-       * physical or virtual moved even though nothing could be paid: that IS a change
-       $ok = [FALSE]
-      end
-     end
-     * the deferral should have been logged; remind Matt to check 9910 for the exact deferred-need line before trusting P5 as fully proven in game
-     $txt = 'TEST Cost: P5 note - check 9910 log for "Cost: deferred need 999 EC"'
-     gosub Log.Sub:
-     $stn = $dc
-     gosub ReadCost.Sub:
-     $p5.c3a = $k3
-     $id = 'P5 network short defers into FDN.Cost[3]'
-     $det = 'ret=' + $ok.p5 + ' virt=' + $ec.v + '/' + $p5.v0 + ' phys=' + $ec.p + '/' + $p5.phy + ' C3=' + $p5.c3a
-     gosub Result.Sub:
-    end
-   end
-  end
-
-  * ---------- check P6. a served station records its own FDN.Cost (SKIP without one) ----------
-  if not $srv
-   $txt = 'TEST Cost: P6 SKIP no valid player factory in [3]'
-   gosub Log.Sub:
-  else
-   $g[33] = 1
-   set global variable: name='al.LI.FDN.event' value=$g
-   * the DC alone covers the cost of 100 from avail 500, so a missing peer is not fatal here
-   $target.avail = 500
-   $stn = $dc
-   gosub SetAvail.Sub:
-   if not is datatyp[ $ec.v ] == DATATYPE_INT
-    * payer virtual unreadable after SetAvail; SKIP rather than assert against an unknown base
-   else
-    * read the served station's FDN.Cost before paying so we can prove Pay adds exactly +100/+1 to it (or starts it fresh)
-    $stn = $srv
-    gosub ReadCost.Sub:
-    $p6.srv.c0 = $k0
-    $p6.srv.c1 = $k1
-    * the payer also records its own share, so snapshot the DC too before the payment
-    $stn = $dc
-    gosub ReadEC.Sub:
-    $p6.dc.v0 = $ec.v
-    $p6.dc.phy = $ec.p
-    $stn = $dc
-    gosub ReadCost.Sub:
-    $p6.dc.c0 = $k0
-    $p6.dc.c1 = $k1
-    $ok.p6 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=$srv cost=100
-    * the served station must now carry its own FDN.Cost: C0+100 and C1+1 (or a fresh 100/1 when it had none)
-    $stn = $srv
-    gosub ReadCost.Sub:
-    $ok = [FALSE]
-    if $ok.p6 == [TRUE]
-     if is datatyp[ $k0 ] == DATATYPE_INT
-      if not is datatyp[ $p6.srv.c0 ] == DATATYPE_NULL
-       * the served station already had a record: C0 +100, and [1]+1 (or started at 1 when absent)
-       if $k0 == $p6.srv.c0 + 100
-        if not is datatyp[ $p6.srv.c1 ] == DATATYPE_NULL
-         * count was absent; first record must start it at exactly 1
-         if is datatyp[ $k1 ] == DATATYPE_INT
-          if $k1 == 1
-           * served recorded AND payer charged: P6 passes (payer share visible in the detail line)
-           $ok = [TRUE]
-          end
-         end
-        else
-         if is datatyp[ $k1 ] == DATATYPE_INT
-          if $k1 == $p6.srv.c1 + 1
-           * served recorded AND payer charged: P6 passes
-           $ok = [TRUE]
-          end
-         end
-        end
-       else
-        * C0 present before but now missing, or off by more than 100: a real change
-        $ok = [FALSE]
-       end
-      else
-       * the served station had no FDN.Cost at all before Pay; it must now hold exactly C0=100 and C1=1
-       if $k0 == 100
-        if is datatyp[ $k1 ] == DATATYPE_INT
-         if not $k1 == 1
-          * fresh record but the count did not start at 1: a real change
-          $ok = [FALSE]
-         else
-          * served recorded AND payer charged: P6 passes
-          $ok = [TRUE]
-         end
-        else
-         * fresh record must have started its count at exactly 1; absent is wrong here
-         $ok = [FALSE]
-        end
-       else
-        * fresh record but C0 did not start at 100: a real change
-        $ok = [FALSE]
-       end
-      end
-     else
-      * served C0 was still missing after a successful payment: something went wrong, already reported by the detail line below
-      $ok = [FALSE]
-     end
-    end
-    * read the DC back so the payer's own share is visible in the detail line (the spec only requires the served record for P6)
-    $stn = $dc
-    gosub ReadCost.Sub:
-    $p6.dc.c0a = $k0
-    $id = 'P6 served station records its own FDN.Cost'
-    $det = 'ret=' + $ok.p6 + ' srvC0now=' + $k0 + '(was ' + $p6.srv.c0 + ') dcC0now=' + $p6.dc.c0a
-    gosub Result.Sub:
-   end
-  end
-
-  * ---------- check P7. a null payer defers without crashing (no FDN.Cost touched) ----------
-  $g[33] = 1
-  set global variable: name='al.LI.FDN.event' value=$g
-  * floor is already 0 from the checks above; a null payer has no station behind it, so Pay must not touch the DC's record at all
-  $target.avail = 500
-  $stn = $dc
-  gosub SetAvail.Sub:
-  if not is datatyp[ $ec.v ] == DATATYPE_INT
-   * payer virtual unreadable after SetAvail; SKIP rather than assert against an unknown base
-  else
-   $p7.v0 = $ec.v
-   $p7.phy = $ec.p
-   $stn = $dc
-   gosub ReadCost.Sub:
-   $p7.c0 = $k0
-   $p7.c1 = $k1
-   * a null payer must not be treated as a real station; Cost.Pay should return FALSE (a defer) without crashing, and the DC record must stay exactly as found
-   $ok.p7 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=null served=null cost=100
-   $stn = $dc
-   gosub ReadEC.Sub:
-   $ok = [FALSE]
-   if not $ok.p7 == [TRUE]
-    if $ec.v == $p7.v0
-     if $ec.p == $p7.phy
-      * nothing was taken and the DC's FDN.Cost must be exactly what it was before the (failed) call: each slot present-and-equal, or absent both times
-      $stn = $dc
-      gosub ReadCost.Sub:
-      if is datatyp[ $k0 ] == DATATYPE_INT
-       if not is datatyp[ $p7.c0 ] == DATATYPE_NULL
-        * C0 was present before; it must be exactly unchanged now
-        if $k0 == $p7.c0
-         $ok = [TRUE]
-        end
-       else
-        * C0 appeared out of nothing: that IS a change, must not pass
-        $ok = [FALSE]
-       end
-      else
-       if is datatyp[ $p7.c0 ] == DATATYPE_NULL
-        * both absent before and after: unchanged so far; now confirm the count slot also stayed put
-        if is datatyp[ $k1 ] == DATATYPE_INT
-         if not is datatyp[ $p7.c1 ] == DATATYPE_NULL
-          * C1 appeared out of nothing: that IS a change, must not pass
-          $ok = [FALSE]
-         else
-          * both slots absent before and after: unchanged, P7 passes
-          $ok = [TRUE]
-         end
-        else
-         if not is datatyp[ $p7.c1 ] == DATATYPE_NULL
-          * C0 was present before but gone now: a change, must not pass
-          $ok = [FALSE]
-         else
-          if is datatyp[ $k1 ] == DATATYPE_INT
-           * C1 appeared out of nothing: that IS a change, must not pass
-           $ok = [FALSE]
-          else
-           * both slots absent before and after: unchanged, P7 passes
-           $ok = [TRUE]
-          end
-         end
-        end
-       else
-        if is datatyp[ $k1 ] == DATATYPE_INT
-         if not is datatyp[ $p7.c1 ] == DATATYPE_NULL
-          * C0 absent before but present now: that IS a change, must not pass
-          $ok = [FALSE]
-         else
-          if $k1 == $p7.c1
-           * both slots unchanged (C0 still absent, C1 equal): P7 passes
-           $ok = [TRUE]
-          end
-         end
-        else
-         if is datatyp[ $p7.c1 ] == DATATYPE_NULL
-          * C1 was present before but gone now: a change, must not pass
-          $ok = [FALSE]
-         else
-          if $k1 == $p7.c1
-           * both slots unchanged (C0 still absent, C1 equal): P7 passes
-           $ok = [TRUE]
-          end
-         end
-        end
-       end
-      end
-     end
-    end
-   end
-   * a null payer was refused without touching the DC and nothing crashed: exactly what P7 asks for; remind Matt to check 9910 for the deferred-need line from this run before trusting it fully in game
-   $txt = 'TEST Cost: P7 note - check 9910 log for "Cost: deferred need ..." lines'
-   gosub Log.Sub:
-   $id = 'P7 null payer defers without a crash'
-   $det = 'ret=' + $ok.p7 + ' virt=' + $ec.v + '/' + $p7.v0 + ' phys=' + $ec.p + '/' + $p7.phy
-   gosub Result.Sub:
-  end
-
- * ---------- end of Pay checks P1-P7; R (restore) runs next regardless of whether these ran or skipped ----------
+$sn.cfg = $stn -> get local variable: name='FDN.DC.Cfg'
+if is datatyp[ $sn.cfg ] == DATATYPE_ARRAY
+ $s.arr[4] = [TRUE]
+ $sn.i = 0
+ while $sn.i < 4
+  $sn.x = $sn.cfg[$sn.i]
+  $sn.j = $sn.i + 5
+  $s.arr[$sn.j] = $sn.x
+  inc $sn.i =
  end
+end
+$sn.cost = $stn -> get local variable: name='FDN.Cost'
+if is datatyp[ $sn.cost ] == DATATYPE_ARRAY
+ $s.arr[9] = [TRUE]
+ $sn.i = 0
+ while $sn.i < 4
+  $sn.x = $sn.cost[$sn.i]
+  $sn.j = $sn.i + 10
+  $s.arr[$sn.j] = $sn.x
+  inc $sn.i =
+ end
+end
+endsub
 
-  * ---------- restore R - put every touched value back exactly, then re-read each one (EqChk) ----------
-  $rv.ok = [TRUE]
-  * settings first: [30] and [33] back to their saved values so the global is left as found
-  $g[30] = $save.30
-  $g[33] = $save.33
-  set global variable: name='al.LI.FDN.event' value=$g
-  * DC first (the payer): EC record [0]/[1]/[2], FDN.DC.Cfg and FDN.Cost back to the saved values (null stays null)
-  $stn = $dc
-  gosub RestoreStn.Sub:
-  if not $rv.ok
-   * a DC field did not come back as found; keep restoring the rest so nothing is left dirty, then report one FAIL at the end
-  end
-  * peer (second DC in [30]) - only when one exists; its saved slots hold null/0 defaults otherwise
-  if not $peer.dc
-   * no peer: nothing to roll back
-  else
-   $stn = $peer.dc
-   gosub RestoreStn.Sub:
-   if not $rv.ok
-    * a peer field did not come back as found; continue so the served station is still restored
-   end
-  end
-  * served station (first valid player factory in [3]) - only its FDN.Cost was touched, restore it when one exists
-  if not $srv
-   * no served station: nothing to roll back
-  else
-   $stn = $srv
-   gosub RestoreStn.Sub:
-   if not $rv.ok
-    * a served-station field did not come back as found; continue so the settings are still re-read below
-   end
-  end
-  * re-read every restored value and build one self-describing detail line (EqChk) for the single R result
-  gosub EqChk.Sub:
-  $id = 'R restore'
-  $det = $r.det
-  $ok = $rv.ok
-  gosub Result.Sub:
-  * final summary line - every PASS/FAIL above is already counted in $pass / $total (this log-only line adds nothing)
-  $txt = 'TEST Cost: ' + $pass + '/' + $total + ' PASS'
-  gosub Log.Sub:
- return null
-* -----------------------------------------------------------------------------------
-* subs - each ends with endsub. In-line helpers: SetAvail, ReadEC, ReadCost, CostChk; result/logging: Log, Result.
-* (R restore + its EqChk/RestoreStn helpers are added next.)
+* Load: input $kind; output $r.arr = the saved snapshot for that station
+Load.Sub:
+$r.arr = $sv.dc
+if $kind == 'peer'
+ $r.arr = $sv.pr
+end
+if $kind == 'srv'
+ $r.arr = $sv.srv
+end
+endsub
 
- * ---------- sub - restore every value of $stn that the test touched back to its saved original ----------
- * input: $kind = 'dc' | 'peer' | 'srv'; reads the matching $sav.* / $save.peer.* slot.
- * EC record [0]/[1]/[2] written when a live Ware.Rec array exists; FDN.DC.Cfg and FDN.Cost always
- * written back (null stays null). Served stations get only their FDN.Cost restored.
+* RestoreStn: inputs $stn $kind; writes the saved values back (null stays null).
+* The served station ('srv') only gets FDN.Cost back; the test never changes its EC record or cfg.
 RestoreStn.Sub:
-$ro.kind = $kind
-if not is datatyp[ $ro.kind ] == DATATYPE_INT
- * no kind passed - default to the DC (the payer), which is the common case for R
-  $ro.kind = 'dc'
- end
-if $ro.kind != 'dc'
- if $ro.kind != 'peer'
-  if $ro.kind != 'srv'
-   * unknown kind: treat as the DC so we never skip restoring a touched station silently
-    $ro.kind = 'dc'
-   end
-  end
- end
-$kind = $ro.kind
-$ro.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
-if is datatyp[ $ro.rec ] == DATATYPE_ARRAY
- * EC record exists - write each saved field back exactly (null stays null via the INT guard)
-  if $kind == 'dc'
-   if is datatyp[ $sav.dc.v0 ] == DATATYPE_NULL
-    $ro.rec[0] = null
-   else
-    $ro.rec[0] = $sav.dc.v0
-   end
-   if is datatyp[ $sav.dc.r1 ] == DATATYPE_NULL
-    $ro.rec[1] = null
-   else
-    $ro.rec[1] = $sav.dc.r1
-   end
-   if is datatyp[ $sav.dc.r2 ] == DATATYPE_NULL
-    $ro.rec[2] = null
-   else
-    $ro.rec[2] = $sav.dc.r2
-   end
-  end
-  if not $kind == 'dc'
-   if $kind == 'peer'
-    if is datatyp[ $save.peer.v0 ] == DATATYPE_NULL
-     $ro.rec[0] = null
-    else
-     $ro.rec[0] = $save.peer.v0
-    end
-    if is datatyp[ $save.peer.r1 ] == DATATYPE_NULL
-     $ro.rec[1] = null
-    else
-     $ro.rec[1] = $save.peer.r1
-    end
-    if is datatyp[ $save.peer.r2 ] == DATATYPE_NULL
-     $ro.rec[2] = null
-    else
-     $ro.rec[2] = $save.peer.r2
+gosub Load.Sub:
+if is datatyp[ $r.arr ] == DATATYPE_ARRAY
+ if not $kind == 'srv'
+  $rs.has = $r.arr[0]
+  if $rs.has
+   $rs.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$stn ware=SS_WARE_ENERGY create=[FALSE]
+   if is datatyp[ $rs.rec ] == DATATYPE_ARRAY
+    $rs.i = 0
+    while $rs.i < 3
+     $rs.j = $rs.i + 1
+     $rs.x = $r.arr[$rs.j]
+     $rs.rec[$rs.i] = $rs.x
+     inc $rs.i =
     end
    end
   end
- end
-if not $kind == 'srv'
- if $kind == 'dc'
-  if is datatyp[ $sav.dc.cfg ] == DATATYPE_ARRAY
-   $stn -> set local variable: name='FDN.DC.Cfg' value=$sav.dc.cfg
+  $rs.has = $r.arr[4]
+  if $rs.has
+   $rs.new = = array alloc: size=4
+   $rs.i = 0
+   while $rs.i < 4
+    $rs.j = $rs.i + 5
+    $rs.x = $r.arr[$rs.j]
+    $rs.new[$rs.i] = $rs.x
+    inc $rs.i =
+   end
+   $stn -> set local variable: name='FDN.DC.Cfg' value=$rs.new
   else
    $stn -> set local variable: name='FDN.DC.Cfg' value=null
   end
-  if is datatyp[ $sav.dc.cost ] == DATATYPE_ARRAY
-   $stn -> set local variable: name='FDN.Cost' value=$sav.dc.cost
-  else
-   $stn -> set local variable: name='FDN.Cost' value=null
-  end
  end
- if not $kind == 'dc'
-  if $kind == 'peer'
-   if is datatyp[ $save.peer.cfg ] == DATATYPE_ARRAY
-    $stn -> set local variable: name='FDN.DC.Cfg' value=$save.peer.cfg
-   else
-    $stn -> set local variable: name='FDN.DC.Cfg' value=null
-   end
-   if is datatyp[ $save.peer.cost ] == DATATYPE_ARRAY
-    $stn -> set local variable: name='FDN.Cost' value=$save.peer.cost
-   else
-    $stn -> set local variable: name='FDN.Cost' value=null
-   end
+ $rs.has = $r.arr[9]
+ if $rs.has
+  $rs.new = = array alloc: size=4
+  $rs.i = 0
+  while $rs.i < 4
+   $rs.j = $rs.i + 10
+   $rs.x = $r.arr[$rs.j]
+   $rs.new[$rs.i] = $rs.x
+   inc $rs.i =
   end
- end
-end
-if not $kind == 'dc'
- if not $kind == 'peer'
-  if is datatyp[ $sav.srv.cost ] == DATATYPE_ARRAY
-   $stn -> set local variable: name='FDN.Cost' value=$sav.srv.cost
-  else
-   * it was absent before P6 and Pay created one; reset the test's effect to a fresh all-zero FDN.Cost (the mod treats an unused record as zero)
-   $sr.reset = = array alloc: size=4
-   $sr.reset[0] = 0
-   $sr.reset[1] = 0
-   $stn -> set local variable: name='FDN.Cost' value=$sr.reset
-  end
+  $stn -> set local variable: name='FDN.Cost' value=$rs.new
+ else
+  $stn -> set local variable: name='FDN.Cost' value=null
  end
 end
 endsub
 
- * ---------- sub - re-read every restored field for the single R result into $r.det (no extra Result lines) ----------
- * Uses ReadEC.Sub / ReadCost.Sub so no extra Ware.Rec calls are needed. Sets $rv.ok = FALSE on any mismatch.
- * Caller has already run RestoreStn.Sub for DC, peer (when present) and served station (when present).
+* EqChk: inputs $stn $kind; re-reads the station and compares all 14 slots with the saved
+* snapshot; a difference sets $rv.ok = [FALSE] and adds '<kind>[slot]' to $r.det
 EqChk.Sub:
-$r.det = ''
-$eq.ok = [TRUE]
- * settings: [30] and [33] must be back to the saved values
- $g.now = [THIS] -> call script lib.LI.FDN.Cfg.Get :
- if is datatyp[ $g.now ] == DATATYPE_ARRAY
-  if not $g.now[30] == $save.30
-   * [30] did not come back exactly - mark FAIL and record the mismatch for the detail line
-   $eq.ok = [FALSE]
-   $r.det = 'g30=' + $g.now[30] + '/exp' + $save.30
-  else
-   if not $g.now[33] == $save.33
-    * [33] did not come back exactly - mark FAIL and record the mismatch for the detail line
-    $eq.ok = [FALSE]
-    $r.det = 'g33=' + $g.now[33] + '/exp' + $save.33
-   end
+gosub SnapStn.Sub:
+gosub Load.Sub:
+if is datatyp[ $r.arr ] == DATATYPE_ARRAY
+ $eq.i = 0
+ while $eq.i < 14
+  $a = $s.arr[$eq.i]
+  $b = $r.arr[$eq.i]
+  gosub Same.Sub:
+  if not $same
+   $rv.ok = [FALSE]
+   $r.det = $r.det + ' ' + $kind + '[' + $eq.i + ']'
   end
+  inc $eq.i =
  end
- * DC EC virtual: back to the saved value (null stays null)
- $stn = $dc
- gosub ReadEC.Sub:
- if is datatyp[ $sav.dc.v0 ] == DATATYPE_INT
-  if not $ec.v == $sav.dc.v0
-   * DC virtual did not come back exactly - mark FAIL and record the mismatch for the detail line
-   $eq.ok = [FALSE]
-   $r.det = 'dcV=' + $ec.v + '/exp' + $sav.dc.v0
-  end
- else
-  if not is datatyp[ $ec.v ] == DATATYPE_INT
-   * DC virtual should be absent but came back INT - mark FAIL and record the mismatch for the detail line
-   $eq.ok = [FALSE]
-   $r.det = 'dcV=' + $ec.v + '/exp null'
-  end
- end
- * DC FDN.Cost: each slot present-and-equal, or absent both times (null stays null)
- gosub ReadCost.Sub:
- if is datatyp[ $sav.dc.cost ] == DATATYPE_ARRAY
-  if not is datatyp[ $k0 ] == DATATYPE_NULL
-   if is datatyp[ $sav.dc.cost[0] ] == DATATYPE_INT
-    * saved [0] was INT; it must come back as the same INT
-    if not is datatyp[ $k0 ] == DATATYPE_INT
-     * DC FDN.Cost[0] was present before but is now missing - mark FAIL and record the mismatch for the detail line
-     $eq.ok = [FALSE]
-     $r.det = 'dcC0=' + $k0 + '/exp INT'
-    else
-     if not $k0 == $sav.dc.cost[0]
-      * DC FDN.Cost[0] did not come back exactly - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'dcC0=' + $k0 + '/exp' + $sav.dc.cost[0]
-     end
-    end
-   else
-    * saved [0] was not INT; it must be absent now (null stays null)
-    if not is datatyp[ $k0 ] == DATATYPE_NULL
-     * DC FDN.Cost[0] appeared as INT when the original had none - mark FAIL and record the mismatch for the detail line
-     $eq.ok = [FALSE]
-     $r.det = 'dcC0=' + $k0 + '/exp non-INT'
-    end
-   end
-  else
-   * saved [0] was absent; it must be absent now (a fresh record from a defer would have been restored to null)
-   if not is datatyp[ $k0 ] == DATATYPE_NULL
-    * DC FDN.Cost[0] appeared out of nothing on restore - mark FAIL and record the mismatch for the detail line
-    $eq.ok = [FALSE]
-    $r.det = 'dcC0=' + $k0 + '/exp null'
-   end
-  end
- else
-  * DC FDN.Cost was absent before; it must be absent now (the served-station reset path only affects the served station, not the DC)
-  if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
-   * a record exists when it should not - mark FAIL and record the mismatch for the detail line
-   $eq.ok = [FALSE]
-   $r.det = 'dcC0=record/exp null'
-  end
- end
- * peer EC virtual + FDN.Cost, only when a peer exists (its saved slots hold real values in that case)
- if not $peer.dc
-  * no peer: nothing to re-read on the peer side
- else
-  $stn = $peer.dc
-  gosub ReadEC.Sub:
-  if is datatyp[ $save.peer.v0 ] == DATATYPE_INT
-   if not $ec.v == $save.peer.v0
-    * peer virtual did not come back exactly - mark FAIL and record the mismatch for the detail line
-    $eq.ok = [FALSE]
-    $r.det = 'pV=' + $ec.v + '/exp' + $save.peer.v0
-   end
-  else
-   if not is datatyp[ $ec.v ] == DATATYPE_INT
-    * peer virtual should be absent but came back INT - mark FAIL and record the mismatch for the detail line
-    $eq.ok = [FALSE]
-    $r.det = 'pV=' + $ec.v + '/exp null'
-   end
-  end
-  gosub ReadCost.Sub:
-  if is datatyp[ $save.peer.cost ] == DATATYPE_ARRAY
-   if not is datatyp[ $k0 ] == DATATYPE_NULL
-    if is datatyp[ $save.peer.cost[0] ] == DATATYPE_INT
-     * saved peer [0] was INT; it must come back as the same INT
-     if not is datatyp[ $k0 ] == DATATYPE_INT
-      * peer FDN.Cost[0] was present before but is now missing - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'pC0=' + $k0 + '/exp INT'
-     else
-      if not $k0 == $save.peer.cost[0]
-       * peer FDN.Cost[0] did not come back exactly - mark FAIL and record the mismatch for the detail line
-       $eq.ok = [FALSE]
-       $r.det = 'pC0=' + $k0 + '/exp' + $save.peer.cost[0]
-      end
-     end
-    else
-     * saved peer [0] was not INT; it must be absent now (null stays null)
-     if not is datatyp[ $k0 ] == DATATYPE_NULL
-      * peer FDN.Cost[0] appeared as INT when the original had none - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'pC0=' + $k0 + '/exp non-INT'
-     end
-    end
-   else
-    * saved peer [0] was absent; it must be absent now
-    if not is datatyp[ $k0 ] == DATATYPE_NULL
-     * peer FDN.Cost[0] appeared out of nothing on restore - mark FAIL and record the mismatch for the detail line
-     $eq.ok = [FALSE]
-     $r.det = 'pC0=' + $k0 + '/exp null'
-    end
-   end
-  else
-   * peer FDN.Cost was absent before; it must be absent now (a top-up would have created a record that R restores to null)
-   if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
-    * a peer record exists when it should not - mark FAIL and record the mismatch for the detail line
-    $eq.ok = [FALSE]
-    $r.det = 'pC0=record/exp null'
-   end
-  end
- end
- * served station FDN.Cost, only when one exists (its saved slot holds its pre-P6 record or null)
- if not $srv
-  * no served station: nothing to re-read on the served side
- else
-  $stn = $srv
-  gosub ReadCost.Sub:
-  if is datatyp[ $sav.srv.cost ] == DATATYPE_ARRAY
-   if not is datatyp[ $k0 ] == DATATYPE_NULL
-    if is datatyp[ $sav.srv.cost[0] ] == DATATYPE_INT
-     * saved served [0] was INT; it must come back as the same INT
-     if not is datatyp[ $k0 ] == DATATYPE_INT
-      * served FDN.Cost[0] was present before but is now missing - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'sC0=' + $k0 + '/exp INT'
-     else
-      if not $k0 == $sav.srv.cost[0]
-       * served FDN.Cost[0] did not come back exactly - mark FAIL and record the mismatch for the detail line
-       $eq.ok = [FALSE]
-       $r.det = 'sC0=' + $k0 + '/exp' + $sav.srv.cost[0]
-      end
-     end
-    else
-     * saved served [0] was not INT; it must be absent now (null stays null)
-     if not is datatyp[ $k0 ] == DATATYPE_NULL
-      * served FDN.Cost[0] appeared as INT when the original had none - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'sC0=' + $k0 + '/exp non-INT'
-     end
-    end
-   else
-    * saved served [0] was absent; it must be absent now (or the harmless all-zero reset case)
-    if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
-     if is datatyp[ $k0 ] == DATATYPE_INT
-      if not $k0 == 0
-       * served FDN.Cost[0] non-zero on restore of an absent record - mark FAIL and record the mismatch for the detail line
-       $eq.ok = [FALSE]
-       $r.det = 'sC0=' + $k0 + '/exp null'
-      end
-     else
-      * served FDN.Cost[0] absent but a fresh all-zero record exists - acceptable (the mod treats an unused record as zero)
-     end
-    else
-     if not is datatyp[ $rc.cost ] == DATATYPE_NULL
-      * served FDN.Cost record exists but was absent before and is non-zero-free - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'sC0=record/exp null'
-     end
-    end
-   end
-  else
-   * served FDN.Cost was absent before; a fresh all-zero or absent record is acceptable, anything non-zero marks FAIL
-   if is datatyp[ $rc.cost ] == DATATYPE_ARRAY
-    if is datatyp[ $k0 ] == DATATYPE_INT
-     if not $k0 == 0
-      * served FDN.Cost[0] non-zero on restore of an absent record - mark FAIL and record the mismatch for the detail line
-      $eq.ok = [FALSE]
-      $r.det = 'sC0=' + $k0 + '/exp null'
-     end
-    else
-     * served FDN.Cost[0] absent but a fresh all-zero record exists - acceptable (the mod treats an unused record as zero)
-    end
-   else
-    if not is datatyp[ $rc.cost ] == DATATYPE_NULL
-     * served FDN.Cost record exists when it should be absent or all-zero - mark FAIL and record the mismatch for the detail line
-     $eq.ok = [FALSE]
-     $r.det = 'sC0=record/exp null'
-    end
-   end
-  end
- end
- * collapse the local ok into the caller's shared variable so the single R result reflects every field checked here
- if not $eq.ok
-  $rv.ok = [FALSE]
- else
-  * all fields came back as found; leave $rv.ok as the caller set it (TRUE unless an earlier RestoreStn.Sub already marked it FALSE)
- end
+else
+ $rv.ok = [FALSE]
+ $r.det = $r.det + ' ' + $kind + ' no snapshot'
+end
 endsub
 
-* sub - write $txt to both logs
+* ListSame: inputs $a.l $b.l; $same = [TRUE] when both are null, or both are arrays of the
+* same size with every element the same (Same.Sub per element, not == on the arrays)
+ListSame.Sub:
+$l.ok = [FALSE]
+if is datatyp[ $a.l ] == DATATYPE_ARRAY
+ if is datatyp[ $b.l ] == DATATYPE_ARRAY
+  $a.n = size of array $a.l
+  $b.n = size of array $b.l
+  if $a.n == $b.n
+   $l.ok = [TRUE]
+   $l.i = 0
+   while $l.i < $a.n
+    $a = $a.l[$l.i]
+    $b = $b.l[$l.i]
+    gosub Same.Sub:
+    if not $same
+     $l.ok = [FALSE]
+    end
+    inc $l.i =
+   end
+  end
+ end
+else
+ $a = $a.l
+ $b = $b.l
+ gosub Same.Sub:
+ $l.ok = $same
+end
+$same = $l.ok
+endsub
+
+* Same: inputs $a $b; $same = [TRUE] when both are null or both equal (null == null is FALSE in MSCI)
+Same.Sub:
+$same = [FALSE]
+if is datatyp[ $a ] == DATATYPE_NULL
+ if is datatyp[ $b ] == DATATYPE_NULL
+  $same = [TRUE]
+ end
+else
+ if not is datatyp[ $b ] == DATATYPE_NULL
+  $same = [TRUE]
+  if not $a == $b
+   $same = [FALSE]
+  end
+ end
+end
+endsub
+
 Log.Sub:
 write to log file 9910  append=[TRUE]  value=$txt
 write to log file 9911  append=[TRUE]  value=$txt
 endsub
 
-* sub - count and log one result using $ok / $id / $det
 Result.Sub:
 inc $total =
 $rs = 'FAIL'

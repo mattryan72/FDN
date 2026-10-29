@@ -1,0 +1,249 @@
+* Script: lib.LI.FDN.Cost  (v1, engine 50)
+* Desc: FDNv9 - Energy Cell cost of one transfer leg in whole EC
+* Arg 0: ware (Value) 'ware'
+* Arg 1: units (Number) 'units'
+* Arg 2: jumps (Number) 'jumps'
+* Arg 3: dc (Value) 'dc'
+* Arg 4: backbone (Value) 'backbone'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part, M-04). Returns the Energy Cell cost of one
+* transfer leg in whole EC for moving $units of $ware over $jumps jumps where the paying
+* DC is $dc; when backbone is [TRUE] the backbone rates B_bb/J_bb are used instead of
+* Formula (DESIGN 2026-10-28, integer-safe stages from the M-04 key facts):
+*   cost_EC = ceil( U * vol * (B + J*jumps) * T[maintype] * V[tier] * H[DC] / 1000^3 / 1000 )
+* - no cargo-class multiplier; vol is the whole volume per unit from get volume of ware.
+* - T per-mille by maintype (get maintype of ware): tech 1500, laser/shield/missile 2000,
+*   every other maintype (energy, natural, bio, food, minerals, ...) 1000.
+* - V per-mille by average price (get average price of ware): under 1000 -> 1000, under
+*   10000 -> 1250, under 100000 -> 1500, higher -> 2000.
+* - H per-mille by the PAYING DC subtype (like lib.LI.FDN.Dc.Range, never SS_DOCK_P_*):
+*   Player HQ subtype 62 -> 800, Equipment Dock subtype 6 -> 1000, any other dock -> 1200.
+*   The Trading Station subtype has not been seen on FL yet: it falls into the 'other'
+*   (1200) branch and becomes 900 once a probe logs its subtype (same state as Dc.Range).
+* - B/J are milli-EC per volume unit. All constants below are literals, NOT settings
+*   (M-02: avoid options, tune in one place).
+*
+* Integer safety: U is split into chunks of 500000/vol units so U*vol stays <= 500000; each
+ * chunk goes through the per-mille stages with m at most (B + J*jumps)*500000 = 260000000, and
+ * every stage keeps its products below 2147483647. The sum is capped at 2000000000 EC (Cap.Sub).
+* - 0 when settings are missing, [33] is not 1, units <= 0, or the ware has no INT volume > 0;
+* - otherwise at least 1.
+*
+* Arguments:
+* - ware (Value): Ware to move
+* - units (Number): Number of units to move
+* - jumps (Number): Jump count of the leg (clamped to 0-50 internally)
+* - dc (Value): The paying Distribution Centre station
+* - backbone (Value): [TRUE] = backbone rates B_bb/J_bb, anything else = station rates B/J
+
+* Returns values:
+* - INT cost in whole EC (0 = free or bad input; at least 1 when charged)
+
+* To Do - Trading Station H factor 900 once a probe has seen its subtype
+
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: 2026-10-29 FL 22/22 PASS (test.LI.FDN.Cost; C5/C6b/C7b/P4 skipped, one DC)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-04): new - Energy Cell leg cost for the multi-DC transfer charge
+ * -----------------------------------------------------------------------------------
+
+* v9.01 M-04: cost constants as literals, milli-EC per volume unit and per-mille factors
+$c.B = 20
+$c.J = 10
+$c.Bbb = 10
+$c.Jbb = 2
+$c.T.tech = 1500
+$c.T.lsm = 2000
+$c.T.other = 1000
+$c.V.t1 = 1000
+$c.V.t2 = 1250
+$c.V.t3 = 1500
+$c.V.t4 = 2000
+$c.H.hq = 800
+*c.H.trading = 900 * not used yet: Trading Station subtype unknown (see To Do)
+$c.H.equip = 1000
+$c.H.other = 1200
+
+* settings guard - [33] is the Energy Cell cost on/off switch (M-02 slot)
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return 0
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return 0
+end
+$cost.on = $al.Settings[33]
+if not is datatyp[ $cost.on ] == DATATYPE_INT
+ return 0
+end
+if is datatyp[ $cost.on ] == DATATYPE_INT
+ if not $cost.on == 1
+  return 0
+ end
+end
+
+$b = $c.B
+$jj = $c.J
+if $backbone == [TRUE]
+
+$b = $c.Bbb
+$jj = $c.Jbb
+end
+
+* units must be a positive INT
+if not is datatyp[ $units ] == DATATYPE_INT
+ return 0
+end
+$u = $units
+if not $u > 0
+ return 0
+end
+
+* the ware must exist and have a whole volume of at least 1 (no float maths, no divide by 0)
+if is datatyp[ $ware ] == DATATYPE_WARE
+ $vol = = get volume of ware $ware
+ if not is datatyp[ $vol ] == DATATYPE_INT
+  return 0
+ end
+ if not $vol > 0
+  return 0
+ end
+else
+ return 0
+end
+
+* jumps: null or non-INT treated as 0, clamped to 0-50 (stage b bound)
+$j = 0
+if is datatyp[ $jumps ] == DATATYPE_INT
+ if not $jumps < 0
+  $j = $jumps
+ end
+end
+if $j > 50
+ $j = 50
+end
+
+* T per-mille from the ware maintype (constants as in plugin.LI.FDN.Sort.Wares L051-L073;
+* VERIFY item 1: their numbers on TC/FL - the test script logs them). Default is the base
+* group (energy, natural, bio, food, minerals, ...); only tech and laser/shield/missile differ.
+$t = $c.T.other
+$mt = = get maintype of ware $ware
+if is datatyp[ $mt ] == DATATYPE_INT
+ if not $mt == [SSTYPE_LASER]
+  if not $mt == [SSTYPE_SHIELD]
+   if not $mt == [SSTYPE_MISSILE]
+    if not $mt == [SSTYPE_W_TECH]
+     * base group (energy, natural, bio, food, minerals, ...) keeps the default
+    else
+     $t = $c.T.tech
+    end
+   else
+    $t = $c.T.lsm
+   end
+  else
+   $t = $c.T.lsm
+  end
+ else
+  $t = $c.T.lsm
+ end
+end
+
+* V per-mille from the average price (null or non-INT treated as tier 1)
+$v.tier = $c.V.t1
+$ap = = get average price of ware $ware
+if is datatyp[ $ap ] == DATATYPE_INT
+ if not $ap < 1000
+  $v.tier = $c.V.t2
+ end
+ if not $ap < 10000
+  $v.tier = $c.V.t3
+ end
+ if not $ap < 100000
+  $v.tier = $c.V.t4
+ end
+end
+
+* H per-mille from the paying DC subtype (a non-station dc uses the Equipment Dock value)
+$h = $c.H.equip
+if is datatyp[ $dc ] == DATATYPE_STATION
+ $h = $c.H.other
+ $sub.type = $dc  ->  get subtype
+ if is datatyp[ $sub.type ] == DATATYPE_INT
+  if $sub.type == 62
+   $h = $c.H.hq
+  end
+   * Equipment Dock: subtype 6 uses the equipment factor
+   if $sub.type == 6
+   $h = $c.H.equip
+   end
+  * Trading Station: subtype not seen on FL yet - stays 'other' until the probe shows it (M-03)
+ end
+end
+
+* stage b base per volume unit, at most B + J*50 = 520; chunk size keeps U*vol <= 500000
+$per.base = $b + $jj * $j
+$chunk.size = 500000 / $vol
+if $chunk.size < 1
+ $chunk.size = 1
+end
+
+$uv.total = 0
+$total.ec = 0
+while $u > 0
+ $left = $u
+ if not $left <= $chunk.size
+  $take = $chunk.size
+ else
+  $take = $left
+ end
+ * stage a: UV for this chunk, at most 1000000
+ $uv = $take * $vol
+ * stage b: milli-EC before the per-mille factors, at most 520000000
+ $m = $uv * $per.base
+   * stage c: T, V and H applied in turn (each keeps every product below INT32 max)
+ $f.mille = $t
+ gosub PerMille.Sub:
+ $f.mille = $v.tier
+ gosub PerMille.Sub:
+ $f.mille = $h
+ gosub PerMille.Sub:
+ * stage d: EC for this chunk, rounded up; accumulate with the cap (Cap.Sub)
+ $ec.chunk = ($m + 999) / 1000
+ gosub Cap.Sub:
+ $u = $u - $take
+end
+
+* a charged leg always costs at least 1 EC
+if not $total.ec > 0
+ $total.ec = 1
+end
+return $total.ec
+
+PerMille.Sub:
+* one per-mille factor F into $m, exact integer math: (m/1000)*F + floor((m mod 1000) * F / 1000).
+* m enters at most 260000000 and F at most 2000, so every product stays below 2147483647.
+$m.whole = $m / 1000
+$m.rem = $m - $m.whole * 1000
+$m.frac = ($m.rem * $f.mille) / 1000
+$m = $m.whole * $f.mille + $m.frac
+endsub
+
+Cap.Sub:
+* add $ec.chunk to $total.ec, capping the sum at 2000000000 (well inside INT32). A negative
+* result after a positive sum means INT32 overflow: keep the cap value and stop growing.
+$sum.try = $total.ec + $ec.chunk
+if is datatyp[ $sum.try ] == DATATYPE_INT
+ if not $sum.try < 0
+  if not $sum.try > 2000000000
+   $total.ec = $sum.try
+  end
+ else
+  $total.ec = 2000000000
+ end
+end
+endsub
+
+

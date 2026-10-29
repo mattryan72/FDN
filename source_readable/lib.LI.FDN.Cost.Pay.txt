@@ -1,0 +1,385 @@
+* Script: lib.LI.FDN.Cost.Pay  (v1, engine 50)
+* Desc: FDNv9 - Take the Energy Cell cost for one transfer leg from the paying DC
+* Arg 0: payer (Value) 'payer'
+* Arg 1: served (Value) 'served'
+* Arg 2: cost (Number) 'cost'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part, M-04). Takes $cost EC from the paying DC
+* for one transfer leg. When [33] is not 1 or cost <= 0 nothing is taken and [TRUE] is
+* returned immediately.
+* Who pays: the sending DC for DC-to-station and DC-to-DC legs; for station/dock-to-DC
+* legs the receiving (payer) DC pays (assumption, to confirm with Matt).
+
+* Protect level of a DC = the larger of (a) its EC maintain/reserve level from the EC ware
+* record ([2] when INT > 0, else [1] when INT > 0, else 0), and (b) the reserve floor
+* ceil(capacity x pct / 100) where capacity is get max amount of SS_WARE_ENERGY in cargo bay
+* and pct comes from FDN.DC.Cfg[1] (INT 0-100), else settings [34] (INT 0-100), else 25.
+* The DC never pays below its protect level: available = virtual + physical - protect, floored at 0.
+
+* Payment order: virtual EC first (the FDN.Ware.<Energy Cells> record element [0]), then
+* physical via plugin.LI.FDN.Update.Ware 'remove' (which also takes virtual first and stores
+* the record). When the payer alone cannot cover the cost, the other DCs in [30] are asked
+* in list order; each peer gives only what it holds above its own protect level. The transfer
+* is paid only when payer + peers together cover the WHOLE cost (all-or-nothing check before
+* anything is taken); a partial payment never happens.
+
+* On success:
+* - the payer FDN.Cost local gets cost added to [0] and [1]+1, with [2] set to playing time when null;
+* - each peer that helped adds what it gave to its own FDN.Cost[0];
+* - the served station (when a valid DATATYPE_STATION) also gets cost added to its FDN.Cost[0] and [1]+1.
+
+* On network short: log via lib.LI.FDN.Log AND directly to 9910, add the cost to the payer's
+* FDN.Cost[3] 'deferred', return [FALSE]. The deferred line is:
+*   Cost: deferred need <c> EC, <DC> has <e>, network <n>
+
+* FDN.Cost local (M-02 section 3): array of 4 on a DC and on the served station:
+* [0] total EC charged, [1] transfer count, [2] start time (playing time of first charge),
+* [3] deferred EC total. Created with array alloc size=4 when missing; existing records are
+* read back untouched (same rule as lib.LI.FDN.Ware.Rec).
+
+* Arguments:
+* - payer (Value): The paying Distribution Centre station
+* - served (Value): The station, dock, factory or DC on the other end of the leg (may be null)
+* - cost (Number): Energy Cell cost for this leg in whole EC (from lib.LI.FDN.Cost)
+
+* Returns values:
+* - [TRUE] when paid (including the free case where nothing is taken), [FALSE] when deferred
+
+* To Do - Trading Station protect-level floor once its subtype is known (M-03 probe)
+
+* Version: 1.0
+* Date: 28/10/2026
+* Tested: 2026-10-29 FL 22/22 PASS (test.LI.FDN.Cost; C5/C6b/C7b/P4 skipped, one DC)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-04): new - Energy Cell payment for the multi-DC transfer charge
+ * -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return [FALSE]
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return [FALSE]
+end
+
+* free case: cost <= 0 or [33] is not 1 - nothing taken, no FDN.Cost change
+$need = 0
+$payer.avail = 0
+$peer.total = 0
+if is datatyp[ $cost ] == DATATYPE_INT
+ if not $cost < 0
+  $need = $cost
+ end
+end
+$cost.on = $al.Settings[33]
+if not is datatyp[ $cost.on ] == DATATYPE_INT
+ return [TRUE]
+end
+if is datatyp[ $cost.on ] == DATATYPE_INT
+ if not $cost.on == 1
+  return [TRUE]
+ end
+end
+if $need <= 0
+ return [TRUE]
+end
+
+* the payer must be a valid DC station (Is.Valid need.dock TRUE, as in Dc.List)
+$p.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$payer need.dock=[TRUE]
+if not $p.ok
+ * nothing can be taken from an invalid payer - defer with the standard line below
+ gosub Defer.Sub:
+ return [FALSE]
+end
+
+$peer.dc = $payer
+
+* protect level and available EC of the payer (Protect.Avail.Sub fills $protect.level, $avail)
+gosub Protect.Avail.Sub:
+$payer.avail = $avail
+if not $avail >= $need
+ * payer alone is short - see what the peer DCs can give above their own protect levels
+ $list = [THIS] -> call script lib.LI.FDN.Dc.List :
+ $peer.total = 0
+ if is datatyp[ $list ] == DATATYPE_ARRAY
+  $ln = size of array $list
+  $li = 0
+  while $li < $ln
+   $peer.dc = $list[$li]
+   inc $li =
+   if not $peer.dc == $payer
+    gosub Protect.Avail.Sub:
+    if is datatyp[ $avail ] == DATATYPE_INT
+     $peer.total = $peer.total + $avail
+    end
+   end
+  end
+ end
+ * all-or-nothing: only take when payer + peers cover the whole cost (check first, then take)
+$net = 0
+$net = $payer.avail + $peer.total
+ if not $net >= $need
+  gosub Defer.Sub:
+  return [FALSE]
+ end
+end
+
+* THE TAKE - payer part first, then peers in list order until the whole cost is paid
+$paid = 0
+
+* take the payer's available part (all of $avail when it covers the rest)
+$peer.dc = $payer
+$take.now = $need - $paid
+if not $take.now <= $payer.avail
+ $take.now = $payer.avail
+end
+gosub Take.EC.Sub:
+$paid = $paid + $taken
+
+* then from each peer DC in list order, only while something is still missing and it can give
+if not $paid >= $need
+ $list = [THIS] -> call script lib.LI.FDN.Dc.List :
+ if is datatyp[ $list ] == DATATYPE_ARRAY
+  $ln = size of array $list
+  $li = 0
+  while $li < $ln
+   $peer.dc = $list[$li]
+   inc $li =
+   if not $paid >= $need
+    if not $peer.dc == $payer
+     gosub Protect.Avail.Sub:
+     if is datatyp[ $avail ] == DATATYPE_INT
+      if $avail > 0
+       $take.now = $need - $paid
+       if not $take.now <= $avail
+        $take.now = $avail
+       end
+       gosub Take.EC.Sub:
+       * a helping peer adds what it gave to its own FDN.Cost[0] (no transfer count)
+       $peer.gave = $taken
+       if $peer.gave > 0
+        $add.amt = $peer.gave
+        $add.count = [FALSE]
+        gosub Cost.Add.Sub:
+       end
+      end
+     end
+    end
+   end
+  end
+ end
+end
+
+* safety: the all-or-nothing check above guarantees full coverage, but if stock moved in the
+* last instant and we are still short, defer what is left (never a partial charge)
+if not $paid >= $need
+ gosub Defer.Sub:
+ return [FALSE]
+end
+
+* SUCCESS - record the charge on the payer and, when it is a valid station, on the served end.
+* Peers already recorded what they gave inside the take loop above (Cost.Add.Sub).
+$peer.dc = $payer
+$add.amt = $need
+$add.count = [TRUE]
+gosub Cost.Add.Sub:
+
+$served.valid = [FALSE]
+if is datatyp[ $served ] == DATATYPE_STATION
+ $served.exists = $served  ->  exists
+ if $served.exists
+  $served.valid = [TRUE]
+ end
+end
+if $served.valid
+ * the served station records the cost of the legs that served it (M-02 section 3)
+$peer.dc = $served
+ $add.amt = $need
+ $add.count = [TRUE]
+ gosub Cost.Add.Sub:
+end
+return [TRUE]
+
+Protect.Avail.Sub:
+* fills $protect.level and $avail for the station in $peer.dc (the payer before any peer loop).
+* protect level = max( EC maintain/reserve from the record, reserve floor ):
+* - EC ware record FDN.Ware.<Energy Cells>: [2] when INT > 0, else [1] when INT > 0, else 0.
+* - reserve floor = ceil(capacity x pct / 100); capacity is get max amount of SS_WARE_ENERGY
+*   in cargo bay; pct from FDN.DC.Cfg[1] (INT 0-100), else settings [34] (INT 0-100), else 25.
+* available = virtual + physical - protect level, never below 0. A missing or gone station is
+* treated as having no EC at all (protect 0, avail 0).
+$peer.exists = [FALSE]
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $peer.exists = $peer.dc  ->  exists
+end
+$virtual.stock = 0
+$physical.stock = 0
+$maintain.level = 0
+$capacity = 0
+if $peer.exists
+ * EC record for the maintain level (never created here - a pay run must not write settings)
+ $ec.rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$peer.dc ware=SS_WARE_ENERGY create=[FALSE]
+ if is datatyp[ $ec.rec ] == DATATYPE_ARRAY
+  $maint.cand = $ec.rec[2]
+  if is datatyp[ $maint.cand ] == DATATYPE_INT
+   if not $maint.cand < 1
+    $maintain.level = $maint.cand
+   end
+  end
+  if $maintain.level <= 0
+   $reserve.cand = $ec.rec[1]
+   if is datatyp[ $reserve.cand ] == DATATYPE_INT
+    if not $reserve.cand < 1
+     $maintain.level = $reserve.cand
+    end
+   end
+  end
+  * virtual EC stock (record element [0])
+  $virtual.stock = $ec.rec[0]
+  if not is datatyp[ $virtual.stock ] == DATATYPE_INT
+   $virtual.stock = 0
+  end
+  if $virtual.stock < 0
+   $virtual.stock = 0
+  end
+ end
+ $physical.stock = $peer.dc  ->  get amount of ware SS_WARE_ENERGY in cargo bay
+ if not is datatyp[ $physical.stock ] == DATATYPE_INT
+  $physical.stock = 0
+ end
+ $capacity = $peer.dc  ->  get max amount of ware SS_WARE_ENERGY that can be stored in cargo bay
+ if not is datatyp[ $capacity ] == DATATYPE_INT
+  $capacity = 0
+ end
+end
+
+* reserve floor percent: FDN.DC.Cfg[1] (INT 0-100), else settings [34] (INT 0-100), else 25
+$pct = -1
+if $peer.exists
+ $dc.cfg = $peer.dc  ->  get local variable: name='FDN.DC.Cfg'
+ if is datatyp[ $dc.cfg ] == DATATYPE_ARRAY
+  $pct.cand = $dc.cfg[1]
+  if is datatyp[ $pct.cand ] == DATATYPE_INT
+   if not $pct.cand < 0
+    if not $pct.cand > 100
+     $pct = $pct.cand
+    end
+   end
+  end
+ end
+end
+if $pct < 0
+ $global.pct = $al.Settings[34]
+ if is datatyp[ $global.pct ] == DATATYPE_INT
+  if not $global.pct < 0
+   if not $global.pct > 100
+    $pct = $global.pct
+   end
+  end
+ end
+end
+if $pct < 0
+ $pct = 25
+end
+
+* floor = ceil(capacity x pct / 100), protect level = the larger of maintain and floor
+$floor.ec = ($capacity * $pct + 99) / 100
+$protect.level = $maintain.level
+* v9.01 D6 (M-04e): protect level is the larger of maintain and floor
+if $floor.ec > $protect.level
+ $protect.level = $floor.ec
+end
+
+* available above the protect level, never below 0
+$avail = $virtual.stock + $physical.stock - $protect.level
+if $avail < 0
+ $avail = 0
+end
+endsub
+
+Take.EC.Sub:
+* takes up to $take.now EC from the station in $peer.dc via one Update.Ware remove (virtual
+* first). Fills $taken with what actually came out; a non-INT result counts as 0. The record
+* array is owned by Update.Ware and is never written here.
+$taken = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=SS_WARE_ENERGY amount=$take.now station=$peer.dc action='remove'
+if not is datatyp[ $taken ] == DATATYPE_INT
+ $taken = 0
+end
+endsub
+
+Cost.Add.Sub:
+* adds $add.amt EC to the FDN.Cost local of the station in $peer.dc (created when missing,
+* existing records read back untouched). When $add.count is TRUE it also increments [1] by one
+* and stamps [2] with playing time on first use. Uses: payer charge, peer contribution, served
+* station record - all through this single sub. No-op unless $peer.dc is a real station.
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $cost.rec = $peer.dc  ->  get local variable: name='FDN.Cost'
+ if not is datatyp[ $cost.rec ] == DATATYPE_ARRAY
+  $cost.rec = = array alloc: size=4
+ end
+ * [0] total EC charged (INT, never below 0)
+ $add.base = $cost.rec[0]
+ if not is datatyp[ $add.base ] == DATATYPE_INT
+  $add.base = 0
+ end
+ $cost.rec[0] = $add.base + $add.amt
+ if $add.count
+  * [1] transfer count, +1
+  $count.now = $cost.rec[1]
+  if not is datatyp[ $count.now ] == DATATYPE_INT
+   $count.now = 0
+  end
+  $cost.rec[1] = $count.now + 1
+  * [2] start time: playing time of the first charge, untouched afterwards
+      if $count.now <= 0
+    $now.t = = playing time
+    $cost.rec[2] = $now.t
+   end
+ end
+ $peer.dc  ->  set local variable: name='FDN.Cost' value=$cost.rec
+end
+endsub
+
+Defer.Sub:
+* network could not cover the whole cost (or the payer is invalid): log one line via
+* lib.LI.FDN.Log AND directly to the FDN output plugin, add $need EC to the payer's FDN.Cost[3]
+* 'deferred' total when the payer is a station. Line format:
+*   Cost: deferred need <c> EC, <DC> has <e>, network <n>
+$net.total = 0
+if not is datatyp[ $avail ] == DATATYPE_INT
+ $avail = 0
+end
+$net.total = $payer.avail + $peer.total
+if not is datatyp[ $net.total ] == DATATYPE_INT
+ $net.total = 0
+end
+* the log line: DC name when known, 'n/a' otherwise (a gone payer has no name)
+$dc.name.str = 'n/a'
+if is datatyp[ $payer ] == DATATYPE_STATION
+ $dc.exists = $payer  ->  exists
+ if $dc.exists
+  $dc.name.str = $payer  ->  get name
+ end
+end
+$log.txt = 'Cost: deferred need ' + $need + ' EC, ' + $dc.name.str + ' has ' + $payer.avail + ', network ' + $net.total
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+write to log file 9910 append=[TRUE] value=$log.txt
+
+* deferred total on the payer record (M-02 section 3 element [3]) - only for a real station
+if is datatyp[ $payer ] == DATATYPE_STATION
+ $defer.rec = $payer  ->  get local variable: name='FDN.Cost'
+ if not is datatyp[ $defer.rec ] == DATATYPE_ARRAY
+  $defer.rec = = array alloc: size=4
+ end
+ $defer.base = $defer.rec[3]
+ if not is datatyp[ $defer.base ] == DATATYPE_INT
+  $defer.base = 0
+ end
+ $defer.rec[3] = $defer.base + $need
+ $payer  ->  set local variable: name='FDN.Cost' value=$defer.rec
+end
+endsub
+

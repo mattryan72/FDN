@@ -499,7 +499,7 @@ endsub
 
 
 Add.Ware.Sub:
-* v8 Add.Ware.Sub: ask for a ware and make sure the station has a record for it (Ware.Rec create=[TRUE] does what the v8 Update.Ware create call did)
+* v8 Add.Ware.Sub: ask for a ware, make sure the station has a record for it (Ware.Rec create=[TRUE]) and show it on the dock (add 1 / remove 1, as v8 Update.Ware create did)
 $txt = = read text: page=$PageID id=197
 $ware = null -> get user input: type=Var/Ware, title=$txt
 if not $ware
@@ -508,6 +508,13 @@ end
 gosub Ware.Prep.Sub:
 if $ok == 0
  endsub
+end
+* v9.01 D6 (M-04e): v8 Update.Ware create step - if none in the cargo bay add 1 and remove 1 so the ware shows on the dock
+* Tested: 2026-10-29 FL, Add ware shows on dock
+$physical.check = $station  ->  get amount of ware $ware in cargo bay
+if not $physical.check > 0
+  = $station  ->  add 1 units of $ware
+  = $station  ->  add -1 units of $ware
 end
  = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$station
 $log.txt = 'FDN Menu: add.ware ware=' + $ware
