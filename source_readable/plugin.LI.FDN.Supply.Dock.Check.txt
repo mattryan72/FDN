@@ -34,7 +34,8 @@
 *
 * Version: 3.0
 * Date: 26/10/2026
-* Tested: TC 26/10/2026
+* Tested: not tested (M-05 staged 29/10/2026)
+ * v9.01 D6 (M-05g): DC pass (flag 1) for every valid DC in Dc.List; dock loop skips DCs
 * -----------------------------------------------------------------------------------
 
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed settings fetch (P2-01)
@@ -66,12 +67,23 @@ if $debug.on
  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
 end
 
-* if DC
- * v9.01 B3: one call covers exists + player ownership + Dock class (replaces the bare -> exists test)
-$dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
-if $dc.valid
+* v9.01 D6 (M-05g): the DC pass (flag 1) runs for every valid DC in the cleaned list [30]
+* (Dc.List validates each entry and puts [2] first). Older settings (< 40) return null -> [2] only.
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ $dc.list = = array alloc: size=0
+ $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+ if $dc.valid
+  append $dc to array $dc.list
+ end
+end
+$dl.size = size of array $dc.list
+$dl.i = 0
+while $dl.i < $dl.size
+ $dc.pass = $dc.list[$dl.i]
  * this call the supply script for the dc which kicks off the sell part for the dc
- START  = null -> call script plugin.LI.FDN.Supply.Dock : dock=$dc  flag=1
+ START  = null -> call script plugin.LI.FDN.Supply.Dock : dock=$dc.pass  flag=1
+ inc $dl.i =
 end
 
 while $s > 0
@@ -91,6 +103,16 @@ while $s > 0
    end
    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
   end
+ end
+ * v9.01 D6 (M-05g): a DC in the list already had its flag 1 pass above - no dock pass for it
+ $is.dc = [FALSE]
+ if $valid
+  if find $dock in array: $dc.list
+   $is.dc = [TRUE]
+  end
+ end
+ if $is.dc
+  $valid = [FALSE]
  end
  if $valid
   * -----------------------------------------------------------------------------------

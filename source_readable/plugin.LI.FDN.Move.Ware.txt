@@ -20,7 +20,8 @@
 
 * Version: 3.0
 * Date: 26/10/2026
-* Tested: TC 26/10/2026
+* Tested: not tested (M-05 staged 29/10/2026)
+ * v9.01 D6 (M-05k): Energy Cell cost via Leg.Pay when source or destination is a DC (DC -> DC backbone); logbook 343 on FALSE
 * -----------------------------------------------------------------------------------
 *
 * v9.01 P2-12b changes - closes D1, D2 (one of nine), D3 and the B3/B12 source check; keeps B20:
@@ -146,12 +147,69 @@ if $debug.on
  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
 end
 
-* THE MOVE: add to the destination first, then remove what was really added from the source
-* Update.Ware only accepts stations, so a station goes through it and a ship gets a plain cargo bay add limited to its free space
+* v9.01 D6 (M-05k): Energy Cell cost when the source or the destination is a DC in [30].
+* payer = the source when it is a DC, else the destination; served = the other end; jumps from
+* the two sectors (non-INT -> 0); DC -> DC uses backbone [TRUE] with served null. Paid BEFORE anything moves; [FALSE] -> logbook 343, no move.
+* A ship destination is clamped to its free space first so the cost matches what can move.
+* Cost off ([33] not 1) or settings < 40: Leg.Pay returns [TRUE] (Dc.List null -> no charge).
 $dest.is.station = [FALSE]
 if is datatyp[ $destination ] == DATATYPE_STATION
  $dest.is.station = [TRUE]
 end
+if not $dest.is.station
+ $dest.free = $destination  ->  get free amount of ware $ware in cargo bay
+ if $amount > $dest.free
+  $amount = $dest.free
+ end
+end
+$payer = null
+$served = null
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+$mv.backbone = [FALSE]
+if is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ if find $destination in array: $dc.list
+  $payer = $destination
+  $served = $source
+ end
+ if find $source in array: $dc.list
+  $payer = $source
+  $served = $destination
+  * DC -> DC: backbone rates, sender pays, served null (Matt 30/10/2026)
+  if $payer == $source
+   if find $destination in array: $dc.list
+    $mv.backbone = [TRUE]
+    $served = null
+   end
+  end
+ end
+end
+if $payer
+ if $amount > 0
+  $src.sector = $source  ->  get sector
+  $dst.sector = $destination  ->  get sector
+  $mv.jumps = get jumps from sector $src.sector to sector $dst.sector
+  if not is datatyp[ $mv.jumps ] == DATATYPE_INT
+   $mv.jumps = 0
+  end
+  if $mv.jumps < 0
+   $mv.jumps = 0
+  end
+  $leg.ok = [THIS] -> call script lib.LI.FDN.Leg.Pay : ware=$ware units=$amount payer=$payer served=$served jumps=$mv.jumps backbone=$mv.backbone
+  if not $leg.ok
+   $mv.cost = [THIS] -> call script lib.LI.FDN.Cost : ware=$ware units=$amount jumps=$mv.jumps dc=$payer backbone=[FALSE]
+   $txt = = sprintf: pageid=$PageID textid=343, $payer, $mv.cost, null, null, null
+   write to player logbook $txt
+   if $debug.on
+    $txt.log = $source + ' Move cancelled - ' + $payer + ' cannot pay ' + $mv.cost + ' EC'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+   return null
+  end
+ end
+end
+
+* THE MOVE: add to the destination first, then remove what was really added from the source
+* Update.Ware only accepts stations, so a station goes through it and a ship gets a plain cargo bay add limited to its free space
 $amount.added = 0
 if $dest.is.station
  $amount.added = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=$ware amount=$amount station=$destination action='add'

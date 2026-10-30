@@ -177,7 +177,10 @@
   <t id="323">v8 compatible</t>
   <t id="324">Default (%s)</t>
   <t id="325">Applies to every ware set to Default. v8 compatible: on unless you switched that ware off.</t>
+  <t id="340">FDN: Energy Cells short - %s transfers deferred this pass. Top up your Distribution Centres.</t>
+  <t id="341">FDN: %s Energy Cells moved between Distribution Centres</t>
   <t id="342">FDN: Remove Ware cancelled - stock is no longer empty</t>
+  <t id="343">FDN: Move cancelled - %s cannot pay %s Energy Cells</t>
   <t id="351">Change Distribution Centre to %s ?</t>
   <t id="352">Supply pass running, try again in a few seconds</t>
 

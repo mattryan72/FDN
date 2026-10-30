@@ -34,7 +34,8 @@
 *
 * Version: 4.0
 * Date: 23/10/2026
-* Tested: TC 24/10/2026
+* Tested: not tested (M-05 staged 29/10/2026)
+ * v9.01 D6 (M-05h): factory loop stops only when Dc.List is empty
 * -----------------------------------------------------------------------------------
 
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed settings fetch (P2-01)
@@ -227,11 +228,22 @@ while $loop.active
     $loop.active = [FALSE]
    end
    if $loop.active
-    $dc = $al.Settings[2]
-    $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
-    if not $dc.valid
-     * DC lost mid-pass - stop the loop; Supply.Start clears it and tells the player next tick
-     $loop.active = [FALSE]
+    * v9.01 D6 (M-05h): stop only when no DC in [30] is valid (Dc.List cleans and returns the list);
+    * older settings (< 40) return null -> fall back to the [2] test as before
+    $dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+    if is datatyp[ $dc.list ] == DATATYPE_ARRAY
+     $dl.size = size of array $dc.list
+     if not $dl.size > 0
+      * every DC lost mid-pass - stop the loop; Supply.Start tells the player next tick
+      $loop.active = [FALSE]
+     end
+    else
+     $dc = $al.Settings[2]
+     $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+     if not $dc.valid
+      * DC lost mid-pass - stop the loop; Supply.Start clears it and tells the player next tick
+      $loop.active = [FALSE]
+     end
     end
    end
   * recompute the loop flag for the next pass of the while body

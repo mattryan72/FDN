@@ -26,7 +26,8 @@
 *
 * Version: 3.0
 * Date: 26/10/2026
-* Tested: TC 26/10/2026
+* Tested: not tested (M-05 staged 29/10/2026)
+ * v9.01 D6 (M-05i): buys on the account of the factory home DC (lib.LI.FDN.Home)
 * -----------------------------------------------------------------------------------
 * v9.01 P2-11a changes - closes D1, D2 (one of nine), B4, B12, B15; owns the trade guard:
 *   D1  Standard header via lib.LI.FDN.Cfg.Get ($PageID is no longer needed here).
@@ -54,7 +55,6 @@ $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
 if not $al.Settings
  goto label Exit:
 end
-$dc = $al.Settings[2]
 $debug.on = $al.Settings[7]
 $exclude.array = $al.Settings[8]
 
@@ -64,6 +64,18 @@ $factory.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$factory need.d
 if not $factory.valid
  if $debug.on
   $txt.log = $factory + ' Buy skipped - factory no longer valid'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ goto label Exit:
+end
+
+* v9.01 D6 (M-05i): buy on the account of the factory's home DC. Placed after the factory test so
+* $factory.valid is [TRUE] and the Exit path releases the factory 'buy' lock. Null = out of range.
+* NPC trade: no Energy Cell cost.
+$dc = [THIS] -> call script lib.LI.FDN.Home : station=$factory
+if not $dc
+ if $debug.on
+  $txt.log = $factory + ' Buy skipped - no home DC (out of range)'
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
  goto label Exit:

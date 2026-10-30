@@ -1,0 +1,115 @@
+* Script: plugin.LI.FDN.EC.Regroup  (v1, engine 50)
+* Desc: FDN v9.01 - Regroup Energy Cells between Distribution Centres
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* This script is STARTed by plugin.LI.FDN.Supply.Start at most every 600 s game time
+* (the interval gate and the [36] stamp are owned here; Supply.Start only checks [36]).
+* It keeps every DC's Energy Cell stock above its own maintain level: for each DC in the
+* cleaned list whose virtual + physical EC stock is below the record maintain level [2],
+* it calls lib.LI.FDN.Pull to move the gap over the backbone from the other DCs (Pull owns
+* source protect levels, per-leg payment with the sending DC and the deferred count [37]).
+* When something moved, one logbook line (text 341) is written. Wait-free: no waits, no
+* STARTs, no subs - it runs to completion in one pass.
+*
+* Expected values:
+* - N/A (no arguments; settings come from lib.LI.FDN.Cfg.Get)
+*
+* Returns values:
+* - N/A (null)
+*
+* To Do - N/A
+*
+* Version: 1.0
+* Date: 30/10/2026
+* Tested: not tested
+ * v9.01 D6 (M-05j): new - network Energy Cell regroup between DCs
+* -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return null
+end
+$st.size = size of array $al.Settings
+if $st.size < 40
+ return null
+end
+
+* Energy Cell cost must be on ([33]); with the cost off there is no backbone traffic to regroup
+$cost.on = $al.Settings[33]
+if not $cost.on == 1
+ return null
+end
+
+* the cleaned DC list; one DC has nothing to move, so a list of less than two does nothing
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ return null
+end
+$dl.size = size of array $dc.list
+if $dl.size < 2
+ return null
+end
+
+* stamp the last network EC check [36] before any work (Supply.Start gates on it)
+$now = = playing time
+$al.Settings[36] = $now
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+
+* one ware for the whole pass (the form used in lib.LI.FDN.Pull)
+$ec.ware = [SS_WARE_ENERGY]
+
+* walk every DC; when its EC stock is below its maintain level, pull the gap over the backbone
+$total = 0
+$i = 0
+while $i < $dl.size
+ $dc = $dc.list[$i]
+ inc $i =
+ if is datatyp[ $dc ] == DATATYPE_STATION
+  $rec = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=$ec.ware create=[FALSE]
+  if is datatyp[ $rec ] == DATATYPE_ARRAY
+   * maintain level [2]; skip the DC unless it is an INT > 0 (no level, nothing to hold)
+   $maintain = $rec[2]
+   if is datatyp[ $maintain ] == DATATYPE_INT
+    if not $maintain < 1
+     * stock = virtual [0] + physical cargo bay (non-INT parts count as 0)
+     $virt = $rec[0]
+     if not is datatyp[ $virt ] == DATATYPE_INT
+      $virt = 0
+     end
+     $phys = $dc  ->  get amount of ware $ec.ware in cargo bay
+     if not is datatyp[ $phys ] == DATATYPE_INT
+      $phys = 0
+     end
+     $stock = $virt + $phys
+     if $stock < $maintain
+      * below level - pull the gap from the other DCs (Pull owns protect, payment and [37])
+      $gap = $maintain - $stock
+      $got = [THIS] -> call script lib.LI.FDN.Pull : home=$dc ware=$ec.ware need=$gap
+      if not is datatyp[ $got ] == DATATYPE_INT
+       $got = 0
+      end
+      $total = $total + $got
+     end
+    end
+   end
+  end
+ end
+end
+
+* tell the player once when something actually moved (text 341, page [1])
+if not $total < 1
+ $PageID = $al.Settings[1]
+ $txt = = sprintf: pageid=$PageID textid=341, $total, null, null, null, null
+ write to player logbook $txt
+end
+
+* one debug line with the DC count and what moved (no array element in a string expression)
+$debug.on = $al.Settings[7]
+if $debug.on
+ $txt.log = 'EC.Regroup: DCs=' + $dl.size + ' moved=' + $total
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+end
+
+return null

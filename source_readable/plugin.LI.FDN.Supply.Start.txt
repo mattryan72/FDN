@@ -14,7 +14,8 @@
 * 
 * Version: 2.1
 * Date: 26/10/2026
-* Tested: TC 26/10/2026
+* Tested: not tested (M-05 staged 29/10/2026)
+ * v9.01 D6 (M-05j): START EC.Regroup every 600 s ([36]); end-of-tick logbook 340 when [37] > 0, then [37] = 0
 * -----------------------------------------------------------------------------------
 * v9.01 B1/B3/P1 changes (Supply.Start):
 *   B1  [12] is now a real run-lock storing 'playing time' (stale after [22]*4 s), set on
@@ -138,6 +139,23 @@ if not $dc.valid
  return null
 end
 
+* v9.01 D6 (M-05j): network Energy Cell check every 600 s game time ([36] = last check, written
+* by plugin.LI.FDN.EC.Regroup itself). Settings smaller than 40 have no [36] - skip.
+$st.size = size of array $al.Settings
+if $st.size >= 40
+ $ec.last = $al.Settings[36]
+ $do.regroup = [TRUE]
+ if is datatyp[ $ec.last ] == DATATYPE_INT
+  $ec.elapsed = $now - $ec.last
+  if $ec.elapsed < 600
+   $do.regroup = [FALSE]
+  end
+ end
+ if $do.regroup
+  START  = null -> call script plugin.LI.FDN.EC.Regroup :
+ end
+end
+
 * v9.01 P2-14: one 'DC: <dc>' line per Scan run (not every tick); $do.scan is still set from above
 if $do.scan
  if $debug.on
@@ -178,6 +196,7 @@ if $call.count.dock < 6
  inc $call.count.dock =
  $al.Settings[11] = $call.count.dock
  set global variable: name='al.LI.FDN.event' value=$al.Settings
+ gosub Deferred.Warn:
  return null
 else
  $al.Settings[11] = 0
@@ -193,6 +212,7 @@ else
   * -----------------------------------------------------------------------------------
  end
 end
+gosub Deferred.Warn:
 return null
 * -----------------------------------------------------------------------------------
 
@@ -205,6 +225,27 @@ set global variable: name='al.LI.FDN.event' value=$al.Settings
 write to player logbook 'FDN: Distribution Centre lost or invalid - FDN paused. Pick a new DC in the FDN menu.'
 if $debug.on
  = [THIS] -> call script lib.LI.FDN.Log : text='DC invalid - cleared and paused' caller=$s.name
+end
+endsub
+
+* v9.01 D6 (M-05j): end of tick - one logbook warning (text 340) when transfers were deferred
+* for lack of Energy Cells this tick ([37], counted by lib.LI.FDN.Leg.Pay), then reset [37].
+* Fresh settings: Leg.Pay stored [37] in the global during the factory pass.
+Deferred.Warn:
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if $al.Settings
+ $st.size = size of array $al.Settings
+ if $st.size >= 40
+  $deferred = $al.Settings[37]
+  if is datatyp[ $deferred ] == DATATYPE_INT
+   if $deferred > 0
+    $txt = = sprintf: pageid=$PageID textid=340, $deferred, null, null, null, null
+    write to player logbook $txt
+    $al.Settings[37] = 0
+    set global variable: name='al.LI.FDN.event' value=$al.Settings
+   end
+  end
+ end
 end
 endsub
 * -----------------------------------------------------------------------------------
