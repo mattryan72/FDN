@@ -1,0 +1,179 @@
+* Script: lib.LI.FDN.Dc.Edit  (v1, engine 50)
+* Desc: FDNv9 - Add, remove or refresh one Distribution Centre in the DC list [30]
+* Arg 0: action (Value) 'action'
+* Arg 1: dc (Value) 'dc'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 3, M-06). The only writer of [30] besides
+* lib.LI.FDN.Dc.List (which cleans it). It never writes [2]: making a DC the primary is
+* plugin.LI.FDN.DC.Change. Takes the global run lock [12] like DC.Change, so no supply
+* pass runs while the list changes. After a successful change it cleans the list,
+* rebuilds the route table [35], re-assigns the home DC of every factory [3] and dock
+* [4], and clears the scan time [16] so the next Supply.Start runs a full Scan.
+*
+* Arguments:
+* - action (Value): 'add', 'remove' or 'refresh' (no list change, only the rebuild)
+* - dc (Value): the Dock to add or remove (null for 'refresh')
+
+* Returns values:
+* - 'ok' when done
+* - 'busy' when the run lock is held (nothing changed)
+* - 'invalid' for a bad action or dc, an FL-managed dock, or settings missing / under 40
+* - 'dup' (add: already a DC), 'max' (add: already 16 DCs)
+* - 'last' (remove: only one DC), 'primary' (remove: dc is [2], run DC.Change first),
+*   'missing' (remove: not in the list)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 30/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-06A): add / remove / refresh one DC in [30], rebuild routes and hubs, rescan
+ * -----------------------------------------------------------------------------------
+
+$s.name = = get script name
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ return 'invalid'
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return 'invalid'
+end
+$PageID = $al.Settings[1]
+
+* action and argument check before the lock
+$act.ok = [FALSE]
+$need.dc = [FALSE]
+if $action == 'add'
+ $act.ok = [TRUE]
+ $need.dc = [TRUE]
+else if $action == 'remove'
+ $act.ok = [TRUE]
+ $need.dc = [TRUE]
+else if $action == 'refresh'
+ $act.ok = [TRUE]
+end
+if not $act.ok == [TRUE]
+ return 'invalid'
+end
+if $need.dc == [TRUE]
+ if not is datatyp[ $dc ] == DATATYPE_STATION
+  return 'invalid'
+ end
+end
+
+* run lock [12], same timeout rule as DC.Change; nothing is taken when it is held
+$budget = $al.Settings[22]
+if not is datatyp[ $budget ] == DATATYPE_INT
+ $budget = 30
+end
+$lock.timeout = $budget * 4
+$locked = [THIS] -> call script lib.LI.FDN.Lock : obj=null key=12 action='try' timeout=$lock.timeout
+if not $locked == [TRUE]
+  = [THIS] -> call script lib.LI.FDN.Log : text='Dc.Edit refused: busy' caller=$s.name
+ return 'busy'
+end
+
+* from here one exit path: the lock is released at the end
+$result = 'ok'
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $list ] == DATATYPE_ARRAY
+ $list = = array alloc: size=0
+end
+$n = size of array $list
+
+if $action == 'add'
+ gosub Add.Sub:
+else if $action == 'remove'
+ gosub Remove.Sub:
+end
+
+if $result == 'ok'
+  = [THIS] -> call script lib.LI.FDN.Dc.List :
+  = [THIS] -> call script lib.LI.FDN.Route.Build :
+ $hub.array = $al.Settings[3]
+ gosub Rehub.Sub:
+ $hub.array = $al.Settings[4]
+ gosub Rehub.Sub:
+ $al.Settings[16] = null
+ set global variable: name='al.LI.FDN.event' value=$al.Settings
+ $log.txt = 'Dc.Edit ' + $action + ' ok'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+end
+
+ = [THIS] -> call script lib.LI.FDN.Lock : obj=null key=12 action='release' timeout=null
+return $result
+* -----------------------------------------------------------------------------------
+* SUB Section
+
+Add.Sub:
+* a valid player Dock, not FL-managed, not already a DC, under the limit of 16
+$valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $valid == [TRUE]
+ $result = 'invalid'
+ endsub
+end
+$fl = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$dc
+if $fl == [TRUE]
+ $result = 'invalid'
+ endsub
+end
+if find $dc in array: $list
+ $result = 'dup'
+ endsub
+end
+if $n >= 16
+ $result = 'max'
+ endsub
+end
+append $dc to array $list
+$al.Settings[30] = $list
+endsub
+
+
+Remove.Sub:
+* never the only DC, never the primary (the caller moves [2] with DC.Change first)
+if $n < 2
+ $result = 'last'
+ endsub
+end
+$primary = $al.Settings[2]
+if $dc == $primary
+ $result = 'primary'
+ endsub
+end
+$found = -1
+$i = 0
+while $i < $n
+ $cand = $list[$i]
+ if $cand == $dc
+  $found = $i
+ end
+ inc $i =
+end
+if $found < 0
+ $result = 'missing'
+ endsub
+end
+remove element from array $list at index $found
+$al.Settings[30] = $list
+endsub
+
+
+Rehub.Sub:
+* re-assign the home DC of every station in $hub.array (wait-free Hub.Assign)
+if not is datatyp[ $hub.array ] == DATATYPE_ARRAY
+ endsub
+end
+$h.n = size of array $hub.array
+$h.i = 0
+while $h.i < $h.n
+ $st = $hub.array[$h.i]
+ if is datatyp[ $st ] == DATATYPE_STATION
+   = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$st
+ end
+ inc $h.i =
+end
+endsub

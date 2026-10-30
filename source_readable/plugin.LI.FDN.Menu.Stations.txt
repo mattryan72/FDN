@@ -7,7 +7,7 @@
 * -----------------------------------------------------------------------------------
 * Replaces plugin.LI.FDN.Menu.AP.Factory.List, Menu.Factory.List, Menu.AP.Dock.List and
 * Menu.Dock.List. Called by plugin.LI.FDN.Main.Menu for view 2. It lists the factories
-* in settings [3] and the docks in settings [4] (the DC is left out), grouped by sector,
+* in settings [3] and the docks in settings [4] (every DC in [30] is left out), grouped by sector,
 * and never scans the universe. The sectors come from the listed stations themselves.
 * AP and FL use native collapsible groups with Show All / Hide All; TC uses a plain heading
 * per sector. A row opens the station (open.factory / open.dock).
@@ -21,11 +21,12 @@
 
 * To Do - N/A
 
-* Version: 1.0
-* Date: 27/10/2026
-* Tested: FL 27/10/2026 (builder test, AP branch; TC branch not yet seen)
+* Version: 1.1
+* Date: 30/10/2026
+* Tested: not tested (M-06E2)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-07): one builder for the stations list, on lib.LI.FDN.Is.Valid / Is.Factory / Fac.Cfg
+ * v9.01 D6 (M-06E2): leave out every DC from Dc.List, not only [2] (DCs live on the DC list page)
  * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -69,6 +70,11 @@ while $s > 0
  end
 end
 
+* v9.01 D6 (M-06E2): every DC is left out (Dc.List read once; non-array -> only [2] as before)
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ $dc.list = = array alloc: size=0
+end
 $s = size of array $all.docks
 while $s > 0
  dec $s =
@@ -76,10 +82,12 @@ while $s > 0
  $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
  if $valid == [TRUE]
   if not $dock == $dc
-   append $dock to array $valid.docks
-   $sector = $dock  ->  get sector
-   if not find $sector in array: $sector.array
-    append $sector to array $sector.array
+   if not find $dock in array: $dc.list
+    append $dock to array $valid.docks
+    $sector = $dock  ->  get sector
+    if not find $sector in array: $sector.array
+     append $sector to array $sector.array
+    end
    end
   end
  end

@@ -9,10 +9,12 @@
 * the header 'Switch to' row and the show.factory plumbing are gone.
 * Views (v8 numbers kept so settings [5] does not change):
 *   1 DC (Menu.Station), 2 Stations (Menu.Stations), 4 Factory Details,
-*   5 Dock (Menu.Station), 6 Ware Details, 7 Config. View 3 is retired.
-* Opening state is [[1, DC, null]], or [[7, null, null]] when no DC is set.
-* Back and Escape (-1) are handled by Menu.Command. The footer shows Back when the stack
-* has more than one entry and Close otherwise, both as the row ['back', null, null, null].
+*   5 Dock (Menu.Station), 6 Ware Details, 7 Config, 3 DC list (Menu.DC.List, M-06).
+* Opening state is [[1, DC, null]], [[3, null, null]] when Dc.List has 2 or more DCs,
+* or [[7, null, null]] when no DC is set.
+* Back and Escape (-1) are handled by Menu.Command. The footer shows Back (306,
+* ['back', null, null, null]) when the stack has more than one entry, and always a last
+* 'Close menu' row (307, ['close', null, null, null]) that closes the whole menu (M-06M).
 * B8/P3-09: the controller bumps token [20] on every open, and START's the single updater
 * plugin.LI.FDN.Menu.Refresh (view, obj, token) only when it ENTERS view 1 or 5 or a different station,
 * never on a redraw. Refresh exits by itself for a static view, a newer token or another view.
@@ -28,10 +30,14 @@
 
 * To Do - install together with plugin.LI.FDN.Menu.Refresh (P3-09); the texts 302-307 are in the text file
 
-* Version: 2.0
-* Date: 27/10/2026
-* Tested: FL 27/10/2026 (menu opened in game: DC view, Stations link; not all hand-checks seen)
+* Version: 2.3
+* Date: 30/10/2026
+* Tested: not tested (M-06C, M-06G)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-06M): footer always ends with 'Close menu' (307, ['close']) that exits all menus; Back (306) only when there is a view to go back to
+ * v9.01 D6 (M-06G): view 3 (DC list) opens in the wide info window like views 1, 2 and 5
+ * v9.01 D6 (M-06C): view 3 DC list (opens there with 2+ DCs), title 353; scan on menu open ([16] older than 60 s -> null, Supply.Start rescans next tick, never a Scan START here); text 392 note on views 2/3 while a rescan is pending
+ * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
 $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
@@ -47,6 +53,20 @@ if not is datatyp[ $menu.token ] == DATATYPE_INT
 end
 $menu.token = $menu.token + 1
 $al.Settings[20] = $menu.token
+
+* v9.01 D6 (M-06C): scan on menu open. Never call or START Scan here (Scan has no lock and
+* Supply.Start owns it): when the last scan [16] is 60 s or older, clear [16] so the next
+* Supply.Start tick (25 s timer) STARTs Scan before its run-lock. Not an INT = already due.
+$scan.stale = 60
+$scan.time = $al.Settings[16]
+if is datatyp[ $scan.time ] == DATATYPE_INT
+ $now = = playing time
+ $age = $now - $scan.time
+ if $age >= $scan.stale
+  $al.Settings[16] = null
+   = [THIS] -> call script lib.LI.FDN.Log : text='Menu open: rescan requested' caller=$s.name
+ end
+end
 set global variable: name='al.LI.FDN.event' value=$al.Settings
 
 * opening stack
@@ -55,6 +75,15 @@ $entry = array alloc: size=3
 if $dc
  $entry[0] = 1
  $entry[1] = $dc
+ * v9.01 D6 (M-06C): two or more DCs -> open on the DC list (view 3, Q6.5)
+ $dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+ if is datatyp[ $dc.list ] == DATATYPE_ARRAY
+  $n.dc = size of array $dc.list
+  if $n.dc >= 2
+   $entry[0] = 3
+   $entry[1] = null
+  end
+ end
 else
  $entry[0] = 7
 end
@@ -97,6 +126,7 @@ while [TRUE]
 
  $txt = = read text: page=$PageID id=102
  $menu = = create custom menu array: heading=$txt
+ gosub Scan.Note.Sub:
  gosub Build.View.Sub:
 
  $al.Settings[5] = $view
@@ -176,6 +206,9 @@ else if $view == 6
  $built = [THIS] -> call script plugin.LI.FDN.Menu.Ware.Details : menu=$menu value=$obj ware=$ware
 else if $view == 7
  $built = [THIS] -> call script plugin.LI.FDN.Config.Menu : menu=$menu
+else if $view == 3
+ * v9.01 D6 (M-06C): DC list
+ $built = [THIS] -> call script plugin.LI.FDN.Menu.DC.List : menu=$menu
 end
 if is datatyp[ $built ] == DATATYPE_ARRAY
  $menu = $built
@@ -183,17 +216,38 @@ end
 endsub
 
 
+Scan.Note.Sub:
+* v9.01 D6 (M-06C): views 2 and 3 show text 392 at the top while a rescan is pending ([16] not an INT)
+$show.note = [FALSE]
+if $view == 2
+ $show.note = [TRUE]
+else if $view == 3
+ $show.note = [TRUE]
+end
+if $show.note == [TRUE]
+ $scan.time = $al.Settings[16]
+ if not is datatyp[ $scan.time ] == DATATYPE_INT
+  $txt = = read text: page=$PageID id=392
+  add custom menu info line to array $menu: text=$txt
+ end
+end
+endsub
+
+
 Footer.Sub:
-* Back row when there is a view to go back to, Close on the bottom entry; both return ['back', null, null, null]
+* Back row (306, ['back']) when there is a view to go back to, then always Close menu
+* (307, ['close']), which Menu.Command answers with null, so the whole menu closes
 $size = size of array $stack
 if $size > 1
  $txt = = read text: page=$PageID id=306
-else
- $txt = = read text: page=$PageID id=307
+ $back = array alloc: size=4
+ $back[0] = 'back'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$back
 end
-$back = array alloc: size=4
-$back[0] = 'back'
-= [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$back
+$txt = = read text: page=$PageID id=307
+$close = array alloc: size=4
+$close[0] = 'close'
+= [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$close
 
 * window title per view
 if $view == 1
@@ -206,6 +260,8 @@ else if $view == 5
  $txt = = read text: page=$PageID id=304
 else if $view == 7
  $txt = = read text: page=$PageID id=103
+else if $view == 3
+ $txt = = read text: page=$PageID id=353
 else
  $txt = = read text: page=$PageID id=133
 end
@@ -216,6 +272,8 @@ if $view == 1
 else if $view == 2
  $open.info = [TRUE]
 else if $view == 5
+ $open.info = [TRUE]
+else if $view == 3
  $open.info = [TRUE]
 end
 if $open.info == [TRUE]

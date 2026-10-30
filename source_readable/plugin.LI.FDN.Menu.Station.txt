@@ -23,6 +23,9 @@
 * used. The menu holds the same array objects, so an updater (Menu.Refresh, P3-09) that
 * edits the stored arrays in place updates the open menu. This script only does the
 * first draw, it never waits and never STARTs anything.
+* DC view top box (M-06L): 'Current Distribution Centre:', a blank, Name [ID] | Sector, the
+* status line 362 (type | range | stations | EC: subtype text, lib.LI.FDN.Dc.Range, stations
+* whose FDN.Hub home is this DC, FDN.Cost[0]) and a blank. A dock keeps lib.LI.FDN.Menu.ObjLine.
 
 * Arguments:
 * - menu (Value): the custom menu array to append to (changed in place)
@@ -35,11 +38,13 @@
 
 * To Do - N/A
 
-* Version: 1.0
-* Date: 27/10/2026
-* Tested: FL 27/10/2026 (builder test, AP branch; TC branch not yet seen)
+* Version: 1.2
+* Date: 30/10/2026
+* Tested: not tested (M-06E1)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-06): one builder for the DC and dock views, on lib.LI.FDN.Menu.WareRow / Menu.ObjLine
+ * v9.01 D6 (M-06E1): DC view links to the DC list (text 353 -> 'open.dclist')
+ * v9.01 D6 (M-06L): DC view top box: Name [ID] | Sector, then the status line 362 (type | range | stations | EC, moved from Menu.DC.List)
  * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -71,8 +76,10 @@ if $is.dc == [TRUE]
  $txt = = read text: page=$PageID id=129
  add custom menu info line to array $menu: text=$txt
  add custom menu info line to array $menu: text=' '
+ gosub DC.Head.Sub:
+else
+  = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$obj
 end
- = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$obj
 
 * navigation: the DC view links to the Stations list (factories and docks by sector); the old header 'Switch to' row is gone
 if $is.dc == [TRUE]
@@ -80,6 +87,9 @@ if $is.dc == [TRUE]
  add custom menu heading to array $menu: title=$txt
  $txt = = read text: page=$PageID id=303
  add custom menu item to array $menu: text=$txt returnvalue='open.stations'
+ * v9.01 D6 (M-06E1): link to the DC list (view 3)
+ $txt = = read text: page=$PageID id=353
+ add custom menu item to array $menu: text=$txt returnvalue='open.dclist'
 end
 
 * credits heading, also published for the updater
@@ -218,6 +228,89 @@ if $is.AP == [TRUE]
  add non selectable menu item: $menu, text=$head
 else
  add custom menu info line to array $menu: text=$head
+end
+endsub
+* -----------------------------------------------------------------------------------
+* DC view top box (M-06L): Name [ID] | Sector, status line 362, blank (ObjLine order plus the status line)
+DC.Head.Sub:
+$name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$obj
+if not is datatyp[ $name.txt ] == DATATYPE_STRING
+  = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$obj
+ endsub
+end
+$sector = $obj  ->  get sector
+$header = = array alloc: size=4
+$header[0] = 1
+$header[1] = $name.txt
+$header[2] = -1
+$header[3] = $sector
+add custom menu info line to array $menu: text=$header
+gosub Type.Sub:
+$r = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$obj
+if not is datatyp[ $r ] == DATATYPE_INT
+ $r = 0
+end
+gosub Count.Sub:
+$ec = 0
+$cost = $obj  ->  get local variable: name='FDN.Cost'
+if is datatyp[ $cost ] == DATATYPE_ARRAY
+ $ec = $cost[0]
+ if not is datatyp[ $ec ] == DATATYPE_INT
+  $ec = 0
+ end
+end
+$r.txt = = convert number $r to string
+$count.txt = = convert number $count to string
+$ec.txt = = convert number $ec to string
+$status.txt = = sprintf: pageid=$PageID textid=362, $type.txt, $r.txt, $count.txt, $ec.txt, null
+add custom menu info line to array $menu: text=$status.txt
+add custom menu info line to array $menu: text=' '
+endsub
+* -----------------------------------------------------------------------------------
+
+* subtype -> type text: Player HQ 62 -> 358, Equipment Dock 6 -> 359, any other dock -> 361
+Type.Sub:
+$sub.type = $obj  ->  get subtype
+$type.id = 361
+if $sub.type == 62
+ $type.id = 358
+else if $sub.type == 6
+ $type.id = 359
+end
+$type.txt = = read text: page=$PageID id=$type.id
+endsub
+* -----------------------------------------------------------------------------------
+
+* stations in [3] and [4] whose FDN.Hub home DC [0] is $obj (the DC itself does not count)
+Count.Sub:
+$count = 0
+$c.array = $al.Settings[3]
+gosub Count.Array.Sub:
+$c.array = $al.Settings[4]
+gosub Count.Array.Sub:
+endsub
+* -----------------------------------------------------------------------------------
+
+Count.Array.Sub:
+if not is datatyp[ $c.array ] == DATATYPE_ARRAY
+ endsub
+end
+$c.n = size of array $c.array
+$c.i = 0
+while $c.i < $c.n
+ $st = $c.array[$c.i]
+ inc $c.i =
+ if is datatyp[ $st ] == DATATYPE_STATION
+  if not $st == $obj
+   $hub = $st  ->  get local variable: name='FDN.Hub'
+   if is datatyp[ $hub ] == DATATYPE_ARRAY
+    $home = $hub[0]
+    if $home == $obj
+     inc $count =
+    end
+   end
+  end
+ end
 end
 endsub
 * -----------------------------------------------------------------------------------

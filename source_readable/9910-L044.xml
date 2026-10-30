@@ -183,6 +183,24 @@
   <t id="343">FDN: Move cancelled - %s cannot pay %s Energy Cells</t>
   <t id="351">Change Distribution Centre to %s ?</t>
   <t id="352">Supply pass running, try again in a few seconds</t>
+  <t id="353">Distribution Centres</t>
+  <t id="354">\033GAdd\033X Distribution Centre</t>
+  <t id="355">\033RRemove\033X Distribution Centre</t>
+  <t id="356">Make primary Distribution Centre</t>
+  <t id="357">Primary</t>
+  <t id="358">Player HQ</t>
+  <t id="359">Equipment Dock</t>
+  <t id="360">Trading Station</t>
+  <t id="361">Dock</t>
+  <t id="362">%s | range %s | stations %s | EC %s</t>
+  <t id="363">Add %s as a Distribution Centre ?</t>
+  <t id="364">Remove %s as a Distribution Centre ? Its stations go to the nearest other DC.</t>
+  <t id="365">FDN: the last Distribution Centre cannot be removed</t>
+  <t id="366">FDN: %s is already a Distribution Centre</t>
+  <t id="367">FDN: the network already has %s Distribution Centres (maximum)</t>
+  <t id="368">Make %s the primary Distribution Centre ?</t>
+  <t id="369">Open</t>
+  <t id="392">\033YStation list is being refreshed - go Back or reopen in a few seconds\033X</t>
 
   <t id="9000">\033G%s\033X</t>
   <t id="9001">\033R%s\033X</t>

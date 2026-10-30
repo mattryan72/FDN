@@ -1,0 +1,247 @@
+* Script: plugin.LI.FDN.Menu.DC.List  (v1, engine 50)
+* Desc: FDN v9.01 - Build the DC list view of the menu (view 3)
+* Arg 0: menu (Value) 'menu'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Called by plugin.LI.FDN.Main.Menu for view 3 (wide info window, like views 1, 2, 5).
+* Layout follows the Stations page: a heading bar with the DC count and Show All / Hide
+* All (AP and FL), then one boxed collapsible group per DC from lib.LI.FDN.Dc.List
+* (primary first). Each group ends with a section and then the end of the grouping, the
+* same order Menu.Stations uses, so every DC is its own box with a gap. On TC, which has
+* no native groups, each DC gets a heading row and a section break.
+* Group title: 'Name [ID] - Sector'; the primary DC is prefixed with a green 'Primary:'
+* (357) and its name is green. Inside a DC: the commands Open, Make primary (not on the
+* primary) and Remove. The status line 362 (type | range | stations | EC) moved to the
+* top info box of the DC view (plugin.LI.FDN.Menu.Station, M-06L). Then, only while there are fewer
+* than 16 DCs AND at least one candidate, an 'Add Distribution Centre' group (name |
+* sector). Last, outside every group, a section and a 'Menu Options:' heading bar (110)
+* with the 'FDN Main Menu' link (102, 'open.dc' = the primary DC view), so the link is
+* its own box even when every group is collapsed. Player-visible words all come from
+* the text file; only punctuation (' / ', ' - ', ':', '- ') and numbers are literals.
+* Rows use the 8-column indented style of the Stations page. Every command row returns [command, dock], handled by
+* plugin.LI.FDN.Menu.Command (open.dc, dc.primary, dc.remove, dc.add).
+* Wait-free: no wait, no START, never scans.
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place)
+
+* Returns values:
+* - the menu array (the same array that was passed in)
+
+* To Do - Energy Cells per hour comes with M-07
+
+* Version: 1.4
+* Date: 30/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-06B): DC list page - per DC info and Open / Make primary / Remove, Add list (max 16)
+ * v9.01 D6 (M-06L): status line 362 moved to the DC view top box (Menu.Station); groups hold only Open / Make primary / Remove
+ * v9.01 D6 (M-06J): group title 'Primary: Name [ID] - Sector' (sector row dropped), FDN Main Menu link in its own box under a 'Menu Options:' heading after a section
+ * v9.01 D6 (M-06H): one box per DC (section before end grouping, as Menu.Stations), DC info inside its own group (non selectable rows), FDN Main Menu link above the footer
+ * v9.01 D6 (M-06F): redesign - collapsible group per DC (heading + section on TC), Stations-page row style, Show/Hide All, Add group hidden when empty
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return $menu
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not is datatyp[ $al.Settings ] == DATATYPE_ARRAY
+ return $menu
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return $menu
+end
+$PageID = $al.Settings[1]
+$is.AP = [THIS] -> call script lib.BW.isAP :
+
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $list ] == DATATYPE_ARRAY
+ $list = = array alloc: size=0
+end
+$n = size of array $list
+
+* top: heading with the count, Show All / Hide All on AP and FL, section
+$txt = = read text: page=$PageID id=353
+$n.txt = = convert number $n to string
+$count.txt = $n.txt + ' / 16'
+$head = = array alloc: size=4
+$head[0] = 1
+$head[1] = $txt
+$head[2] = -1
+$head[3] = $count.txt
+add custom menu heading to array $menu: title=$head
+if $is.AP == [TRUE]
+ $show.all = = create menu return value: command Open All Groups
+ $txt = = read text: page=$PageID id=198
+ add custom menu item to array $menu: text=$txt returnvalue=$show.all
+ $hide.all = = create menu return value: command Close All Groups
+ $txt = = read text: page=$PageID id=199
+ add custom menu item to array $menu: text=$txt returnvalue=$hide.all
+end
+add section to custom menu: $menu
+
+$i = 0
+while $i < $n
+ $dc = $list[$i]
+ $idx = $i
+ inc $i =
+ if is datatyp[ $dc ] == DATATYPE_STATION
+  gosub DC.Block.Sub:
+ end
+end
+
+if $n < 16
+ gosub Add.List.Sub:
+end
+
+* link back to the main (primary DC) view: a section and a heading bar outside every group,
+* so it is its own box even when all groups are collapsed; Main.Menu adds the section after it
+add section to custom menu: $menu
+$txt = = read text: page=$PageID id=110
+add custom menu heading to array $menu: title=$txt
+$txt = = read text: page=$PageID id=102
+add custom menu item to array $menu: text=$txt returnvalue='open.dc'
+
+return $menu
+* -----------------------------------------------------------------------------------
+* SUB Section
+
+* one DC: group (or TC heading) 'Primary: Name [ID] - Sector', then Open / Make primary / Remove
+DC.Block.Sub:
+$name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dc
+if not is datatyp[ $name.txt ] == DATATYPE_STRING
+ endsub
+end
+$sector = $dc  ->  get sector
+$g.txt = $name.txt + ' - '
+$g.txt = $g.txt + $sector
+if $idx == 0
+ $g.txt = = sprintf: pageid=$PageID textid=9000, $g.txt, null, null, null, null
+ $txt = = read text: page=$PageID id=357
+ $txt = $txt + ': '
+ $mark.txt = = sprintf: pageid=$PageID textid=9000, $txt, null, null, null, null
+ $g.txt = $mark.txt + $g.txt
+end
+gosub Group.Open.Sub:
+
+* commands
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$txt = = read text: page=$PageID id=369
+$r.label = $pre + $txt
+$r.right = ' '
+$r.ret = = array alloc: size=2
+$r.ret[0] = 'open.dc'
+$r.ret[1] = $dc
+gosub Row.Sub:
+if not $idx == 0
+ $txt = = read text: page=$PageID id=356
+ $r.label = $pre + $txt
+ $r.ret = = array alloc: size=2
+ $r.ret[0] = 'dc.primary'
+ $r.ret[1] = $dc
+ gosub Row.Sub:
+end
+$txt = = read text: page=$PageID id=355
+$r.label = $pre + $txt
+$r.ret = = array alloc: size=2
+$r.ret[0] = 'dc.remove'
+$r.ret[1] = $dc
+gosub Row.Sub:
+
+gosub Group.Close.Sub:
+endsub
+* -----------------------------------------------------------------------------------
+
+* start of a block: native group on AP and FL (open), heading row on TC (as Menu.Stations Sector.Open.Sub)
+Group.Open.Sub:
+if $is.AP == [TRUE]
+ $open = 1
+ add new grouping to menu: $menu, text=$g.txt, open=$open
+else
+ $head = = array alloc: size=4
+ $head[0] = 1
+ $head[1] = $g.txt
+ $head[2] = -1
+ $head[3] = ' '
+ add custom menu heading to array $menu: title=$head
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* end of a block: a section closes the box (gap to the next one), then the grouping ends -
+* the same order as Menu.Stations (factory rows, add section, dock rows, end grouping)
+Group.Close.Sub:
+add section to custom menu: $menu
+if $is.AP == [TRUE]
+ add end grouping to menu: $menu
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* one 8-column indented row (Menu.Stations style): $r.label left, $r.right right;
+* $r.ret = [command, object] makes it selectable
+Row.Sub:
+$temp.array = = array alloc: size=8
+$temp.array[0] = 1
+$temp.array[1] = ''
+$temp.array[2] = 5
+$temp.array[3] = $r.label
+$temp.array[4] = -200
+$temp.array[5] = ' '
+$temp.array[6] = -1
+$temp.array[7] = $r.right
+if is datatyp[ $r.ret ] == DATATYPE_ARRAY
+ $format = = create new array, arguments=$temp.array, $r.ret, null, null, null
+ append $format to array $menu
+else
+ add custom menu info line to array $menu: text=$temp.array
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* 'Add Distribution Centre' group: every other valid player Dock, not FL-managed and not
+* already a DC. Candidates are collected first; nothing is shown when there are none.
+Add.List.Sub:
+$cand = = array alloc: size=0
+$dock.array = = get station array: of race Player class/type=Dock 2007
+$s = size of array $dock.array
+while $s > 0
+ dec $s =
+ $dock = $dock.array[$s]
+ if is datatyp[ $dock ] == DATATYPE_STATION
+  $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+  if $valid == [TRUE]
+   if not find $dock in array: $list
+    $fl = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$dock
+    if not $fl == [TRUE]
+     append $dock to array $cand
+    end
+   end
+  end
+ end
+end
+$nc = size of array $cand
+if $nc < 1
+ endsub
+end
+$g.txt = = read text: page=$PageID id=354
+gosub Group.Open.Sub:
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$ci = 0
+while $ci < $nc
+ $dock = $cand[$ci]
+ inc $ci =
+ $name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
+ if is datatyp[ $name.txt ] == DATATYPE_STRING
+  $r.label = $pre + $name.txt
+  $r.right = $dock  ->  get sector
+  $r.ret = = array alloc: size=2
+  $r.ret[0] = 'dc.add'
+  $r.ret[1] = $dock
+  gosub Row.Sub:
+ end
+end
+gosub Group.Close.Sub:
+endsub

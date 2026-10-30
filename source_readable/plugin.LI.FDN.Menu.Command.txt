@@ -12,7 +12,7 @@
 
 * The stack is an array of entries [view, obj, ware]. View numbers are the v8 values of
 * settings [5]: 1 = DC, 2 = Stations, 4 = Factory.Details, 5 = Dock, 6 = Ware.Details,
-* 7 = Config.Menu (3 is retired).
+* 7 = Config.Menu, 3 = DC list (M-06).
 
 * The return value is either an array [command, value, ware, extra], the string of a
 * global menu action, or -1 (Escape, handled like 'back').
@@ -24,14 +24,19 @@
 * Returns values:
 * - the new view stack: after navigation commands, a successful remove.ware and master.reset
 * - the same stack, unchanged: after edit commands and global actions
-* - null: after 'back' or Escape on a stack with a single entry (close the menu)
+* - null: after 'close' (the Close menu row, M-06M), or 'back' / Escape on a stack with a
+*   single entry (close the menu)
 
 * To Do - N/A
 
-* Version: 1.0
-* Date: 27/10/2026
-* Tested: TC 27/10/2026
+* Version: 1.3
+* Date: 30/10/2026
+* Tested: not tested (M-06D1, M-06D2)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-06M): new 'close' command returns null so Close menu exits all menus from any view
+ * v9.01 D6 (M-06D1): open.dc takes the DC from the row value (secondary DCs), new open.dclist -> view 3
+ * v9.01 D6 (M-06D2): dc.add / dc.remove / dc.primary through DC.Edit.Sub (Dc.Edit, DC.Change), texts 352 363-368
+ * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
 $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
@@ -77,6 +82,10 @@ if $s < 1
 end
 
 * --- Navigation ------------------------------------------------------------------
+* v9.01 D6 (M-06M): Close menu exits every view at once
+if $command == 'close'
+ return null
+end
 if $command == 'back'
  if $s < 2
   return null
@@ -96,6 +105,15 @@ $obj = $value
 if $command == 'open.dc'
  $view = 1
  $obj = $al.Settings[2]
+ * v9.01 D6 (M-06D1): a DC list row passes the DC itself; the plain string keeps the primary
+ if is datatyp[ $value ] == DATATYPE_STATION
+  $obj = $value
+ end
+end
+if $command == 'open.dclist'
+ $view = 3
+ $obj = null
+ $ware = null
 end
 if $command == 'open.stations'
  $view = 2
@@ -280,6 +298,20 @@ end
 * --- Set the distribution center ----------------------------------------------------
 if $command == 'set.dc'
  gosub Set.DC.Sub:
+ return $new.stack
+end
+
+* --- v9.01 D6 (M-06D2): DC list edits ------------------------------------------------
+if $command == 'dc.add'
+ gosub DC.Edit.Sub:
+ return $new.stack
+end
+if $command == 'dc.remove'
+ gosub DC.Edit.Sub:
+ return $new.stack
+end
+if $command == 'dc.primary'
+ gosub DC.Edit.Sub:
  return $new.stack
 end
 
@@ -666,4 +698,90 @@ $entry[0] = 1
 $entry[1] = $dock
 $new.stack = array alloc: size=1
 $new.stack[0] = $entry
+endsub
+
+
+DC.Edit.Sub:
+* v9.01 D6 (M-06D2): add, remove or make primary one DC. Confirm first (363/364/368);
+* remove of the only DC is refused (365) without asking. Remove of the primary moves [2]
+* to the next DC with DC.Change first, then Dc.Edit removes it from [30]. Make primary
+* is DC.Change, then Dc.Edit 'refresh' (routes and hubs). Success -> stack [[3]].
+$new.stack = $stack
+$dock = $value
+if not is datatyp[ $dock ] == DATATYPE_STATION
+ endsub
+end
+$name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
+$cur.dc = $al.Settings[2]
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+$n.dc = 0
+if is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ $n.dc = size of array $dc.list
+end
+$tid = 363
+if $command == 'dc.remove'
+ $tid = 364
+else if $command == 'dc.primary'
+ $tid = 368
+end
+$res = null
+if $command == 'dc.remove'
+ if $n.dc < 2
+  $res = 'last'
+ end
+end
+if is datatyp[ $res ] == DATATYPE_NULL
+ $txt = = sprintf: pageid=$PageID textid=$tid, $name.txt, null, null, null, null
+ $confirm = null -> get user input: type=Var/Boolean, title=$txt
+ if not $confirm == [TRUE]
+  endsub
+ end
+ if $command == 'dc.add'
+  $res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='add' dc=$dock
+ else if $command == 'dc.primary'
+  $res = [THIS] -> call script plugin.LI.FDN.DC.Change : old=$cur.dc new=$dock
+  if $res == 'ok'
+    = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='refresh' dc=null
+  end
+ else
+  $is.primary = [FALSE]
+  if $dock == $cur.dc
+   $is.primary = [TRUE]
+  end
+  if $is.primary == [TRUE]
+   * Dc.List puts [2] first, so element 1 is the next DC ($n.dc >= 2 here)
+   $next.dc = $dc.list[1]
+   $res = [THIS] -> call script plugin.LI.FDN.DC.Change : old=$cur.dc new=$next.dc
+   if $res == 'ok'
+    $res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='remove' dc=$dock
+   end
+  else
+   $res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='remove' dc=$dock
+  end
+ end
+end
+if $res == 'ok'
+ if not $command == 'dc.remove'
+   = [THIS] -> call script lib.LI.FDN.Reg.Add : station=$dock
+ end
+ $log.txt = 'FDN Menu: ' + $command + ' done'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+ $entry = array alloc: size=3
+ $entry[0] = 3
+ $new.stack = array alloc: size=1
+ $new.stack[0] = $entry
+else if $res == 'busy'
+ $txt = = read text: page=$PageID id=352
+ write to player logbook $txt
+else if $res == 'last'
+ $txt = = read text: page=$PageID id=365
+ write to player logbook $txt
+else if $res == 'dup'
+ $txt = = sprintf: pageid=$PageID textid=366, $name.txt, null, null, null, null
+ write to player logbook $txt
+else if $res == 'max'
+ $max.txt = '16'
+ $txt = = sprintf: pageid=$PageID textid=367, $max.txt, null, null, null, null
+ write to player logbook $txt
+end
 endsub

@@ -17,11 +17,12 @@
 
 * To Do - N/A
 
-* Version: 1.0
-* Date: 27/10/2026
-* Tested: FL 27/10/2026 (test.LI.FDN.ConfigMenu 9/10, see notes/P3-08c.md)
+* Version: 1.1
+* Date: 30/10/2026
+* Tested: not tested (M-06E3)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-08c): rows on Menu.Row / Menu.Toggle / Menu.ObjLine; add.dc and change.dc merged into set.dc; B5 surplus.default row
+ * v9.01 D6 (M-06E3): with a DC the change-DC list (heading 124) is replaced by one row 353 -> ['open.dclist']
 * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -55,12 +56,15 @@ if $has.dc == 0
  $cmd.label = = read text: page=$PageID id=123
  gosub Dock.List.Sub:
 else
- * valid DC in place: header with ObjLine, then the change-DC list (heading text 124)
+ * valid DC in place: header with ObjLine, then one row to the DC list page
  $txt = = read text: page=$PageID id=129
  add custom menu info line to array $menu: text=$txt
   = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$dc
- $cmd.label = = read text: page=$PageID id=124
- gosub Dock.List.Sub:
+ * v9.01 D6 (M-06E3): Add / Remove / Make primary live on the DC list (view 3)
+ $txt = = read text: page=$PageID id=353
+ $ret.array = = array alloc: size=1
+ $ret.array[0] = 'open.dclist'
+  = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$ret.array
 end
 
 gosub Dynamic.Rows.Sub:
