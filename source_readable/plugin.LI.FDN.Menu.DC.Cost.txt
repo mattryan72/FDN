@@ -1,0 +1,338 @@
+* Script: plugin.LI.FDN.Menu.DC.Cost  (v1, engine 50)
+* Desc: FDN v9.01 - Build the running cost view of one DC (view 8)
+* Arg 0: menu (Value) 'menu'
+* Arg 1: obj (Value) 'obj'
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Called by plugin.LI.FDN.Main.Menu for view 8 (opened from the DC view row 381, open.dccost).
+* Top box Name [ID] | Sector, then the totals of FDN.Cost (382 charged, 383 transfers,
+* 384 per hour, 385 deferred only when above 0) and FDN.Cost.DC (388), or 386 when the DC has
+* no FDN.Cost yet. Then the stations whose FDN.Hub home is this DC, grouped by sector in the
+* Stations page order (factories [3], then docks [4], every DC left out): collapsible groups
+* with Show All / Hide All on AP and FL (closed when there are more than 40 rows), a plain
+* heading per sector on TC. Each row shows 389 (FDN.Cost.Home EC and transfers when its
+* home is this DC, else 0) and opens the station (open.factory / open.dock); 390 when there
+* are none. Last the Reset running cost row (391, dc.cost.reset, Yes/No in Menu.Command).
+
+* Arguments:
+* - menu (Value): the custom menu array to append to (changed in place)
+* - obj (Value): the DC
+
+* Returns values:
+* - the menu array (the same array that was passed in)
+
+* To Do - N/A
+
+* Version: 1.1
+* Date: 30/10/2026
+* Tested: not tested (M-07g, M-07f2)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-07g): new running cost page (view 8), texts 381-391
+ * v9.01 D6 (M-07f2): Name [ID] | Sector is an info line (as Menu.Station DC.Head.Sub) so the info window shows it in the top box; ObjLine when there is no name
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $menu ] == DATATYPE_ARRAY
+ return $menu
+end
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return $menu
+end
+$PageID = $al.Settings[1]
+$dc = $obj
+if not is datatyp[ $dc ] == DATATYPE_STATION
+ return $menu
+end
+$dc.ok = $dc  ->  exists
+if not $dc.ok
+ return $menu
+end
+$is.AP = [THIS] -> call script lib.BW.isAP :
+$script = 'plugin.LI.FDN.Menu.DC.Cost'
+
+* top box: Name [ID] | Sector as an info line (as Menu.Station DC.Head.Sub); a heading would
+* stay in the list below the box and drops the second column
+$name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dc
+if is datatyp[ $name.txt ] == DATATYPE_STRING
+ $sector = $dc  ->  get sector
+ $head = = array alloc: size=4
+ $head[0] = 1
+ $head[1] = $name.txt
+ $head[2] = -1
+ $head[3] = $sector
+ add custom menu info line to array $menu: text=$head
+else
+  = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$dc
+end
+
+* totals: FDN.Cost = [EC, transfers, first time, deferred]
+$cost = $dc  ->  get local variable: name='FDN.Cost'
+if is datatyp[ $cost ] == DATATYPE_ARRAY
+ gosub Totals.Sub:
+else
+ $txt = = read text: page=$PageID id=386
+ add custom menu info line to array $menu: text=$txt
+end
+add section to custom menu: $menu
+
+* stations served by this DC (FDN.Hub[0] == DC), in the Stations page order
+$dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $dc.list ] == DATATYPE_ARRAY
+ $dc.list = = array alloc: size=0
+end
+$st.list = = array alloc: size=0
+$st.cmd = = array alloc: size=0
+$sector.array = = array alloc: size=0
+$all = $al.Settings[3]
+$cmd = 'open.factory'
+$need = [FALSE]
+gosub Collect.Sub:
+$all = $al.Settings[4]
+$cmd = 'open.dock'
+$need = [TRUE]
+gosub Collect.Sub:
+$n.st = size of array $st.list
+
+if $n.st > 0
+ if $is.AP == [TRUE]
+  $show.all = = create menu return value: command Open All Groups
+  $txt = = read text: page=$PageID id=198
+  add custom menu item to array $menu: text=$txt returnvalue=$show.all
+  $hide.all = = create menu return value: command Close All Groups
+  $txt = = read text: page=$PageID id=199
+  add custom menu item to array $menu: text=$txt returnvalue=$hide.all
+  add section to custom menu: $menu
+ end
+ $open = 1
+ if $n.st > 40
+  $open = 0
+ end
+ $sector.array = = sort array $sector.array
+ $n.sec = size of array $sector.array
+ $i = 0
+ while $i < $n.sec
+  $sector = $sector.array[$i]
+  inc $i =
+  gosub Sector.Open.Sub:
+  $j = 0
+  while $j < $n.st
+   $st = $st.list[$j]
+   $r.cmd = $st.cmd[$j]
+   inc $j =
+   $st.sector = $st  ->  get sector
+   if $st.sector == $sector
+    gosub Station.Row.Sub:
+   end
+  end
+  gosub Sector.Close.Sub:
+ end
+else
+ $txt = = read text: page=$PageID id=390
+ add custom menu info line to array $menu: text=$txt
+ add section to custom menu: $menu
+end
+
+* reset (Yes/No and the reset itself are in Menu.Command, dc.cost.reset)
+$txt = = read text: page=$PageID id=391
+$ret.array = = array alloc: size=2
+$ret.array[0] = 'dc.cost.reset'
+$ret.array[1] = $dc
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$ret.array
+
+$log.txt = 'Menu.DC.Cost stations ' + $n.st
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$script
+return $menu
+* -----------------------------------------------------------------------------------
+* SUB Section
+
+* lines 382 | 383 | 384, 385 when deferred > 0, 388 from FDN.Cost.DC
+Totals.Sub:
+$c.n = size of array $cost
+$ec = 0
+$tr = 0
+$t0 = null
+$def = 0
+if $c.n > 3
+ $ec = $cost[0]
+ $tr = $cost[1]
+ $t0 = $cost[2]
+ $def = $cost[3]
+end
+if not is datatyp[ $ec ] == DATATYPE_INT
+ $ec = 0
+end
+if not is datatyp[ $tr ] == DATATYPE_INT
+ $tr = 0
+end
+if not is datatyp[ $def ] == DATATYPE_INT
+ $def = 0
+end
+$v.txt = = convert number $ec to string
+$line = = sprintf: pageid=$PageID textid=382, $v.txt, null, null, null, null
+$v.txt = = convert number $tr to string
+$txt = = sprintf: pageid=$PageID textid=383, $v.txt, null, null, null, null
+$line = $line + ' | '
+$line = $line + $txt
+
+* per hour from the first charge time; ec * 3600 stays in range below 500000 EC
+$rate = null
+if is datatyp[ $t0 ] == DATATYPE_INT
+ $now = = playing time
+ $age = $now - $t0
+ if $age > 0
+  if $ec < 500000
+   $rate = $ec * 3600
+   $rate = $rate / $age
+  else
+   $hours = $age / 3600
+   if $hours > 0
+    $rate = $ec / $hours
+   end
+  end
+ end
+end
+if is datatyp[ $rate ] == DATATYPE_INT
+ $v.txt = = convert number $rate to string
+ $txt = = sprintf: pageid=$PageID textid=384, $v.txt, null, null, null, null
+ $line = $line + ' | '
+ $line = $line + $txt
+end
+add custom menu info line to array $menu: text=$line
+
+if $def > 0
+ $v.txt = = convert number $def to string
+ $txt = = sprintf: pageid=$PageID textid=385, $v.txt, null, null, null, null
+ add custom menu info line to array $menu: text=$txt
+end
+
+* FDN.Cost.DC = [between-DC, manual, help given, help received]
+$d0 = 0
+$d1 = 0
+$d2 = 0
+$cdc = $dc  ->  get local variable: name='FDN.Cost.DC'
+if is datatyp[ $cdc ] == DATATYPE_ARRAY
+ $d.n = size of array $cdc
+ if $d.n > 2
+  $d0 = $cdc[0]
+  $d1 = $cdc[1]
+  $d2 = $cdc[2]
+ end
+end
+if not is datatyp[ $d0 ] == DATATYPE_INT
+ $d0 = 0
+end
+if not is datatyp[ $d1 ] == DATATYPE_INT
+ $d1 = 0
+end
+if not is datatyp[ $d2 ] == DATATYPE_INT
+ $d2 = 0
+end
+$v0.txt = = convert number $d0 to string
+$v1.txt = = convert number $d1 to string
+$v2.txt = = convert number $d2 to string
+$txt = = sprintf: pageid=$PageID textid=388, $v0.txt, $v1.txt, $v2.txt, null, null
+add custom menu info line to array $menu: text=$txt
+endsub
+* -----------------------------------------------------------------------------------
+
+* valid stations of $all whose FDN.Hub[0] is this DC (no DCs), with $cmd (need.dock $need as Menu.Stations); sectors once
+Collect.Sub:
+if not is datatyp[ $all ] == DATATYPE_ARRAY
+ endsub
+end
+$a.n = size of array $all
+$k = 0
+while $k < $a.n
+ $st = $all[$k]
+ inc $k =
+ $valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$st need.dock=$need
+ if $valid == [TRUE]
+  if not find $st in array: $dc.list
+   $hub = $st  ->  get local variable: name='FDN.Hub'
+   if is datatyp[ $hub ] == DATATYPE_ARRAY
+    $home = $hub[0]
+    if $home == $dc
+     if not find $st in array: $st.list
+      append $st to array $st.list
+      append $cmd to array $st.cmd
+      $st.sector = $st  ->  get sector
+      if not find $st.sector in array: $sector.array
+       append $st.sector to array $sector.array
+      end
+     end
+    end
+   end
+  end
+ end
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* start of a sector: native group on AP and FL, a plain heading on TC (as Menu.Stations)
+Sector.Open.Sub:
+if $is.AP == [TRUE]
+ add new grouping to menu: $menu, text=$sector, open=$open
+else
+ $head = = array alloc: size=4
+ $head[0] = 1
+ $head[1] = ' '
+ $head[2] = -1
+ $head[3] = $sector
+ add custom menu heading to array $menu: title=$head
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+Sector.Close.Sub:
+add section to custom menu: $menu
+if $is.AP == [TRUE]
+ add end grouping to menu: $menu
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* one 8-column indented row: '- name' | 389 (EC | transfers from FDN.Cost.Home when its home is this DC)
+Station.Row.Sub:
+$h.ec = 0
+$h.tr = 0
+$hc = $st  ->  get local variable: name='FDN.Cost.Home'
+if is datatyp[ $hc ] == DATATYPE_ARRAY
+ $h.n = size of array $hc
+ if $h.n > 2
+  $h.dc = $hc[0]
+  if $h.dc == $dc
+   $h.ec = $hc[1]
+   $h.tr = $hc[2]
+  end
+ end
+end
+if not is datatyp[ $h.ec ] == DATATYPE_INT
+ $h.ec = 0
+end
+if not is datatyp[ $h.tr ] == DATATYPE_INT
+ $h.tr = 0
+end
+$v0.txt = = convert number $h.ec to string
+$v1.txt = = convert number $h.tr to string
+$right = = sprintf: pageid=$PageID textid=389, $v0.txt, $v1.txt, null, null, null
+$name = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$st
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$name = $pre + $name
+$temp.array = = array alloc: size=8
+$temp.array[0] = 1
+$temp.array[1] = ''
+$temp.array[2] = 5
+$temp.array[3] = $name
+$temp.array[4] = -200
+$temp.array[5] = ' '
+$temp.array[6] = -1
+$temp.array[7] = $right
+$r.ret = = array alloc: size=2
+$r.ret[0] = $r.cmd
+$r.ret[1] = $st
+$format = = create new array, arguments=$temp.array, $r.ret, null, null, null
+append $format to array $menu
+endsub
+* -----------------------------------------------------------------------------------
+return null

@@ -12,10 +12,10 @@
 
 * The stack is an array of entries [view, obj, ware]. View numbers are the v8 values of
 * settings [5]: 1 = DC, 2 = Stations, 4 = Factory.Details, 5 = Dock, 6 = Ware.Details,
-* 7 = Config.Menu, 3 = DC list (M-06). View 8 (DC running cost) comes with M-07g.
+* 7 = Config.Menu, 3 = DC list (M-06), 8 = DC running cost (M-07g).
 
 * The return value is either an array [command, value, ware, extra], the string of a
-* global menu action, or -1 (Escape, handled like 'back').
+* global menu action, or -1 or null (Escape, handled like 'back').
 
 * Arguments:
 * - stack (Value): the current view stack (array of [view, obj, ware])
@@ -29,14 +29,16 @@
 
 * To Do - N/A
 
-* Version: 1.4
+* Version: 1.6
 * Date: 30/10/2026
-* Tested: not tested (M-07e)
+* Tested: not tested (M-07e, M-07g, M-07e Esc)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06M): new 'close' command returns null so Close menu exits all menus from any view
  * v9.01 D6 (M-06D1): open.dc takes the DC from the row value (secondary DCs), new open.dclist -> view 3
  * v9.01 D6 (M-06D2): dc.add / dc.remove / dc.primary through DC.Edit.Sub (Dc.Edit, DC.Change), texts 352 363-368
  * v9.01 D6 (M-07e): range.on / cost.on (387) / range.base / floor.global ([31]-[34]), dc.range / dc.floor (Dc.Cfg), dc.cost.reset (391); 193 bad value, Dc.Edit refresh after range changes, 352 busy
+ * v9.01 D6 (M-07g): ['open.dccost', dc] -> view 8 (DC running cost); a value that is not a station opens the primary DC
+ * v9.01 D6 (M-07e): Escape returns null from the menu -> handled as 'back' (one page back, closes on the first page)
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -70,6 +72,10 @@ if is datatyp[ $return ] == DATATYPE_ARRAY
  end
 else
  $command = $return
+ * v9.01 D6 (M-07e): Escape gives null -> back
+ if is datatyp[ $return ] == DATATYPE_NULL
+  $command = 'back'
+ end
  if is datatyp[ $return ] == DATATYPE_INT
   if $return == -1
    $command = 'back'
@@ -132,6 +138,14 @@ if $command == 'open.config'
  $view = 7
  $obj = null
  $ware = null
+end
+* v9.01 D6 (M-07g): running cost page of one DC
+if $command == 'open.dccost'
+ $view = 8
+ $ware = null
+ if not is datatyp[ $value ] == DATATYPE_STATION
+  $obj = $al.Settings[2]
+ end
 end
 if $view > 0
  $entry = array alloc: size=3

@@ -1,0 +1,809 @@
+* Script: test.LI.FDN.Menu.Cfg  (v1, engine 50)
+* Desc: FDNv9 - M-07h test of the M-07 menu and config logic
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-07h): new - Dc.Cfg set/clear/reject, [31]-[34], Menu.Command Esc/back/close/open.dccost, running cost page data, reset
+* -----------------------------------------------------------------------------------
+* In-game test of the M-07 menu and config logic. Writes every TEST line to log 9910 and
+* log 9911 (9911 restarted at start). Uses the primary DC [2] and the first valid station
+* in [3]. No menu is opened, except ONE Yes/No prompt in R1 (text 391): answer Yes.
+* G1-G11 lib.LI.FDN.Dc.Cfg: read creates [-1, -1, ...]; range 5 stored (G2) and used by Dc.Range
+*   (G2b); 0 clears to -1 (G3) and Dc.Range is the type value (G3b); 21, floor 101, floor -2, slot 2 and a
+*   null dc are rejected (null, record unchanged); floor 40 stored, -1 clears.
+* N1-N2 [32] base range: 5 -> Dc.Range = 5 + type modifier, null -> 3 + modifier (min 1).
+* N3 'range.on' through Menu.Command flips [31] (INT 0/1) and keeps the stack; run twice.
+* N4 'cost.on' with [33] = 1 sets 0 (switching off asks nothing).
+*   [32]/[34] input limits (1-20, 0-100) sit in Menu.Command Ask.Number.Sub behind an input
+*   prompt and are not tested here (logged as INFO).
+* E1-E6 Menu.Command navigation: null (Escape) on 2 pages -> 1 page; null on 1 page -> close
+*   (null); -1 -> back; 'close' -> null; ['open.dccost', dc] -> [8, dc, null] on top;
+*   ['open.dccost', 'x'] -> the primary DC [2].
+* D1-D7 Menu.DC.Cost page data with seeded records: FDN.Cost [1234, 7, now - 3600, 55],
+*   FDN.Cost.DC [11, 22, 33, 44], station FDN.Hub [dc, ...] and FDN.Cost.Home [dc, 500, 3, now]:
+*   382 | 383 | 384 line (1234 per hour), 385, 388, row 389 '500 | 3'; Home of another DC -> '0 | 0';
+*   no FDN.Cost -> 386; name line present.
+* R1 'dc.cost.reset' through Menu.Command (answer Yes): FDN.Cost [0, 0, null, 0], FDN.Cost.DC
+*   all 0, station FDN.Cost.Home [dc, 0, 0, null]. Answering No logs SKIP.
+* V restores [31]-[34], FDN.DC.Cfg, FDN.Cost, FDN.Cost.DC (DC) and FDN.Hub, FDN.Cost.Home
+*   (station), then re-reads and compares.
+* Expected with a valid DC and station, M-07e/f installed, R1 answered Yes: 32 checks, 32 PASS
+* (31/31 when R1 is answered No; 30/30 with no valid station in [3]).
+* Prerequisite: a valid DC in [2], settings grown to 40 slots.
+* Version: 1.0
+* Date: 30/10/2026
+* Tested: not tested (M-07h)
+* -----------------------------------------------------------------------------------
+
+$pass = 0
+$total = 0
+$txt = 'TEST MenuCfg: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $g
+ $txt = 'TEST MenuCfg: FAIL no settings array, test stopped'
+ gosub Log.Sub:
+ return null
+end
+$s.size = size of array $g
+if $s.size < 40
+ $txt = 'TEST MenuCfg: FAIL settings smaller than 40 (' + $s.size + '), run Upgrade first, stop'
+ gosub Log.Sub:
+ return null
+end
+$pid = $g[1]
+$dc = $g[2]
+$dc.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $dc.ok
+ $txt = 'TEST MenuCfg: FAIL [2] is not a valid player DC, stop'
+ gosub Log.Sub:
+ return null
+end
+
+* type modifier of the DC (as lib.LI.FDN.Dc.Range): HQ 62 +2, Equipment Dock 6 0, other -1
+$dsub = $dc -> get subtype
+$mod = -1
+if $dsub == 62
+ $mod = 2
+else if $dsub == 6
+ $mod = 0
+end
+
+* served station: first valid station in [3]
+$srv = null
+$list3 = $g[3]
+if is datatyp[ $list3 ] == DATATYPE_ARRAY
+ $sn = size of array $list3
+ $si = 0
+ while $si < $sn
+  $scand = $list3[$si]
+  inc $si =
+  if is datatyp[ $scand ] == DATATYPE_STATION
+   $sv.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$scand need.dock=[FALSE]
+   if $sv.ok
+    $srv = $scand
+    $si = $sn
+   end
+  end
+ end
+end
+
+* ---------- saves (copies, null stays null) ----------
+$save.31 = $g[31]
+$save.32 = $g[32]
+$save.33 = $g[33]
+$save.34 = $g[34]
+$c.src = $dc -> get local variable: name='FDN.DC.Cfg'
+gosub Copy.Sub:
+$sv.cfg = $c.dst
+$c.src = $dc -> get local variable: name='FDN.Cost'
+gosub Copy.Sub:
+$sv.cost = $c.dst
+$c.src = $dc -> get local variable: name='FDN.Cost.DC'
+gosub Copy.Sub:
+$sv.cdc = $c.dst
+$sv.hub = null
+$sv.home = null
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $c.src = $srv -> get local variable: name='FDN.Hub'
+ gosub Copy.Sub:
+ $sv.hub = $c.dst
+ $c.src = $srv -> get local variable: name='FDN.Cost.Home'
+ gosub Copy.Sub:
+ $sv.home = $c.dst
+end
+
+* ---------- G: lib.LI.FDN.Dc.Cfg ----------
+$dc -> set local variable: name='FDN.DC.Cfg' value=null
+$cfg = [THIS] -> call script lib.LI.FDN.Dc.Cfg : dc=$dc slot=null value=null
+$ok = [FALSE]
+$det = 'not an array'
+if is datatyp[ $cfg ] == DATATYPE_ARRAY
+ $cn = size of array $cfg
+ $c0 = $cfg[0]
+ $c1 = $cfg[1]
+ $det = 'size=' + $cn + ' [0]=' + $c0 + ' [1]=' + $c1
+ if $cn >= 4
+  if $c0 == -1
+   if $c1 == -1
+    $ok = [TRUE]
+   end
+  end
+ end
+end
+$id = 'G1 read creates [-1, -1]'
+gosub Result.Sub:
+
+$id = 'G2 range 5 stored, Dc.Range 5'
+$slot = 0
+$val = 5
+$exp.ret = 1
+$exp.slot = 5
+gosub CfgChk.Sub:
+$rng = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$ok = [FALSE]
+if $rng == 5
+ $ok = [TRUE]
+end
+$det = 'got=' + $rng + ' expected=5'
+$id = 'G2b Dc.Range uses the override'
+gosub Result.Sub:
+
+$id = 'G3 range 0 clears to -1'
+$slot = 0
+$val = 0
+$exp.ret = 1
+$exp.slot = -1
+gosub CfgChk.Sub:
+$base = $g[32]
+if not is datatyp[ $base ] == DATATYPE_INT
+ $base = 3
+end
+$exp.r = $base + $mod
+if $exp.r < 1
+ $exp.r = 1
+end
+$rng = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$ok = [FALSE]
+if $rng == $exp.r
+ $ok = [TRUE]
+end
+$det = 'got=' + $rng + ' expected=' + $exp.r
+$id = 'G3b Dc.Range type value after clear'
+gosub Result.Sub:
+
+$id = 'G4 range 21 rejected'
+$slot = 0
+$val = 21
+$exp.ret = 0
+$exp.slot = -1
+gosub CfgChk.Sub:
+
+$id = 'G5 range -1 stays -1'
+$slot = 0
+$val = -1
+$exp.ret = 1
+$exp.slot = -1
+gosub CfgChk.Sub:
+
+$id = 'G6 floor 40 stored'
+$slot = 1
+$val = 40
+$exp.ret = 1
+$exp.slot = 40
+gosub CfgChk.Sub:
+
+$id = 'G7 floor 101 rejected'
+$slot = 1
+$val = 101
+$exp.ret = 0
+$exp.slot = 40
+gosub CfgChk.Sub:
+
+$id = 'G8 floor -2 rejected'
+$slot = 1
+$val = -2
+$exp.ret = 0
+$exp.slot = 40
+gosub CfgChk.Sub:
+
+$id = 'G9 floor -1 clears'
+$slot = 1
+$val = -1
+$exp.ret = 1
+$exp.slot = -1
+gosub CfgChk.Sub:
+
+$res = [THIS] -> call script lib.LI.FDN.Dc.Cfg : dc=$dc slot=2 value=5
+$ok = [FALSE]
+if is datatyp[ $res ] == DATATYPE_NULL
+ $ok = [TRUE]
+end
+$det = 'ret=' + $res
+$id = 'G10 slot 2 rejected'
+gosub Result.Sub:
+
+$res = [THIS] -> call script lib.LI.FDN.Dc.Cfg : dc=null slot=0 value=5
+$ok = [FALSE]
+if is datatyp[ $res ] == DATATYPE_NULL
+ $ok = [TRUE]
+end
+$det = 'ret=' + $res
+$id = 'G11 null dc rejected'
+gosub Result.Sub:
+
+* ---------- N: settings [31]-[34] ----------
+$g[32] = 5
+set global variable: name='al.LI.FDN.event' value=$g
+$exp.r = 5 + $mod
+if $exp.r < 1
+ $exp.r = 1
+end
+$rng = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$ok = [FALSE]
+if $rng == $exp.r
+ $ok = [TRUE]
+end
+$det = 'got=' + $rng + ' expected=' + $exp.r
+$id = 'N1 [32]=5 base range used'
+gosub Result.Sub:
+
+$g[32] = null
+set global variable: name='al.LI.FDN.event' value=$g
+$exp.r = 3 + $mod
+if $exp.r < 1
+ $exp.r = 1
+end
+$rng = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+$ok = [FALSE]
+if $rng == $exp.r
+ $ok = [TRUE]
+end
+$det = 'got=' + $rng + ' expected=' + $exp.r
+$id = 'N2 [32]=null base 3'
+gosub Result.Sub:
+$g[32] = $save.32
+set global variable: name='al.LI.FDN.event' value=$g
+
+* N3: range.on twice through Menu.Command
+$r.before = $g[31]
+$r.exp = 1
+if $r.before == 1
+ $r.exp = 0
+end
+$cmd.ret = array alloc: size=1
+$cmd.ret[0] = 'range.on'
+$n.pages = 1
+gosub Stack1.Sub:
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$r.mid = $g[31]
+$cmd.out2 = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$r.after = $g[31]
+$r.back = 1
+if $r.exp == 1
+ $r.back = 0
+end
+$ok = [FALSE]
+if is datatyp[ $r.mid ] == DATATYPE_INT
+ if $r.mid == $r.exp
+  if is datatyp[ $r.after ] == DATATYPE_INT
+   if $r.after == $r.back
+    if is datatyp[ $cmd.out ] == DATATYPE_ARRAY
+     $o.n = size of array $cmd.out
+     if $o.n == 1
+      $ok = [TRUE]
+     end
+    end
+   end
+  end
+ end
+end
+$det = 'before=' + $r.before + ' first=' + $r.mid + ' second=' + $r.after
+$id = 'N3 range.on flips [31] INT'
+gosub Result.Sub:
+$g[31] = $save.31
+set global variable: name='al.LI.FDN.event' value=$g
+
+* N4: cost.on with [33] = 1 switches off without a prompt
+$g[33] = 1
+set global variable: name='al.LI.FDN.event' value=$g
+$cmd.ret = array alloc: size=1
+$cmd.ret[0] = 'cost.on'
+$n.pages = 1
+gosub Stack1.Sub:
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$c.after = $g[33]
+$ok = [FALSE]
+if is datatyp[ $c.after ] == DATATYPE_INT
+ if $c.after == 0
+  $ok = [TRUE]
+ end
+end
+$det = 'got=' + $c.after + ' expected=0'
+$id = 'N4 cost.on 1 -> 0'
+gosub Result.Sub:
+$g[33] = $save.33
+set global variable: name='al.LI.FDN.event' value=$g
+$txt = 'TEST MenuCfg: INFO [32] 1-20 and [34] 0-100 input limits are behind a prompt (Ask.Number.Sub), not tested'
+gosub Log.Sub:
+
+* ---------- E: Menu.Command navigation ----------
+$n.pages = 2
+gosub Stack1.Sub:
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=null
+$exp.n = 1
+$exp.view = 1
+$exp.obj = $dc
+$id = 'E1 Escape (null) on 2 pages -> back to 1'
+gosub NavChk.Sub:
+
+$n.pages = 1
+gosub Stack1.Sub:
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=null
+$exp.n = 0
+$id = 'E2 Escape (null) on 1 page -> close'
+gosub NavChk.Sub:
+
+$n.pages = 2
+gosub Stack1.Sub:
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=-1
+$exp.n = 1
+$exp.view = 1
+$exp.obj = $dc
+$id = 'E3 -1 on 2 pages -> back to 1'
+gosub NavChk.Sub:
+
+$n.pages = 2
+gosub Stack1.Sub:
+$cmd.ret = array alloc: size=1
+$cmd.ret[0] = 'close'
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$exp.n = 0
+$id = 'E4 close on 2 pages -> close'
+gosub NavChk.Sub:
+
+$n.pages = 1
+gosub Stack1.Sub:
+$cmd.ret = array alloc: size=2
+$cmd.ret[0] = 'open.dccost'
+$cmd.ret[1] = $dc
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$exp.n = 2
+$exp.view = 8
+$exp.obj = $dc
+$id = 'E5 open.dccost dc -> [8, dc] on top'
+gosub NavChk.Sub:
+
+$n.pages = 1
+gosub Stack1.Sub:
+$cmd.ret = array alloc: size=2
+$cmd.ret[0] = 'open.dccost'
+$cmd.ret[1] = 'x'
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$exp.n = 2
+$exp.view = 8
+$exp.obj = $g[2]
+$id = 'E6 open.dccost bad value -> primary DC'
+gosub NavChk.Sub:
+
+* ---------- D: running cost page data (Menu.DC.Cost) ----------
+$now = = playing time
+$t.first = $now - 3600
+$k.arr = array alloc: size=4
+$k.arr[0] = 1234
+$k.arr[1] = 7
+$k.arr[2] = $t.first
+$k.arr[3] = 55
+$dc -> set local variable: name='FDN.Cost' value=$k.arr
+$d.arr = array alloc: size=4
+$d.arr[0] = 11
+$d.arr[1] = 22
+$d.arr[2] = 33
+$d.arr[3] = 44
+$dc -> set local variable: name='FDN.Cost.DC' value=$d.arr
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $hb.arr = array alloc: size=3
+ $hb.arr[0] = $dc
+ $hb.arr[1] = 1
+ $hb.arr[2] = $now
+ $srv -> set local variable: name='FDN.Hub' value=$hb.arr
+ $hm.arr = array alloc: size=4
+ $hm.arr[0] = $dc
+ $hm.arr[1] = 500
+ $hm.arr[2] = 3
+ $hm.arr[3] = $now
+ $srv -> set local variable: name='FDN.Cost.Home' value=$hm.arr
+end
+$page = array alloc: size=0
+$page = [THIS] -> call script plugin.LI.FDN.Menu.DC.Cost : menu=$page obj=$dc
+* the page works out the rate itself; follow its clock if a second passed
+$now2 = = playing time
+$rate.exp = 1234
+$age2 = $now2 - $t.first
+if $age2 > 3600
+ $rate.exp = 1234 * 3600
+ $rate.exp = $rate.exp / $age2
+end
+$rate.txt = = convert number $rate.exp to string
+
+$t382 = = sprintf: pageid=$pid textid=382, '1234', null, null, null, null
+$t383 = = sprintf: pageid=$pid textid=383, '7', null, null, null, null
+$t384 = = sprintf: pageid=$pid textid=384, $rate.txt, null, null, null, null
+$want = $t382 + ' | '
+$want = $want + $t383
+$want = $want + ' | '
+$want = $want + $t384
+$id = 'D1 totals line 382 | 383 | 384'
+gosub FindChk.Sub:
+$want = = sprintf: pageid=$pid textid=385, '55', null, null, null, null
+$id = 'D2 deferred line 385'
+gosub FindChk.Sub:
+$want = = sprintf: pageid=$pid textid=388, '11', '22', '33', null, null
+$id = 'D3 between DCs line 388'
+gosub FindChk.Sub:
+$want = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dc
+$id = 'D7 name line'
+gosub FindChk.Sub:
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $want = = sprintf: pageid=$pid textid=389, '500', '3', null, null, null
+ $id = 'D4 station row 389 500 | 3'
+ gosub FindChk.Sub:
+ $hm.arr = array alloc: size=4
+ $hm.arr[0] = null
+ $hm.arr[1] = 500
+ $hm.arr[2] = 3
+ $hm.arr[3] = $now
+ $srv -> set local variable: name='FDN.Cost.Home' value=$hm.arr
+ $page = array alloc: size=0
+ $page = [THIS] -> call script plugin.LI.FDN.Menu.DC.Cost : menu=$page obj=$dc
+ $want = = sprintf: pageid=$pid textid=389, '0', '0', null, null, null
+ $id = 'D5 Home of another DC -> 0 | 0'
+ gosub FindChk.Sub:
+else
+ $txt = 'TEST MenuCfg: D4-D5 SKIP no valid station in [3]'
+ gosub Log.Sub:
+end
+$dc -> set local variable: name='FDN.Cost' value=null
+$page = array alloc: size=0
+$page = [THIS] -> call script plugin.LI.FDN.Menu.DC.Cost : menu=$page obj=$dc
+$want = = read text: page=$pid id=386
+$id = 'D6 no FDN.Cost -> 386'
+gosub FindChk.Sub:
+
+* ---------- R1: reset through Menu.Command (one Yes/No prompt) ----------
+$k.arr = array alloc: size=4
+$k.arr[0] = 1234
+$k.arr[1] = 7
+$k.arr[2] = $t.first
+$k.arr[3] = 55
+$dc -> set local variable: name='FDN.Cost' value=$k.arr
+$d.arr = array alloc: size=4
+$d.arr[0] = 11
+$d.arr[1] = 22
+$d.arr[2] = 33
+$d.arr[3] = 44
+$dc -> set local variable: name='FDN.Cost.DC' value=$d.arr
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $hm.arr = array alloc: size=4
+ $hm.arr[0] = $dc
+ $hm.arr[1] = 500
+ $hm.arr[2] = 3
+ $hm.arr[3] = $now
+ $srv -> set local variable: name='FDN.Cost.Home' value=$hm.arr
+end
+$txt = 'TEST MenuCfg: R1 answer YES to the reset prompt'
+gosub Log.Sub:
+$n.pages = 1
+gosub Stack1.Sub:
+$cmd.ret = array alloc: size=2
+$cmd.ret[0] = 'dc.cost.reset'
+$cmd.ret[1] = $dc
+$cmd.out = [THIS] -> call script plugin.LI.FDN.Menu.Command : stack=$stk return=$cmd.ret
+$rk = $dc -> get local variable: name='FDN.Cost'
+$rd = $dc -> get local variable: name='FDN.Cost.DC'
+$rk0 = null
+$rk1 = null
+$rk2 = 'x'
+$rk3 = null
+if is datatyp[ $rk ] == DATATYPE_ARRAY
+ $rk0 = $rk[0]
+ $rk1 = $rk[1]
+ $rk2 = $rk[2]
+ $rk3 = $rk[3]
+end
+$rd0 = null
+$rd1 = null
+$rd2 = null
+$rd3 = null
+if is datatyp[ $rd ] == DATATYPE_ARRAY
+ $rd0 = $rd[0]
+ $rd1 = $rd[1]
+ $rd2 = $rd[2]
+ $rd3 = $rd[3]
+end
+$rh0 = $dc
+$rh1 = 0
+$rh2 = 0
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $rh = $srv -> get local variable: name='FDN.Cost.Home'
+ $rh0 = null
+ $rh1 = null
+ $rh2 = null
+ if is datatyp[ $rh ] == DATATYPE_ARRAY
+  $rh0 = $rh[0]
+  $rh1 = $rh[1]
+  $rh2 = $rh[2]
+ end
+end
+$det = 'cost=' + $rk0 + ',' + $rk1 + ',' + $rk2 + ',' + $rk3 + ' dc=' + $rd0 + ',' + $rd1 + ',' + $rd2 + ',' + $rd3 + ' home=' + $rh1 + ',' + $rh2
+if $rk0 == 1234
+ $txt = 'TEST MenuCfg: R1 SKIP reset answered No ' + $det
+ gosub Log.Sub:
+else
+ $ok = [FALSE]
+ if $rk0 == 0
+  if $rk1 == 0
+   if is datatyp[ $rk2 ] == DATATYPE_NULL
+    if $rk3 == 0
+     if $rd0 == 0
+      if $rd1 == 0
+       if $rd2 == 0
+        if $rd3 == 0
+         if $rh0 == $dc
+          if $rh1 == 0
+           if $rh2 == 0
+            $ok = [TRUE]
+           end
+          end
+         end
+        end
+       end
+      end
+     end
+    end
+   end
+  end
+ end
+ $id = 'R1 reset zeroes FDN.Cost, FDN.Cost.DC, FDN.Cost.Home'
+ gosub Result.Sub:
+end
+
+* ---------- V: restore and verify ----------
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$g[31] = $save.31
+$g[32] = $save.32
+$g[33] = $save.33
+$g[34] = $save.34
+set global variable: name='al.LI.FDN.event' value=$g
+$dc -> set local variable: name='FDN.DC.Cfg' value=$sv.cfg
+$dc -> set local variable: name='FDN.Cost' value=$sv.cost
+$dc -> set local variable: name='FDN.Cost.DC' value=$sv.cdc
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $srv -> set local variable: name='FDN.Hub' value=$sv.hub
+ $srv -> set local variable: name='FDN.Cost.Home' value=$sv.home
+end
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$ok = [TRUE]
+$v.x = $g[31]
+if not $v.x == $save.31
+ $ok = [FALSE]
+end
+$v.x = $g[32]
+if not $v.x == $save.32
+ $ok = [FALSE]
+end
+$v.x = $g[33]
+if not $v.x == $save.33
+ $ok = [FALSE]
+end
+$v.x = $g[34]
+if not $v.x == $save.34
+ $ok = [FALSE]
+end
+$v.a = $dc -> get local variable: name='FDN.DC.Cfg'
+$v.b = $sv.cfg
+gosub Same.Sub:
+$v.a = $dc -> get local variable: name='FDN.Cost'
+$v.b = $sv.cost
+gosub Same.Sub:
+$v.a = $dc -> get local variable: name='FDN.Cost.DC'
+$v.b = $sv.cdc
+gosub Same.Sub:
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $v.a = $srv -> get local variable: name='FDN.Hub'
+ $v.b = $sv.hub
+ gosub Same.Sub:
+ $v.a = $srv -> get local variable: name='FDN.Cost.Home'
+ $v.b = $sv.home
+ gosub Same.Sub:
+end
+$det = '[31]-[34], FDN.DC.Cfg, FDN.Cost, FDN.Cost.DC, FDN.Hub, FDN.Cost.Home'
+$id = 'V restore'
+gosub Result.Sub:
+
+$txt = 'TEST MenuCfg: ' + $pass + '/' + $total + ' PASS'
+gosub Log.Sub:
+return null
+
+* -----------------------------------------------------------------------------------
+* subs - each ends with endsub, none contains return
+* -----------------------------------------------------------------------------------
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub
+
+Result.Sub:
+inc $total =
+$rs = 'FAIL'
+if $ok
+ inc $pass =
+ $rs = 'PASS'
+end
+$txt = 'TEST MenuCfg: ' + $id + ': ' + $rs + ' ' + $det
+gosub Log.Sub:
+endsub
+
+* Copy: $c.src -> $c.dst, a new array with the same items, null when not an array
+Copy.Sub:
+$c.dst = null
+if is datatyp[ $c.src ] == DATATYPE_ARRAY
+ $c.n = size of array $c.src
+ $c.dst = array alloc: size=$c.n
+ $c.i = 0
+ while $c.i < $c.n
+  $c.x = $c.src[$c.i]
+  $c.dst[$c.i] = $c.x
+  inc $c.i =
+ end
+end
+endsub
+
+* CfgChk: Dc.Cfg $slot $val; $exp.ret 1 = array expected, 0 = null expected; then [$slot] == $exp.slot
+CfgChk.Sub:
+$res = [THIS] -> call script lib.LI.FDN.Dc.Cfg : dc=$dc slot=$slot value=$val
+$rec = [THIS] -> call script lib.LI.FDN.Dc.Cfg : dc=$dc slot=null value=null
+$got.slot = null
+if is datatyp[ $rec ] == DATATYPE_ARRAY
+ $got.slot = $rec[$slot]
+end
+$ok = [FALSE]
+$ret.ok = [FALSE]
+if $exp.ret == 1
+ if is datatyp[ $res ] == DATATYPE_ARRAY
+  $ret.ok = [TRUE]
+ end
+else
+ if is datatyp[ $res ] == DATATYPE_NULL
+  $ret.ok = [TRUE]
+ end
+end
+if $ret.ok
+ if $got.slot == $exp.slot
+  $ok = [TRUE]
+ end
+end
+$det = 'value=' + $val + ' slot=' + $slot + ' stored=' + $got.slot + ' expected=' + $exp.slot
+gosub Result.Sub:
+endsub
+
+* Stack1: $stk = [[1, dc, null]] and, when $n.pages is 2, [8, dc, null] on top
+Stack1.Sub:
+$stk = array alloc: size=$n.pages
+$e1 = array alloc: size=3
+$e1[0] = 1
+$e1[1] = $dc
+$stk[0] = $e1
+if $n.pages > 1
+ $e2 = array alloc: size=3
+ $e2[0] = 8
+ $e2[1] = $dc
+ $stk[1] = $e2
+end
+endsub
+
+* NavChk: $cmd.out against $exp.n (0 = null expected), $exp.view and $exp.obj on top
+NavChk.Sub:
+$ok = [FALSE]
+$det = 'got null'
+if $exp.n == 0
+ if is datatyp[ $cmd.out ] == DATATYPE_NULL
+  $ok = [TRUE]
+ else
+  $det = 'got a stack, expected null'
+ end
+else
+ if is datatyp[ $cmd.out ] == DATATYPE_ARRAY
+  $o.n = size of array $cmd.out
+  $o.i = $o.n - 1
+  $top.v = null
+  $top.o = null
+  if $o.i >= 0
+   $top = $cmd.out[$o.i]
+   $top.v = $top[0]
+   $top.o = $top[1]
+  end
+  $det = 'size=' + $o.n + ' top view=' + $top.v
+  if $o.n == $exp.n
+   if $top.v == $exp.view
+    if $top.o == $exp.obj
+     $ok = [TRUE]
+    end
+   end
+  end
+ end
+end
+gosub Result.Sub:
+endsub
+
+* FindChk: PASS when $want is a string somewhere in $page (item, or up to two array levels down)
+FindChk.Sub:
+$found = [FALSE]
+if is datatyp[ $page ] == DATATYPE_ARRAY
+ $p.n = size of array $page
+ $p.i = 0
+ while $p.i < $p.n
+  $p.x = $page[$p.i]
+  inc $p.i =
+  if $p.x == $want
+   $found = [TRUE]
+  else if is datatyp[ $p.x ] == DATATYPE_ARRAY
+   $q.n = size of array $p.x
+   $q.i = 0
+   while $q.i < $q.n
+    $q.x = $p.x[$q.i]
+    inc $q.i =
+    if $q.x == $want
+     $found = [TRUE]
+    else if is datatyp[ $q.x ] == DATATYPE_ARRAY
+     $w.n = size of array $q.x
+     $w.i = 0
+     while $w.i < $w.n
+      $w.x = $q.x[$w.i]
+      inc $w.i =
+      if $w.x == $want
+       $found = [TRUE]
+      end
+     end
+    end
+   end
+  end
+ end
+end
+$ok = $found
+$det = 'want=' + $want
+gosub Result.Sub:
+endsub
+
+* Same: $ok = FALSE unless $v.a and $v.b are both null or arrays with equal items
+Same.Sub:
+if is datatyp[ $v.b ] == DATATYPE_NULL
+ if not is datatyp[ $v.a ] == DATATYPE_NULL
+  $ok = [FALSE]
+ end
+else
+ if is datatyp[ $v.a ] == DATATYPE_ARRAY
+  $sa.n = size of array $v.a
+  $sb.n = size of array $v.b
+  if $sa.n == $sb.n
+   $s.i = 0
+   while $s.i < $sa.n
+    $sa.x = $v.a[$s.i]
+    $sb.x = $v.b[$s.i]
+    inc $s.i =
+    if not $sa.x == $sb.x
+     $ok = [FALSE]
+    end
+   end
+  else
+   $ok = [FALSE]
+  end
+ else
+  $ok = [FALSE]
+ end
+end
+endsub

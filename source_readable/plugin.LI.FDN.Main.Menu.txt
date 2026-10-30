@@ -9,7 +9,8 @@
 * the header 'Switch to' row and the show.factory plumbing are gone.
 * Views (v8 numbers kept so settings [5] does not change):
 *   1 DC (Menu.Station), 2 Stations (Menu.Stations), 4 Factory Details,
-*   5 Dock (Menu.Station), 6 Ware Details, 7 Config, 3 DC list (Menu.DC.List, M-06).
+*   5 Dock (Menu.Station), 6 Ware Details, 7 Config, 3 DC list (Menu.DC.List, M-06),
+*   8 DC running cost (Menu.DC.Cost, M-07g).
 * Opening state is [[1, DC, null]], [[3, null, null]] when Dc.List has 2 or more DCs,
 * or [[7, null, null]] when no DC is set.
 * Back and Escape (-1) are handled by Menu.Command. The footer shows Back (306,
@@ -21,6 +22,7 @@
 * Builder contracts (P3-06, P3-07):
 *   plugin.LI.FDN.Menu.Station  : menu, view (1 or 5), obj   -> the menu
 *   plugin.LI.FDN.Menu.Stations : menu, obj                  -> the menu
+*   plugin.LI.FDN.Menu.DC.Cost  : menu, obj (the DC)         -> the menu (M-07g)
 * Existing builders keep their arguments:
 *   Menu.Factory.Details (menu, value), Menu.Ware.Details (menu, value, ware), Config.Menu (menu)
 * Needs texts 306 (Back) and 307 (Close menu) in the text file, plus 302-305 for the titles.
@@ -30,13 +32,14 @@
 
 * To Do - install together with plugin.LI.FDN.Menu.Refresh (P3-09); the texts 302-307 are in the text file
 
-* Version: 2.3
+* Version: 2.4
 * Date: 30/10/2026
-* Tested: not tested (M-06C, M-06G)
+* Tested: not tested (M-06C, M-06G, M-07g)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06M): footer always ends with 'Close menu' (307, ['close']) that exits all menus; Back (306) only when there is a view to go back to
  * v9.01 D6 (M-06G): view 3 (DC list) opens in the wide info window like views 1, 2 and 5
  * v9.01 D6 (M-06C): view 3 DC list (opens there with 2+ DCs), title 353; scan on menu open ([16] older than 60 s -> null, Supply.Start rescans next tick, never a Scan START here); text 392 note on views 2/3 while a rescan is pending
+ * v9.01 D6 (M-07g): view 8 DC running cost (Menu.DC.Cost), title 381, wide info window
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -209,6 +212,9 @@ else if $view == 7
 else if $view == 3
  * v9.01 D6 (M-06C): DC list
  $built = [THIS] -> call script plugin.LI.FDN.Menu.DC.List : menu=$menu
+else if $view == 8
+ * v9.01 D6 (M-07g): DC running cost
+ $built = [THIS] -> call script plugin.LI.FDN.Menu.DC.Cost : menu=$menu obj=$obj
 end
 if is datatyp[ $built ] == DATATYPE_ARRAY
  $menu = $built
@@ -262,6 +268,8 @@ else if $view == 7
  $txt = = read text: page=$PageID id=103
 else if $view == 3
  $txt = = read text: page=$PageID id=353
+else if $view == 8
+ $txt = = read text: page=$PageID id=381
 else
  $txt = = read text: page=$PageID id=133
 end
@@ -274,6 +282,8 @@ else if $view == 2
 else if $view == 5
  $open.info = [TRUE]
 else if $view == 3
+ $open.info = [TRUE]
+else if $view == 8
  $open.info = [TRUE]
 end
 if $open.info == [TRUE]

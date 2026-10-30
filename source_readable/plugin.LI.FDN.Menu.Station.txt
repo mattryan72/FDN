@@ -39,14 +39,15 @@
 
 * To Do - N/A
 
-* Version: 1.3
+* Version: 1.4
 * Date: 30/10/2026
-* Tested: not tested (M-07f)
+* Tested: not tested (M-07f, M-07g)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-06): one builder for the DC and dock views, on lib.LI.FDN.Menu.WareRow / Menu.ObjLine
  * v9.01 D6 (M-06E1): DC view links to the DC list (text 353 -> 'open.dclist')
  * v9.01 D6 (M-06L): DC view top box: Name [ID] | Sector, then the status line 362 (type | range | stations | EC, moved from Menu.DC.List)
  * v9.01 D6 (M-07f): DC view network block 370 with per-DC range 377 and floor 378 (Default (n) 324) -> dc.range / dc.floor
+ * v9.01 D6 (M-07g): 'Running cost' row 381 at the end of the 370 block -> open.dccost (view 8)
  * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -381,6 +382,13 @@ $ret.array = = array alloc: size=2
 $ret.array[0] = 'dc.floor'
 $ret.array[1] = $obj
  = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$val.txt retval=$ret.array
+
+* v9.01 D6 (M-07g): running cost page of this DC (view 8)
+$txt = = read text: page=$PageID id=381
+$ret.array = = array alloc: size=2
+$ret.array[0] = 'open.dccost'
+$ret.array[1] = $obj
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$ret.array
 endsub
 * -----------------------------------------------------------------------------------
 return null
