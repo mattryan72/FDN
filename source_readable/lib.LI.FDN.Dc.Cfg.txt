@@ -1,0 +1,97 @@
+* Script: lib.LI.FDN.Dc.Cfg  (v1, engine 50)
+* Desc: FDNv9 - Get or set the per-DC settings FDN.DC.Cfg (range and reserve floor override)
+* Arg 0: dc (Value) 'dc'
+* Arg 1: slot (Value) 'slot'
+* Arg 2: value (Value) 'value'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (multi-DC part 4, M-07a). Get-or-create of the FDN.DC.Cfg
+* local on a valid DC (lib.LI.FDN.Is.Valid need.dock TRUE). A missing record, or one
+* shorter than 4, is created as [-1, -1, null, null] and stored; an existing record of 4
+* or more is never replaced, only its slot is written.
+*   [0] range override in jumps (read by lib.LI.FDN.Dc.Range): -1 = use the type value
+*   [1] reserve floor % override (read by Cost.Pay and Pull): -1 = use settings [34]
+* With value null the record is returned unchanged. With a value it is checked first:
+*   slot 0: 0 or -1 stores -1 (clear), 1-20 stores the value
+*   slot 1: -1 stores -1 (clear), 0-100 stores the value
+* Anything else changes nothing and returns null; the caller writes text 193 to the logbook.
+* The caller rebuilds routes and home DCs after a range change (lib.LI.FDN.Dc.Edit 'refresh').
+*
+* Arguments:
+* - dc (Value): the Distribution Centre (a valid player Dock)
+* - slot (Value): 0 = range, 1 = reserve floor (ignored when value is null)
+* - value (Value): the new value, or null to read
+
+* Returns values:
+* - the FDN.DC.Cfg array (after the write, when there was one)
+* - null for a bad dc, slot or value (nothing changed)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 30/10/2026
+* Tested: not tested
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-07a): new - get or set FDN.DC.Cfg range [0] and floor [1] overrides, clamped
+ * -----------------------------------------------------------------------------------
+
+$valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if not $valid == [TRUE]
+ return null
+end
+
+* get or create the record
+$cfg = $dc  ->  get local variable: name='FDN.DC.Cfg'
+$cfg.new = [TRUE]
+if is datatyp[ $cfg ] == DATATYPE_ARRAY
+ $cfg.size = size of array $cfg
+ if $cfg.size >= 4
+  $cfg.new = [FALSE]
+ end
+end
+if $cfg.new == [TRUE]
+ $cfg = = array alloc: size=4
+ $cfg[0] = -1
+ $cfg[1] = -1
+ $dc  ->  set local variable: name='FDN.DC.Cfg' value=$cfg
+end
+
+* read only
+if is datatyp[ $value ] == DATATYPE_NULL
+ return $cfg
+end
+
+* check slot and value
+if not is datatyp[ $value ] == DATATYPE_INT
+ return null
+end
+if not is datatyp[ $slot ] == DATATYPE_INT
+ return null
+end
+$store = null
+if $slot == 0
+ if $value == 0
+  $store = -1
+ else if $value == -1
+  $store = -1
+ else if $value >= 1
+  if $value <= 20
+   $store = $value
+  end
+ end
+else if $slot == 1
+ if $value == -1
+  $store = -1
+ else if $value >= 0
+  if $value <= 100
+   $store = $value
+  end
+ end
+end
+if not is datatyp[ $store ] == DATATYPE_INT
+ return null
+end
+
+$cfg[$slot] = $store
+$dc  ->  set local variable: name='FDN.DC.Cfg' value=$cfg
+return $cfg

@@ -200,6 +200,28 @@
   <t id="367">FDN: the network already has %s Distribution Centres (maximum)</t>
   <t id="368">Make %s the primary Distribution Centre ?</t>
   <t id="369">Open</t>
+  <t id="370">Network: range and Energy Cell cost</t>
+  <t id="371">Range limit</t>
+  <t id="372">Base station range (jumps)</t>
+  <t id="373">Energy Cell transfer cost</t>
+  <t id="374">Reserve floor (% of capacity)</t>
+  <t id="375">Input base station range in jumps (1-20)</t>
+  <t id="376">Input reserve floor percent (0-100)</t>
+  <t id="377">Range for this DC (jumps)</t>
+  <t id="378">Reserve floor for this DC (%)</t>
+  <t id="379">Input range for this DC in jumps (0 = use the type value)</t>
+  <t id="380">Input reserve floor for this DC in percent (-1 = use the global value)</t>
+  <t id="381">Running cost</t>
+  <t id="382">Energy Cells charged: %s</t>
+  <t id="383">Transfers: %s</t>
+  <t id="384">Energy Cells per hour: %s</t>
+  <t id="385">Deferred Energy Cells: %s</t>
+  <t id="386">No Energy Cell cost yet</t>
+  <t id="387">Switch Energy Cell cost on? Transfers will take Energy Cells from your Distribution Centres.</t>
+  <t id="388">Between Distribution Centres: %s EC | Manual moves: %s EC | Help given: %s EC</t>
+  <t id="389">%s EC | %s transfers</t>
+  <t id="390">No stations served by this Distribution Centre</t>
+  <t id="391">\033RReset\033X running cost</t>
   <t id="392">\033YStation list is being refreshed - go Back or reopen in a few seconds\033X</t>
 
   <t id="9000">\033G%s\033X</t>

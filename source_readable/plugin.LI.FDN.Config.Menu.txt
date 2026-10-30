@@ -5,7 +5,7 @@
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
 * Called by plugin.LI.FDN.Main.Menu for view 7. Appends the DC choice, dynamic menu
-* switches, global options, debug switch and master reset rows to the passed-in menu.
+* switches, global options, network block (M-07d), debug switch and master reset rows to the passed-in menu.
 * Every clickable row returns an array [command, object] handled by
 * plugin.LI.FDN.Menu.Command.
 
@@ -17,12 +17,13 @@
 
 * To Do - N/A
 
-* Version: 1.1
+* Version: 1.2
 * Date: 30/10/2026
-* Tested: not tested (M-06E3)
+* Tested: not tested (M-07d)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-08c): rows on Menu.Row / Menu.Toggle / Menu.ObjLine; add.dc and change.dc merged into set.dc; B5 surplus.default row
  * v9.01 D6 (M-06E3): with a DC the change-DC list (heading 124) is replaced by one row 353 -> ['open.dclist']
+ * v9.01 D6 (M-07d): network block 370 (range limit 371, base range 372, cost 373, global floor 374) after Global Options
 * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -69,6 +70,7 @@ end
 
 gosub Dynamic.Rows.Sub:
 gosub Global.Rows.Sub:
+gosub Network.Rows.Sub:
 gosub Debug.Rows.Sub:
 gosub Reset.Rows.Sub:
 
@@ -178,3 +180,67 @@ $txt = = read text: page=$PageID id=128
 add custom menu item to array $menu: text=$txt returnvalue='master.reset'
 endsub
 
+* v9.01 D6 (M-07d): network block 370 - range limit [31] and cost [33] are whole numbers 1 = on,
+* anything else off (shown with 148/149, not the null/1 Menu.Toggle); base range [32] (null -> 3)
+* and global reserve floor [34] (null -> 25) show 'Default (n)' (324) when not a whole number
+Network.Rows.Sub:
+$s.size = size of array $al.Settings
+if $s.size < 40
+ endsub
+end
+$txt = = read text: page=$PageID id=370
+add custom menu heading to array $menu: title=$txt
+
+$on.val = $al.Settings[31]
+gosub On.Text.Sub:
+$txt = = read text: page=$PageID id=371
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'range.on'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$on.txt retval=$ret.array
+
+$num.val = $al.Settings[32]
+$num.def = 3
+gosub Num.Text.Sub:
+$txt = = read text: page=$PageID id=372
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'range.base'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$num.txt retval=$ret.array
+
+$on.val = $al.Settings[33]
+gosub On.Text.Sub:
+$txt = = read text: page=$PageID id=373
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'cost.on'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$on.txt retval=$ret.array
+
+$num.val = $al.Settings[34]
+$num.def = 25
+gosub Num.Text.Sub:
+$txt = = read text: page=$PageID id=374
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'floor.global'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$num.txt retval=$ret.array
+endsub
+
+
+* v9.01 D6 (M-07d): $on.val 1 -> 148 (ON), anything else -> 149 (OFF)
+On.Text.Sub:
+$on.id = 149
+if is datatyp[ $on.val ] == DATATYPE_INT
+ if $on.val == 1
+  $on.id = 148
+ end
+end
+$on.txt = = read text: page=$PageID id=$on.id
+endsub
+
+
+* v9.01 D6 (M-07d): $num.val as text when it is a whole number, else 'Default ($num.def)' (324)
+Num.Text.Sub:
+if is datatyp[ $num.val ] == DATATYPE_INT
+ $num.txt = = convert number $num.val to string
+ endsub
+end
+$def.txt = = convert number $num.def to string
+$num.txt = = sprintf: pageid=$PageID textid=324, $def.txt, null, null, null, null
+endsub

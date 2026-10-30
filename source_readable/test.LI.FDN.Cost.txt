@@ -3,6 +3,8 @@
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-07c): H1-H2 help path with [30] pinned to [dc, peer] (forced deferral takes nothing, helper pays exactly once)
+ * v9.01 D6 (M-07b): A1-A5 attribution checks (FDN.Cost.DC, FDN.Cost.Home), restore of the new locals
  * v9.01 D6 (M-04c): trimmed rewrite of the M-04 cost and payment test
 * -----------------------------------------------------------------------------------
 * In-game test for lib.LI.FDN.Cost (EC leg cost) and lib.LI.FDN.Cost.Pay (payment).
@@ -19,9 +21,18 @@
 * R restores [30], [33], EC [0]/[1]/[2], FDN.DC.Cfg and FDN.Cost (null stays null) for the
 * DC, the peer and the served station, then re-reads and compares every value.
 * Prerequisite: a valid DC in [2], settings grown to 40 slots (run Upgrade first).
-* Version: 1.0
-* Date: 29/10/2026
-* Tested: 2026-10-29 FL 22/22 PASS (test.LI.FDN.Cost; C5/C6b/C7b/P4 skipped, one DC)
+* M-07b: A1 served null -> payer FDN.Cost.DC[0]; A2 home station (FDN.Hub[0] = DC) gets
+* FDN.Cost.Home [dc, 150, 2, time] after 100 + 50; A3 FDN.Hub null -> FDN.Cost.DC[1], home record
+* unchanged; A4 a home record kept for another DC restarts at [dc, 100, 1]; A5 peer help ->
+* peer FDN.Cost.DC[2] and payer [3]. R also restores FDN.Cost.DC (DC, peer), FDN.Cost.Home and
+* FDN.Hub (served station). Expected total with one DC and a station: 26 checks (A5 SKIP).
+* M-07c: H1 with [30] pinned to [dc, peer], DC avail 50 + peer avail 20 < cost 100 -> deferred,
+* no EC taken from either DC and no help records; H2 DC avail 0, peer avail 500, cost 100 -> paid,
+* peer EC down exactly 100, peer FDN.Cost.DC[2] and DC [3] + 100. Both SKIP with one DC.
+* Expected with 4 DCs (HQ + equipment docks) and a station: 31 checks (C6b and P5 SKIP).
+* Version: 1.2
+* Date: 30/10/2026
+* Tested: not tested (M-07c; v1.0 tested 2026-10-29 FL 22/22 PASS)
 * -----------------------------------------------------------------------------------
 
 $pass = 0
@@ -142,6 +153,26 @@ if is datatyp[ $sv.pr ] == DATATYPE_ARRAY
  $sv.pr.v0 = $sv.pr[1]
 end
 $stop = [FALSE]
+* v9.01 D6 (M-07b): saves of the attribution locals (copies, null stays null)
+$c.in = $dc  ->  get local variable: name='FDN.Cost.DC'
+gosub Copy.Sub:
+$sv.dcrec = $c.out
+$sv.prrec = null
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $c.in = $peer.dc  ->  get local variable: name='FDN.Cost.DC'
+ gosub Copy.Sub:
+ $sv.prrec = $c.out
+end
+$sv.home = null
+$sv.hub = null
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $c.in = $srv  ->  get local variable: name='FDN.Cost.Home'
+ gosub Copy.Sub:
+ $sv.home = $c.out
+ $c.in = $srv  ->  get local variable: name='FDN.Hub'
+ gosub Copy.Sub:
+ $sv.hub = $c.out
+end
 
 * ---------- C1-C3 ----------
 $bb = [FALSE]
@@ -407,6 +438,126 @@ if not $stop
   gosub Log.Sub:
  end
 
+ * ---------- H1-H2 (M-07c) help path with the DC list pinned to [dc, peer] ----------
+ * other DCs could cover a short charge, so [30] is set to the two test DCs here and put back
+ * right after (R also restores [30]); everything below is synchronous, no wait
+ if is datatyp[ $peer.dc ] == DATATYPE_STATION
+  $pin = = array alloc: size=2
+  $pin[0] = $dc
+  $pin[1] = $peer.dc
+  $g[30] = $pin
+  set global variable: name='al.LI.FDN.event' value=$g
+  * H1 forced deferral: DC avail 50, peer avail 20, cost 100 -> FALSE, no EC taken anywhere,
+  * no help record on either DC
+  $stn = $peer.dc
+  $kind = 'peer'
+  $target = 20
+  gosub SetAvail.Sub:
+  $q.v = $ec.v
+  gosub ReadCost.Sub:
+  $q.k0 = $k0
+  gosub ReadDCRec.Sub:
+  $q.d2 = $d2
+  $stn = $dc
+  $kind = 'dc'
+  $target = 50
+  gosub SetAvail.Sub:
+  $b.v = $ec.v
+  gosub ReadDCRec.Sub:
+  $b.d3 = $d3
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
+  $stn = $dc
+  gosub ReadEC.Sub:
+  $a.v = $ec.v
+  gosub ReadDCRec.Sub:
+  $a.d3 = $d3
+  $stn = $peer.dc
+  gosub ReadEC.Sub:
+  gosub ReadCost.Sub:
+  gosub ReadDCRec.Sub:
+  $ok = [FALSE]
+  if $ret == [FALSE]
+   if $a.v == $b.v
+    if $ec.v == $q.v
+     if $k0 == $q.k0
+      if $d2 == $q.d2
+       if $a.d3 == $b.d3
+        $ok = [TRUE]
+       end
+      end
+     end
+    end
+   end
+  end
+  $id = 'H1 network short with a helper: nothing taken, no help records'
+  $det = 'ret=' + $ret + ' dcV=' + $a.v + '/' + $b.v + ' pV=' + $ec.v + '/' + $q.v + ' pC0=' + $k0 + '/' + $q.k0 + ' pD2=' + $d2 + '/' + $q.d2 + ' dcD3=' + $a.d3 + '/' + $b.d3
+  gosub Result.Sub:
+  * H2 payer has nothing spare: DC avail 0, peer avail 500, cost 100 -> TRUE, DC EC unchanged,
+  * peer EC down exactly 100, peer FDN.Cost.DC[2] + 100, DC FDN.Cost.DC[3] + 100, DC [0] + 100
+  $stn = $peer.dc
+  $kind = 'peer'
+  $target = 500
+  gosub SetAvail.Sub:
+  $q.v = $ec.v
+  gosub ReadDCRec.Sub:
+  $q.d2 = $d2
+  $stn = $dc
+  $kind = 'dc'
+  $target = 0
+  gosub SetAvail.Sub:
+  $b.v = $ec.v
+  gosub ReadCost.Sub:
+  $b.k0 = $k0
+  gosub ReadDCRec.Sub:
+  $b.d3 = $d3
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
+  $xq.v = $q.v - 100
+  $e.base = $q.d2
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $xq.d2 = $e.out
+  $e.base = $b.d3
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $x.d3 = $e.out
+  $e.base = $b.k0
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $x.k0 = $e.out
+  $stn = $dc
+  gosub ReadEC.Sub:
+  $a.v = $ec.v
+  gosub ReadCost.Sub:
+  $a.k0 = $k0
+  gosub ReadDCRec.Sub:
+  $a.d3 = $d3
+  $stn = $peer.dc
+  gosub ReadEC.Sub:
+  gosub ReadDCRec.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $a.v == $b.v
+    if $ec.v == $xq.v
+     if $d2 == $xq.d2
+      if $a.d3 == $x.d3
+       if $a.k0 == $x.k0
+        $ok = [TRUE]
+       end
+      end
+     end
+    end
+   end
+  end
+  $id = 'H2 helper pays all of it, exactly once'
+  $det = 'ret=' + $ret + ' dcV=' + $a.v + '/' + $b.v + ' pV=' + $ec.v + '/' + $xq.v + ' pD2=' + $d2 + '/' + $xq.d2 + ' dcD3=' + $a.d3 + '/' + $x.d3 + ' dcC0=' + $a.k0 + '/' + $x.k0
+  gosub Result.Sub:
+  $g[30] = $save.30
+  set global variable: name='al.LI.FDN.event' value=$g
+ else
+  $txt = 'TEST Cost: H1-H2 SKIP no second DC in [30]'
+  gosub Log.Sub:
+ end
+
  * ---------- P5 network short: DC 10, peer 10, cost 999 -> deferred ----------
  $p5.run = [TRUE]
  if $n.dcs > 2
@@ -518,6 +669,187 @@ if not $stop
   gosub Log.Sub:
  end
 
+ * ---------- A1-A5 (M-07b) attribution records FDN.Cost.DC and FDN.Cost.Home ----------
+ $g[33] = 1
+ set global variable: name='al.LI.FDN.event' value=$g
+ * A1 served null (between DCs): payer FDN.Cost.DC[0] + cost, [1] unchanged
+ $stn = $dc
+ $kind = 'dc'
+ $target = 500
+ gosub SetAvail.Sub:
+ gosub ReadDCRec.Sub:
+ $b.d0 = $d0
+ $b.d1 = $d1
+ $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
+ $e.base = $b.d0
+ $e.add = 100
+ gosub ExpAdd.Sub:
+ $x.d0 = $e.out
+ $stn = $dc
+ gosub ReadDCRec.Sub:
+ $ok = [FALSE]
+ if $ret == [TRUE]
+  if $d0 == $x.d0
+   if $d1 == $b.d1
+    $ok = [TRUE]
+   end
+  end
+ end
+ $id = 'A1 between DCs on FDN.Cost.DC[0]'
+ $det = 'ret=' + $ret + ' D0=' + $d0 + '/' + $x.d0 + ' D1=' + $d1 + '/' + $b.d1
+ gosub Result.Sub:
+ if is datatyp[ $srv ] == DATATYPE_STATION
+  * A2 home station: FDN.Hub [dc, 1], no FDN.Cost.Home -> 100 then 50 gives [dc, 150, 2, time]
+  $hub.t = = array alloc: size=2
+  $hub.t[0] = $dc
+  $hub.t[1] = 1
+  $srv  ->  set local variable: name='FDN.Hub' value=$hub.t
+  $srv  ->  set local variable: name='FDN.Cost.Home' value=null
+  $stn = $dc
+  $kind = 'dc'
+  $target = 500
+  gosub SetAvail.Sub:
+  gosub ReadDCRec.Sub:
+  $b.d1 = $d1
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=$srv cost=100
+  $ret2 = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=$srv cost=50
+  gosub ReadHome.Sub:
+  $stn = $dc
+  gosub ReadDCRec.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $ret2 == [TRUE]
+    if $h.dc == $dc
+     if $h1 == 150
+      if $h2 == 2
+       if not $h3 == -99
+        if $d1 == $b.d1
+         $ok = [TRUE]
+        end
+       end
+      end
+     end
+    end
+   end
+  end
+  $id = 'A2 home station record [dc, EC, transfers, time]'
+  $det = 'ret=' + $ret + '/' + $ret2 + ' H1=' + $h1 + '/150 H2=' + $h2 + '/2 H3=' + $h3 + ' D1=' + $d1 + '/' + $b.d1
+  gosub Result.Sub:
+  * A3 not the home DC (FDN.Hub null): manual move, FDN.Cost.DC[1] + cost, home record unchanged
+  $srv  ->  set local variable: name='FDN.Hub' value=null
+  $stn = $dc
+  $kind = 'dc'
+  $target = 500
+  gosub SetAvail.Sub:
+  gosub ReadDCRec.Sub:
+  $b.d1 = $d1
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=$srv cost=100
+  $e.base = $b.d1
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $x.d1 = $e.out
+  gosub ReadHome.Sub:
+  $stn = $dc
+  gosub ReadDCRec.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $d1 == $x.d1
+    if $h1 == 150
+     if $h2 == 2
+      $ok = [TRUE]
+     end
+    end
+   end
+  end
+  $id = 'A3 non-home charge on FDN.Cost.DC[1]'
+  $det = 'ret=' + $ret + ' D1=' + $d1 + '/' + $x.d1 + ' H1=' + $h1 + '/150 H2=' + $h2 + '/2'
+  gosub Result.Sub:
+  * A4 home record kept for another DC restarts: [srv, 999, 9, 0] -> [dc, 100, 1, time]
+  $old.t = = array alloc: size=4
+  $old.t[0] = $srv
+  $old.t[1] = 999
+  $old.t[2] = 9
+  $old.t[3] = 0
+  $srv  ->  set local variable: name='FDN.Cost.Home' value=$old.t
+  $hub.t = = array alloc: size=2
+  $hub.t[0] = $dc
+  $hub.t[1] = 1
+  $srv  ->  set local variable: name='FDN.Hub' value=$hub.t
+  $stn = $dc
+  $kind = 'dc'
+  $target = 500
+  gosub SetAvail.Sub:
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=$srv cost=100
+  gosub ReadHome.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $h.dc == $dc
+    if $h1 == 100
+     if $h2 == 1
+      $ok = [TRUE]
+     end
+    end
+   end
+  end
+  $id = 'A4 home record restarts for a new home DC'
+  $det = 'ret=' + $ret + ' H1=' + $h1 + '/100 H2=' + $h2 + '/1'
+  gosub Result.Sub:
+ else
+  $txt = 'TEST Cost: A2-A4 SKIP no valid station in [3]'
+  gosub Log.Sub:
+ end
+ * A5 help: DC avail 50, peer avail 500, cost 100 -> peer FDN.Cost.DC[2] + 50, DC [3] + 50 and [0] + 100
+ if is datatyp[ $peer.dc ] == DATATYPE_STATION
+  $stn = $peer.dc
+  $kind = 'peer'
+  $target = 500
+  gosub SetAvail.Sub:
+  gosub ReadDCRec.Sub:
+  $q.d2 = $d2
+  $stn = $dc
+  $kind = 'dc'
+  $target = 50
+  gosub SetAvail.Sub:
+  gosub ReadDCRec.Sub:
+  $b.d0 = $d0
+  $b.d3 = $d3
+  $ret = [THIS] -> call script lib.LI.FDN.Cost.Pay : payer=$dc served=null cost=100
+  $e.base = $q.d2
+  $e.add = 50
+  gosub ExpAdd.Sub:
+  $xq.d2 = $e.out
+  $e.base = $b.d3
+  $e.add = 50
+  gosub ExpAdd.Sub:
+  $x.d3 = $e.out
+  $e.base = $b.d0
+  $e.add = 100
+  gosub ExpAdd.Sub:
+  $x.d0 = $e.out
+  $stn = $dc
+  gosub ReadDCRec.Sub:
+  $a.d0 = $d0
+  $a.d3 = $d3
+  $stn = $peer.dc
+  gosub ReadDCRec.Sub:
+  $ok = [FALSE]
+  if $ret == [TRUE]
+   if $d2 == $xq.d2
+    if $a.d3 == $x.d3
+     if $a.d0 == $x.d0
+      $ok = [TRUE]
+     end
+    end
+   end
+  end
+  $id = 'A5 help given and received'
+  $det = 'ret=' + $ret + ' peerD2=' + $d2 + '/' + $xq.d2 + ' dcD3=' + $a.d3 + '/' + $x.d3 + ' dcD0=' + $a.d0 + '/' + $x.d0
+  gosub Result.Sub:
+ else
+  $txt = 'TEST Cost: A5 SKIP no second DC in [30]'
+  gosub Log.Sub:
+ end
+
  * ---------- P7 null payer -> FALSE, DC unchanged ----------
  $g[33] = 1
  set global variable: name='al.LI.FDN.event' value=$g
@@ -563,6 +895,23 @@ if is datatyp[ $srv ] == DATATYPE_STATION
  $kind = 'srv'
  gosub RestoreStn.Sub:
 end
+* v9.01 D6 (M-07b): restore the attribution locals (copies of the saves, null stays null)
+$c.in = $sv.dcrec
+gosub Copy.Sub:
+$dc  ->  set local variable: name='FDN.Cost.DC' value=$c.out
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $c.in = $sv.prrec
+ gosub Copy.Sub:
+ $peer.dc  ->  set local variable: name='FDN.Cost.DC' value=$c.out
+end
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $c.in = $sv.home
+ gosub Copy.Sub:
+ $srv  ->  set local variable: name='FDN.Cost.Home' value=$c.out
+ $c.in = $sv.hub
+ gosub Copy.Sub:
+ $srv  ->  set local variable: name='FDN.Hub' value=$c.out
+end
 $g[30] = $save.30
 $g[33] = $save.33
 set global variable: name='al.LI.FDN.event' value=$g
@@ -595,6 +944,39 @@ if is datatyp[ $srv ] == DATATYPE_STATION
  $stn = $srv
  $kind = 'srv'
  gosub EqChk.Sub:
+end
+* v9.01 D6 (M-07b): the attribution locals equal the saves
+$a.l = $dc  ->  get local variable: name='FDN.Cost.DC'
+$b.l = $sv.dcrec
+gosub ListSame.Sub:
+if not $l.ok
+ $rv.ok = [FALSE]
+ $r.det = $r.det + ' dc FDN.Cost.DC'
+end
+if is datatyp[ $peer.dc ] == DATATYPE_STATION
+ $a.l = $peer.dc  ->  get local variable: name='FDN.Cost.DC'
+ $b.l = $sv.prrec
+ gosub ListSame.Sub:
+ if not $l.ok
+  $rv.ok = [FALSE]
+  $r.det = $r.det + ' peer FDN.Cost.DC'
+ end
+end
+if is datatyp[ $srv ] == DATATYPE_STATION
+ $a.l = $srv  ->  get local variable: name='FDN.Cost.Home'
+ $b.l = $sv.home
+ gosub ListSame.Sub:
+ if not $l.ok
+  $rv.ok = [FALSE]
+  $r.det = $r.det + ' srv FDN.Cost.Home'
+ end
+ $a.l = $srv  ->  get local variable: name='FDN.Hub'
+ $b.l = $sv.hub
+ gosub ListSame.Sub:
+ if not $l.ok
+  $rv.ok = [FALSE]
+  $r.det = $r.det + ' srv FDN.Hub'
+ end
 end
 $ok = $rv.ok
 $id = 'R restore'
@@ -994,4 +1376,69 @@ if $ok
 end
 $txt = 'TEST Cost: ' + $id + ': ' + $rs + ' ' + $det
 gosub Log.Sub:
+endsub
+
+* v9.01 D6 (M-07b) ReadDCRec: $d0-$d3 from FDN.Cost.DC of $stn (-99 when missing or not INT)
+ReadDCRec.Sub:
+$d0 = -99
+$d1 = -99
+$d2 = -99
+$d3 = -99
+$rd.arr = $stn  ->  get local variable: name='FDN.Cost.DC'
+if is datatyp[ $rd.arr ] == DATATYPE_ARRAY
+ $rd.x = $rd.arr[0]
+ if is datatyp[ $rd.x ] == DATATYPE_INT
+  $d0 = $rd.x
+ end
+ $rd.x = $rd.arr[1]
+ if is datatyp[ $rd.x ] == DATATYPE_INT
+  $d1 = $rd.x
+ end
+ $rd.x = $rd.arr[2]
+ if is datatyp[ $rd.x ] == DATATYPE_INT
+  $d2 = $rd.x
+ end
+ $rd.x = $rd.arr[3]
+ if is datatyp[ $rd.x ] == DATATYPE_INT
+  $d3 = $rd.x
+ end
+end
+endsub
+
+* v9.01 D6 (M-07b) ReadHome: $h.dc and $h1-$h3 from FDN.Cost.Home of $srv (null / -99 when missing)
+ReadHome.Sub:
+$h.dc = null
+$h1 = -99
+$h2 = -99
+$h3 = -99
+$rh.arr = $srv  ->  get local variable: name='FDN.Cost.Home'
+if is datatyp[ $rh.arr ] == DATATYPE_ARRAY
+ $h.dc = $rh.arr[0]
+ $rh.x = $rh.arr[1]
+ if is datatyp[ $rh.x ] == DATATYPE_INT
+  $h1 = $rh.x
+ end
+ $rh.x = $rh.arr[2]
+ if is datatyp[ $rh.x ] == DATATYPE_INT
+  $h2 = $rh.x
+ end
+ $rh.x = $rh.arr[3]
+ if is datatyp[ $rh.x ] == DATATYPE_INT
+  $h3 = $rh.x
+ end
+end
+endsub
+
+* v9.01 D6 (M-07b) Copy: $c.out = element copy of the array $c.in, null when $c.in is not an array
+Copy.Sub:
+$c.out = null
+if is datatyp[ $c.in ] == DATATYPE_ARRAY
+ $c.n = size of array $c.in
+ $c.out = = array alloc: size=$c.n
+ $c.i = 0
+ while $c.i < $c.n
+  $c.out[$c.i] = $c.in[$c.i]
+  inc $c.i =
+ end
+end
 endsub

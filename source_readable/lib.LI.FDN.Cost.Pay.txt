@@ -22,12 +22,20 @@
 * the record). When the payer alone cannot cover the cost, the other DCs in [30] are asked
 * in list order; each peer gives only what it holds above its own protect level. The transfer
 * is paid only when payer + peers together cover the WHOLE cost (all-or-nothing check before
-* anything is taken); a partial payment never happens.
+* anything is taken); a partial payment never happens. Should stock move between the check and
+* the take (late shortfall), every EC taken is given back before the deferral (M-07c).
 
 * On success:
 * - the payer FDN.Cost local gets cost added to [0] and [1]+1, with [2] set to playing time when null;
 * - each peer that helped adds what it gave to its own FDN.Cost[0];
 * - the served station (when a valid DATATYPE_STATION) also gets cost added to its FDN.Cost[0] and [1]+1.
+* - v9.01 D6 (M-07b) attribution records (Attr.Sub), for the DC running-cost page:
+*   payer DC local FDN.Cost.DC = [0] between-DC EC (served null), [1] manual-move EC (served is
+*   not a station whose home DC FDN.Hub[0] is the payer), [2] help given to other DCs, [3] help
+*   received from other DCs; served station local FDN.Cost.Home = [home DC, EC, transfers,
+*   first-charge time], written only when the payer is the station's home DC (FDN.Hub[0]); a
+*   record kept for another DC is restarted for the payer (figures 'since this DC is the home').
+*   Help given and help received are both recorded on success only (M-07c).
 
 * On network short: log via lib.LI.FDN.Log AND directly to 9910, add the cost to the payer's
 * FDN.Cost[3] 'deferred', return [FALSE]. The deferred line is:
@@ -48,10 +56,12 @@
 
 * To Do - Trading Station protect-level floor once its subtype is known (M-03 probe)
 
-* Version: 1.0
-* Date: 28/10/2026
-* Tested: 2026-10-29 FL 22/22 PASS (test.LI.FDN.Cost; C5/C6b/C7b/P4 skipped, one DC)
+* Version: 1.2
+* Date: 30/10/2026
+* Tested: not tested (M-07c; v1.0 tested 2026-10-29 FL 22/22 PASS)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-07c): peer take counted in the paid total, peer records on success only, late shortfall refunds every take (Help.Rec.Sub, Refund.Sub)
+ * v9.01 D6 (M-07b): attribution records FDN.Cost.DC on DCs and FDN.Cost.Home on home stations (Attr.Sub, DC.Rec.Add.Sub, Home.Rec.Sub)
  * v9.01 D6 (M-04): new - Energy Cell payment for the multi-DC transfer charge
  * -----------------------------------------------------------------------------------
 
@@ -128,7 +138,20 @@ $net = $payer.avail + $peer.total
 end
 
 * THE TAKE - payer part first, then peers in list order until the whole cost is paid
+* v9.01 D6 (M-07c): every take is counted in $paid (the peer take was not, so every helped
+* charge deferred and the peer EC was lost) and remembered in $tk.st / $tk.amt; peer records
+* are written only on success (Help.Rec.Sub), a late deferral gives every take back (Refund.Sub)
 $paid = 0
+$help.rx = 0
+$payer.taken = 0
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+$ln = 0
+if is datatyp[ $list ] == DATATYPE_ARRAY
+ $ln = size of array $list
+end
+$tk.st = = array alloc: size=$ln
+$tk.amt = = array alloc: size=$ln
+$tk.n = 0
 
 * take the payer's available part (all of $avail when it covers the rest)
 $peer.dc = $payer
@@ -137,34 +160,30 @@ if not $take.now <= $payer.avail
  $take.now = $payer.avail
 end
 gosub Take.EC.Sub:
+$payer.taken = $taken
 $paid = $paid + $taken
 
 * then from each peer DC in list order, only while something is still missing and it can give
 if not $paid >= $need
- $list = [THIS] -> call script lib.LI.FDN.Dc.List :
- if is datatyp[ $list ] == DATATYPE_ARRAY
-  $ln = size of array $list
-  $li = 0
-  while $li < $ln
-   $peer.dc = $list[$li]
-   inc $li =
-   if not $paid >= $need
-    if not $peer.dc == $payer
-     gosub Protect.Avail.Sub:
-     if is datatyp[ $avail ] == DATATYPE_INT
-      if $avail > 0
-       $take.now = $need - $paid
-       if not $take.now <= $avail
-        $take.now = $avail
-       end
-       gosub Take.EC.Sub:
-       * a helping peer adds what it gave to its own FDN.Cost[0] (no transfer count)
-       $peer.gave = $taken
-       if $peer.gave > 0
-        $add.amt = $peer.gave
-        $add.count = [FALSE]
-        gosub Cost.Add.Sub:
-       end
+ $li = 0
+ while $li < $ln
+  $peer.dc = $list[$li]
+  inc $li =
+  if not $paid >= $need
+   if not $peer.dc == $payer
+    gosub Protect.Avail.Sub:
+    if is datatyp[ $avail ] == DATATYPE_INT
+     if $avail > 0
+      $take.now = $need - $paid
+      if not $take.now <= $avail
+       $take.now = $avail
+      end
+      gosub Take.EC.Sub:
+      if $taken > 0
+       $paid = $paid + $taken
+       $tk.st[$tk.n] = $peer.dc
+       $tk.amt[$tk.n] = $taken
+       inc $tk.n =
       end
      end
     end
@@ -174,18 +193,20 @@ if not $paid >= $need
 end
 
 * safety: the all-or-nothing check above guarantees full coverage, but if stock moved in the
-* last instant and we are still short, defer what is left (never a partial charge)
+* last instant and we are still short, give every take back and defer (never a partial charge)
 if not $paid >= $need
+ gosub Refund.Sub:
  gosub Defer.Sub:
  return [FALSE]
 end
 
 * SUCCESS - record the charge on the payer and, when it is a valid station, on the served end.
-* Peers already recorded what they gave inside the take loop above (Cost.Add.Sub).
+* v9.01 D6 (M-07c): the peers that helped are recorded here, after success (Help.Rec.Sub).
 $peer.dc = $payer
 $add.amt = $need
 $add.count = [TRUE]
 gosub Cost.Add.Sub:
+gosub Help.Rec.Sub:
 
 $served.valid = [FALSE]
 if is datatyp[ $served ] == DATATYPE_STATION
@@ -201,7 +222,45 @@ $peer.dc = $served
  $add.count = [TRUE]
  gosub Cost.Add.Sub:
 end
+gosub Attr.Sub:
 return [TRUE]
+
+Help.Rec.Sub:
+* v9.01 D6 (M-07c): on success only - each peer that helped adds what it gave to its own
+* FDN.Cost[0] (no transfer count) and FDN.Cost.DC[2]; the payer's help received is summed
+$tk.i = 0
+while $tk.i < $tk.n
+ $peer.dc = $tk.st[$tk.i]
+ $peer.gave = $tk.amt[$tk.i]
+ inc $tk.i =
+ $add.amt = $peer.gave
+ $add.count = [FALSE]
+ gosub Cost.Add.Sub:
+ $rec.st = $peer.dc
+ $rec.slot = 2
+ $rec.amt = $peer.gave
+ gosub DC.Rec.Add.Sub:
+ $help.rx = $help.rx + $peer.gave
+end
+endsub
+
+Refund.Sub:
+* v9.01 D6 (M-07c): a late deferral - every EC taken goes back where it came from (payer
+* and each peer) through Update.Ware 'add'; nothing is recorded
+if $payer.taken > 0
+ $ref.amt = $payer.taken
+  = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=SS_WARE_ENERGY amount=$ref.amt station=$payer action='add'
+end
+$tk.i = 0
+while $tk.i < $tk.n
+ $ref.st = $tk.st[$tk.i]
+ $ref.amt = $tk.amt[$tk.i]
+ inc $tk.i =
+  = [THIS] -> call script plugin.LI.FDN.Update.Ware : ware=SS_WARE_ENERGY amount=$ref.amt station=$ref.st action='add'
+end
+$log.txt = 'Cost: late shortfall, ' + $paid + ' EC given back'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+endsub
 
 Protect.Avail.Sub:
 * fills $protect.level and $avail for the station in $peer.dc (the payer before any peer loop).
@@ -383,3 +442,93 @@ if is datatyp[ $payer ] == DATATYPE_STATION
 end
 endsub
 
+Attr.Sub:
+* v9.01 D6 (M-07b): attribution after a successful charge. Class 0 = between DCs (served null),
+* 1 = manual move (any other served end), 2 = the payer is the home DC of the served station.
+$rec.st = $payer
+if $help.rx > 0
+ $rec.slot = 3
+ $rec.amt = $help.rx
+ gosub DC.Rec.Add.Sub:
+end
+$attr.class = 1
+if is datatyp[ $served ] == DATATYPE_NULL
+ $attr.class = 0
+end
+if $served.valid
+ $hub = $served  ->  get local variable: name='FDN.Hub'
+ if is datatyp[ $hub ] == DATATYPE_ARRAY
+  $home = $hub[0]
+  if $home == $payer
+   $attr.class = 2
+  end
+ end
+end
+if $attr.class == 2
+ gosub Home.Rec.Sub:
+else
+ $rec.st = $payer
+ $rec.slot = $attr.class
+ $rec.amt = $need
+ gosub DC.Rec.Add.Sub:
+end
+endsub
+
+DC.Rec.Add.Sub:
+* v9.01 D6 (M-07b): adds $rec.amt to slot $rec.slot (0-3) of the FDN.Cost.DC local of the station
+* in $rec.st; created as an array of 4 when missing or shorter than 4. No-op unless a station.
+if is datatyp[ $rec.st ] == DATATYPE_STATION
+ $dc.rec = $rec.st  ->  get local variable: name='FDN.Cost.DC'
+ $rec.new = [TRUE]
+ if is datatyp[ $dc.rec ] == DATATYPE_ARRAY
+  $rec.size = size of array $dc.rec
+  if $rec.size >= 4
+   $rec.new = [FALSE]
+  end
+ end
+ if $rec.new == [TRUE]
+  $dc.rec = = array alloc: size=4
+ end
+ $rec.base = $dc.rec[$rec.slot]
+ if not is datatyp[ $rec.base ] == DATATYPE_INT
+  $rec.base = 0
+ end
+ $dc.rec[$rec.slot] = $rec.base + $rec.amt
+ $rec.st  ->  set local variable: name='FDN.Cost.DC' value=$dc.rec
+end
+endsub
+
+Home.Rec.Sub:
+* v9.01 D6 (M-07b): FDN.Cost.Home on the served station = [home DC, EC, transfers, first-charge
+* time]; restarted for the payer when missing, shorter than 4 or kept for another DC.
+$home.rec = $served  ->  get local variable: name='FDN.Cost.Home'
+$rec.new = [TRUE]
+if is datatyp[ $home.rec ] == DATATYPE_ARRAY
+ $rec.size = size of array $home.rec
+ if $rec.size >= 4
+  $rec.new = [FALSE]
+ end
+end
+if $rec.new == [TRUE]
+ $home.rec = = array alloc: size=4
+end
+$home.dc = $home.rec[0]
+if not $home.dc == $payer
+ $home.rec[0] = $payer
+ $home.rec[1] = 0
+ $home.rec[2] = 0
+ $now.t = = playing time
+ $home.rec[3] = $now.t
+end
+$home.base = $home.rec[1]
+if not is datatyp[ $home.base ] == DATATYPE_INT
+ $home.base = 0
+end
+$home.rec[1] = $home.base + $need
+$home.cnt = $home.rec[2]
+if not is datatyp[ $home.cnt ] == DATATYPE_INT
+ $home.cnt = 0
+end
+$home.rec[2] = $home.cnt + 1
+$served  ->  set local variable: name='FDN.Cost.Home' value=$home.rec
+endsub

@@ -12,7 +12,7 @@
 
 * The stack is an array of entries [view, obj, ware]. View numbers are the v8 values of
 * settings [5]: 1 = DC, 2 = Stations, 4 = Factory.Details, 5 = Dock, 6 = Ware.Details,
-* 7 = Config.Menu, 3 = DC list (M-06).
+* 7 = Config.Menu, 3 = DC list (M-06). View 8 (DC running cost) comes with M-07g.
 
 * The return value is either an array [command, value, ware, extra], the string of a
 * global menu action, or -1 (Escape, handled like 'back').
@@ -29,13 +29,14 @@
 
 * To Do - N/A
 
-* Version: 1.3
+* Version: 1.4
 * Date: 30/10/2026
-* Tested: not tested (M-06D1, M-06D2)
+* Tested: not tested (M-07e)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06M): new 'close' command returns null so Close menu exits all menus from any view
  * v9.01 D6 (M-06D1): open.dc takes the DC from the row value (secondary DCs), new open.dclist -> view 3
  * v9.01 D6 (M-06D2): dc.add / dc.remove / dc.primary through DC.Edit.Sub (Dc.Edit, DC.Change), texts 352 363-368
+ * v9.01 D6 (M-07e): range.on / cost.on (387) / range.base / floor.global ([31]-[34]), dc.range / dc.floor (Dc.Cfg), dc.cost.reset (391); 193 bad value, Dc.Edit refresh after range changes, 352 busy
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -313,6 +314,36 @@ end
 if $command == 'dc.primary'
  gosub DC.Edit.Sub:
  return $new.stack
+end
+
+* --- v9.01 D6 (M-07e): network settings, per-DC settings, running cost reset ----------
+if $command == 'range.on'
+ gosub Net.Setting.Sub:
+ return $stack
+end
+if $command == 'cost.on'
+ gosub Net.Setting.Sub:
+ return $stack
+end
+if $command == 'range.base'
+ gosub Net.Setting.Sub:
+ return $stack
+end
+if $command == 'floor.global'
+ gosub Net.Setting.Sub:
+ return $stack
+end
+if $command == 'dc.range'
+ gosub DC.Cfg.Sub:
+ return $stack
+end
+if $command == 'dc.floor'
+ gosub DC.Cfg.Sub:
+ return $stack
+end
+if $command == 'dc.cost.reset'
+ gosub Cost.Reset.Sub:
+ return $stack
 end
 
 * Unknown command: just leave the stack untouched --------------------------------------
@@ -783,5 +814,200 @@ else if $res == 'max'
  $max.txt = '16'
  $txt = = sprintf: pageid=$PageID textid=367, $max.txt, null, null, null, null
  write to player logbook $txt
+end
+endsub
+
+Net.Setting.Sub:
+* v9.01 D6 (M-07e): settings [31] range on/off, [33] cost on/off (switching on asks 387 first;
+* off keeps every total), [32] base range 1-20 (375), [34] global floor 0-100 (376). Whole
+* numbers 0/1, never null. Range changes run Dc.Edit 'refresh' (352 when the pass is busy).
+$s.size = size of array $al.Settings
+if $s.size < 40
+ endsub
+end
+$net.refresh = 0
+$net.idx = 34
+$new.val = null
+if $command == 'range.on'
+ $net.idx = 31
+ $cur = $al.Settings[31]
+ $new.val = 1
+ if $cur == 1
+  $new.val = 0
+ end
+ $net.refresh = 1
+else if $command == 'cost.on'
+ $net.idx = 33
+ $cur = $al.Settings[33]
+ $new.val = 1
+ if $cur == 1
+  $new.val = 0
+ else
+  $txt = = read text: page=$PageID id=387
+  $confirm = null -> get user input: type=Var/Boolean, title=$txt
+  if not $confirm == [TRUE]
+   endsub
+  end
+ end
+else if $command == 'range.base'
+ $net.idx = 32
+ $lo = 1
+ $hi = 20
+ $tid = 375
+ $lid = 372
+ gosub Ask.Number.Sub:
+ if $ask.ok == 0
+  endsub
+ end
+ $new.val = $amount
+ $net.refresh = 1
+else
+ $lo = 0
+ $hi = 100
+ $tid = 376
+ $lid = 374
+ gosub Ask.Number.Sub:
+ if $ask.ok == 0
+  endsub
+ end
+ $new.val = $amount
+end
+$al.Settings[$net.idx] = $new.val
+$log.txt = 'FDN Menu: ' + $command + ' new=' + $new.val
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+set global variable: name='al.LI.FDN.event' value=$al.Settings
+if $net.refresh == 1
+ gosub Range.Refresh.Sub:
+end
+endsub
+
+
+DC.Cfg.Sub:
+* v9.01 D6 (M-07e): ['dc.range', dc] asks 379 (0 = type value, 1-20) and ['dc.floor', dc] asks
+* 380 (-1 = global value, 0-100); lib.LI.FDN.Dc.Cfg stores it in FDN.DC.Cfg. Range -> refresh.
+$dock = $value
+if not is datatyp[ $dock ] == DATATYPE_STATION
+ endsub
+end
+$slot = 1
+$lo = -1
+$hi = 100
+$tid = 380
+$lid = 378
+if $command == 'dc.range'
+ $slot = 0
+ $lo = 0
+ $hi = 20
+ $tid = 379
+ $lid = 377
+end
+gosub Ask.Number.Sub:
+if $ask.ok == 0
+ endsub
+end
+$cfg.res = [THIS] -> call script lib.LI.FDN.Dc.Cfg : dc=$dock slot=$slot value=$amount
+if not is datatyp[ $cfg.res ] == DATATYPE_ARRAY
+ $lab.txt = = read text: page=$PageID id=$lid
+ $txt = = sprintf: pageid=$PageID textid=193, $amount, $lab.txt, null, null, null
+ write to player logbook $txt
+ endsub
+end
+$log.txt = 'FDN Menu: ' + $command + ' new=' + $amount
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+if $slot == 0
+ gosub Range.Refresh.Sub:
+end
+endsub
+
+
+Ask.Number.Sub:
+* v9.01 D6 (M-07e): ask a whole number with title text $tid; $ask.ok = 1 when $lo <= $amount <= $hi.
+* Cancel -> 0, no message; out of range -> 0 and 193 (value, label text $lid) to the logbook.
+$ask.ok = 0
+$txt = = read text: page=$PageID id=$tid
+$amount = null -> get user input: type=Var/Number, title=$txt
+if not is datatyp[ $amount ] == DATATYPE_INT
+ endsub
+end
+if $amount >= $lo
+ if $amount <= $hi
+  $ask.ok = 1
+ end
+end
+if $ask.ok == 0
+ $lab.txt = = read text: page=$PageID id=$lid
+ $txt = = sprintf: pageid=$PageID textid=193, $amount, $lab.txt, null, null, null
+ write to player logbook $txt
+end
+endsub
+
+
+Range.Refresh.Sub:
+* v9.01 D6 (M-07e): a range setting changed - rebuild routes and home DCs; the setting stays
+* saved when a supply pass holds the lock (352), the next refresh picks it up
+$ref.res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='refresh' dc=null
+if $ref.res == 'busy'
+ $txt = = read text: page=$PageID id=352
+ write to player logbook $txt
+end
+endsub
+
+
+Cost.Reset.Sub:
+* v9.01 D6 (M-07e): ['dc.cost.reset', dc] - Yes/No titled 391, then FDN.Cost = [0, 0, null, 0],
+* FDN.Cost.DC = [0, 0, 0, 0] on the DC and FDN.Cost.Home = [dc, 0, 0, null] on each station of
+* [3] and [4] whose record belongs to this DC. Used by the running cost page (M-07g).
+$dock = $value
+if not is datatyp[ $dock ] == DATATYPE_STATION
+ endsub
+end
+$txt = = read text: page=$PageID id=391
+$confirm = null -> get user input: type=Var/Boolean, title=$txt
+if not $confirm == [TRUE]
+ endsub
+end
+$zc = = array alloc: size=4
+$zc[0] = 0
+$zc[1] = 0
+$zc[3] = 0
+$dock  ->  set local variable: name='FDN.Cost' value=$zc
+$zd = = array alloc: size=4
+$zd[0] = 0
+$zd[1] = 0
+$zd[2] = 0
+$zd[3] = 0
+$dock  ->  set local variable: name='FDN.Cost.DC' value=$zd
+$c.array = $al.Settings[3]
+gosub Home.Reset.Sub:
+$c.array = $al.Settings[4]
+gosub Home.Reset.Sub:
+$log.txt = 'FDN Menu: dc.cost.reset done'
+ = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+endsub
+
+
+Home.Reset.Sub:
+* v9.01 D6 (M-07e): FDN.Cost.Home of the stations in $c.array whose [0] is $dock -> [dock, 0, 0, null]
+if not is datatyp[ $c.array ] == DATATYPE_ARRAY
+ endsub
+end
+$c.n = size of array $c.array
+$c.i = 0
+while $c.i < $c.n
+ $st = $c.array[$c.i]
+ inc $c.i =
+ if is datatyp[ $st ] == DATATYPE_STATION
+  $h.rec = $st  ->  get local variable: name='FDN.Cost.Home'
+  if is datatyp[ $h.rec ] == DATATYPE_ARRAY
+   $h.dc = $h.rec[0]
+   if $h.dc == $dock
+    $zh = = array alloc: size=4
+    $zh[0] = $dock
+    $zh[1] = 0
+    $zh[2] = 0
+    $st  ->  set local variable: name='FDN.Cost.Home' value=$zh
+   end
+  end
+ end
 end
 endsub

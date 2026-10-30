@@ -26,6 +26,7 @@
 * DC view top box (M-06L): 'Current Distribution Centre:', a blank, Name [ID] | Sector, the
 * status line 362 (type | range | stations | EC: subtype text, lib.LI.FDN.Dc.Range, stations
 * whose FDN.Hub home is this DC, FDN.Cost[0]) and a blank. A dock keeps lib.LI.FDN.Menu.ObjLine.
+* DC view network rows (M-07f): heading 370, range 377 and reserve floor 378 for this DC.
 
 * Arguments:
 * - menu (Value): the custom menu array to append to (changed in place)
@@ -38,13 +39,14 @@
 
 * To Do - N/A
 
-* Version: 1.2
+* Version: 1.3
 * Date: 30/10/2026
-* Tested: not tested (M-06E1)
+* Tested: not tested (M-07f)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-06): one builder for the DC and dock views, on lib.LI.FDN.Menu.WareRow / Menu.ObjLine
  * v9.01 D6 (M-06E1): DC view links to the DC list (text 353 -> 'open.dclist')
  * v9.01 D6 (M-06L): DC view top box: Name [ID] | Sector, then the status line 362 (type | range | stations | EC, moved from Menu.DC.List)
+ * v9.01 D6 (M-07f): DC view network block 370 with per-DC range 377 and floor 378 (Default (n) 324) -> dc.range / dc.floor
  * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -90,6 +92,8 @@ if $is.dc == [TRUE]
  * v9.01 D6 (M-06E1): link to the DC list (view 3)
  $txt = = read text: page=$PageID id=353
  add custom menu item to array $menu: text=$txt returnvalue='open.dclist'
+ * v9.01 D6 (M-07f): per-DC network settings (370 block), settings with the M-03 slots only
+ gosub DC.Cfg.Rows.Sub:
 end
 
 * credits heading, also published for the updater
@@ -312,6 +316,71 @@ while $c.i < $c.n
   end
  end
 end
+endsub
+* -----------------------------------------------------------------------------------
+
+* v9.01 D6 (M-07f): DC view rows 377 (range) and 378 (reserve floor) from FDN.DC.Cfg; a value that
+* is not set shows 'Default (n)' (324): the range from lib.LI.FDN.Dc.Range, the floor from [34]
+* (null -> 25). Rows return ['dc.range', dc] and ['dc.floor', dc] (Menu.Command, M-07e).
+DC.Cfg.Rows.Sub:
+$s.size = size of array $al.Settings
+if $s.size < 40
+ endsub
+end
+$txt = = read text: page=$PageID id=370
+add custom menu heading to array $menu: title=$txt
+$ovr.r = null
+$ovr.f = null
+$cfg = $obj  ->  get local variable: name='FDN.DC.Cfg'
+if is datatyp[ $cfg ] == DATATYPE_ARRAY
+ $cfg.n = size of array $cfg
+ if $cfg.n > 1
+  $ovr.r = $cfg[0]
+  $ovr.f = $cfg[1]
+ end
+end
+
+* range: an override of 1 or more, else Default (Dc.Range, which then is the type value)
+$val.txt = null
+if is datatyp[ $ovr.r ] == DATATYPE_INT
+ if $ovr.r >= 1
+  $val.txt = = convert number $ovr.r to string
+ end
+end
+if is datatyp[ $val.txt ] == DATATYPE_NULL
+ $r = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$obj
+ if not is datatyp[ $r ] == DATATYPE_INT
+  $r = 0
+ end
+ $def.txt = = convert number $r to string
+ $val.txt = = sprintf: pageid=$PageID textid=324, $def.txt, null, null, null, null
+end
+$txt = = read text: page=$PageID id=377
+$ret.array = = array alloc: size=2
+$ret.array[0] = 'dc.range'
+$ret.array[1] = $obj
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$val.txt retval=$ret.array
+
+* reserve floor: an override of 0-100, else Default ([34], null or not a whole number -> 25)
+$val.txt = null
+if is datatyp[ $ovr.f ] == DATATYPE_INT
+ if $ovr.f >= 0
+  $val.txt = = convert number $ovr.f to string
+ end
+end
+if is datatyp[ $val.txt ] == DATATYPE_NULL
+ $pct = $al.Settings[34]
+ if not is datatyp[ $pct ] == DATATYPE_INT
+  $pct = 25
+ end
+ $def.txt = = convert number $pct to string
+ $val.txt = = sprintf: pageid=$PageID textid=324, $def.txt, null, null, null, null
+end
+$txt = = read text: page=$PageID id=378
+$ret.array = = array alloc: size=2
+$ret.array[0] = 'dc.floor'
+$ret.array[1] = $obj
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$val.txt retval=$ret.array
 endsub
 * -----------------------------------------------------------------------------------
 return null
