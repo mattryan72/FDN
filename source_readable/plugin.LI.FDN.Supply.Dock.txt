@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Supply.Dock  (v5, engine 50)
+* Script: plugin.LI.FDN.Supply.Dock  (v6, engine 50)
 * Desc: FDN v9.01 - Supply Dock
 * Arg 0: dock (Value) 'dock'
 * Arg 1: flag (Value) 'flag'
@@ -16,9 +16,9 @@
 * 
 * To Do - P2-12a switches the Update.Ware 'create' call to Ware.Rec create=[TRUE]
 * 
-* Version: 5.0
-* Date: 28/10/2026
-* Tested: FL 28/10/2026 (test.LI.FDN.SurplusRule 18/18 on the shipped sub; live dock pass not seen; AP and TC not seen)
+* Version: 6.0
+* Date: 30/10/2026
+* Tested: 2026-10-30 FL, cost off, one DC (cost-on paths not tested live)
 * -----------------------------------------------------------------------------------
 
 * v9.01 Phase 2 changes (P2-10b) - closes D1, D2 (one of nine), D3, B3, part of B12, B4:
@@ -49,6 +49,16 @@
 *     any other INT (normally -1) = on for mode 1 or 2, off for mode 0.  New records keep [7] = -1, so they follow the global default.
 * -----------------------------------------------------------------------------------
 
+* v9.01 D6 (M-05f) - home DC, skip every DC, Energy Cell cost, shortage pull:
+*   F1  dock pass: $dc = lib.LI.FDN.Home : station=$dock; the DC pass (flag 1) uses the dock itself.
+*   F2  jumps from the dock's FDN.Hub[1] (INT >= 0); missing or bad -> $dc null (out of range).
+*   F3  the dock pass skips any DC in lib.LI.FDN.Dc.List (not only [2]) and a dock with no home DC.
+*   F4  surplus (dock -> DC): lib.LI.FDN.Leg.Pay first (payer = home DC, served = dock, station leg);
+*       [FALSE] keeps the surplus at the dock this pass.
+*   F5  top-up (DC -> dock): one lib.LI.FDN.Pull for the shortage, then Leg.Pay before the pair;
+*       [FALSE] skips the ware this pass. Selling to NPCs has no Energy Cell cost.
+* -----------------------------------------------------------------------------------
+
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
 $script = = get script name
 $s.name = $script
@@ -59,7 +69,11 @@ end
 * Fetch values saved in the AL Plugin global variable:
 * - DC, debug flag (the trade-task cap is read fresh inside Sell.Ware.Sub)
 * array elements copied to locals before any condition (P1 lesson)
-$dc = $al.Settings[2]
+* v9.01 D6 (M-05f): the DC pass (flag 1) works on the DC itself; a dock pass uses the dock's home DC
+$dc = $dock
+if not $flag == 1
+ $dc = [THIS] -> call script lib.LI.FDN.Home : station=$dock
+end
 $debug.on = $al.Settings[7]
 * -----------------------------------------------------------------------------------
 
@@ -67,6 +81,33 @@ $debug.on = $al.Settings[7]
 $dock.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
 if not $dock.valid
  return null
+end
+
+* v9.01 D6 (M-05f): jumps of this dock to its home DC from the station local FDN.Hub [1] (dock pass
+* only, settings of 40 or more); a missing or bad value means no usable route, so $dc becomes null
+* and the dock pass skips as out of range. Below 40 slots the jumps stay 0 (no cost then).
+$s.size = size of array $al.Settings
+$hub.jumps = 0
+if not $flag == 1
+ if not $s.size < 40
+  if not is datatyp[ $dc ] == DATATYPE_NULL
+   $hub = $dock -> get local variable: name='FDN.Hub'
+   if is datatyp[ $hub ] == DATATYPE_ARRAY
+    $hj = $hub[1]
+    if is datatyp[ $hj ] == DATATYPE_INT
+     if not $hj < 0
+      $hub.jumps = $hj
+     else
+      $dc = null
+     end
+    else
+     $dc = null
+    end
+   else
+    $dc = null
+   end
+  end
+ end
 end
 * -----------------------------------------------------------------------------------
 
@@ -127,13 +168,36 @@ if not $flag
  $pass.total = 0
  $pass.moved = 0
  $pass.skipped = 0
- if $dock == $dc
+ * v9.01 D6 (M-05f): skip the pass when the dock is ANY DC in Dc.List (not only [2]), and when it
+ * has no home DC (out of range or bad FDN.Hub, $dc null from F1/F2)
+ $dock.go = [TRUE]
+ $dc.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+ $is.dc = [FALSE]
+ if is datatyp[ $dc.list ] == DATATYPE_ARRAY
+  $is.dc = find $dock in array: $dc.list
+ else
+  $primary = $al.Settings[2]
+  if $dock == $primary
+   $is.dc = [TRUE]
+  end
+ end
+ if $is.dc
+  $dock.go = [FALSE]
   if $debug.on
    $txt.log = $dock + ' skip: dock is DC'
    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
   end
  end
- if not $dock == $dc
+ if $dock.go
+  if is datatyp[ $dc ] == DATATYPE_NULL
+   $dock.go = [FALSE]
+   if $debug.on
+    $txt.log = $dock + ' skip: out of range'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+  end
+ end
+ if $dock.go
   $ware.array = $dock  ->  get tradeable ware array from station
   $s = size of array $ware.array
   $pass.total = $s
@@ -217,13 +281,25 @@ if not $flag
         * v9.01 B3: return only while the DC is still valid (no wait between the pair, so this is atomic)
         $dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
         if $dc.valid
-         = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dc  action='add'
-         = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dock  action='remove'
-         $pass.moved = $pass.moved + 1
-         * v9.01 D2: debug (dock id keeps it traceable)
-         if $debug.on
-          $txt.log = $dock + ' Surplus ' + $surplus + ' of ' + $ware + ' to DC'
-          = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+         * v9.01 D6 (M-05f): Energy Cells for this station leg BEFORE the pair (the receiving home DC pays,
+         * dock served); [FALSE] -> surplus kept at the dock this pass
+         $leg.ok = [THIS] -> call script lib.LI.FDN.Leg.Pay : ware=$ware units=$surplus payer=$dc served=$dock jumps=$hub.jumps backbone=[FALSE]
+         if $leg.ok == [TRUE]
+          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dc  action='add'
+          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$surplus  station=$dock  action='remove'
+          $pass.moved = $pass.moved + 1
+          * v9.01 D2: debug (dock id keeps it traceable)
+          if $debug.on
+           $txt.log = $dock + ' Surplus ' + $surplus + ' of ' + $ware + ' to DC'
+           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+          end
+         end
+         if not $leg.ok == [TRUE]
+          $pass.skipped = $pass.skipped + 1
+          if $debug.on
+           $txt.log = $ctx + ' skip: EC deferred, surplus ' + $surplus + ' kept'
+           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+          end
          end
         end
         if not $dc.valid
@@ -298,6 +374,17 @@ if not $flag
        if $dc.remote.level > 0
         * available is the stock - remote access level
         $dc.avialable = $dc.stock - $dc.remote.level
+        * v9.01 D6 (M-05f): shortage pull - when the DC cannot cover the need, Pull brings units over the
+        * backbone first (each backbone leg paid by its sender inside Pull); a negative available also
+        * refills the DC to its own remote level. One Pull per ware per pass.
+        if $dc.avialable < $required.at.dock
+         $pull.need = $required.at.dock - $dc.avialable
+         $pulled = [THIS] -> call script lib.LI.FDN.Pull : home=$dc ware=$ware need=$pull.need
+         if not is datatyp[ $pulled ] == DATATYPE_INT
+          $pulled = 0
+         end
+         $dc.avialable = $dc.avialable + $pulled
+        end
         * if avialable is greater tha 0
         if $dc.avialable > 0
          * if the available is less than what is requested set requested to available
@@ -305,22 +392,34 @@ if not $flag
           $required.at.dock = $dc.avialable
          end
          
-         * call the script to add the wares to the dock
-         $added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dock  action='add'
-         * -----------------------------------------------------------------------------------
+         * v9.01 D6 (M-05f): Energy Cells for this station leg BEFORE the pair (home DC pays, dock served);
+         * [FALSE] -> ware skipped this pass, nothing moves (Leg.Pay already logged it and counted [37])
+         $leg.ok = [THIS] -> call script lib.LI.FDN.Leg.Pay : ware=$ware units=$required.at.dock payer=$dc served=$dock jumps=$hub.jumps backbone=[FALSE]
+         if $leg.ok == [TRUE]
+          * call the script to add the wares to the dock
+          $added = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dock  action='add'
+          * -----------------------------------------------------------------------------------
          
-         * call the script to removes the wares from the dc
-          = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dc  action='remove'
-         * v9.01 D2: debug (dock id keeps it traceable; dock added = what Update.Ware 'add' returned)
-         if $debug.on
-          $txt.log = $dock + ' Supply ' + $required.at.dock + ' of ' + $ware + ' from DC, dock added ' + $added
-          = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+          * call the script to removes the wares from the dc
+           = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required.at.dock  station=$dc  action='remove'
+          * v9.01 D2: debug (dock id keeps it traceable; dock added = what Update.Ware 'add' returned)
+          if $debug.on
+           $txt.log = $dock + ' Supply ' + $required.at.dock + ' of ' + $ware + ' from DC, dock added ' + $added
+           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+          end
+          $pass.moved = $pass.moved + 1
+          if $debug.on
+           $txt.log = $ctx + ' moved=' + $required.at.dock
+           $txt.log = $txt.log + ' dc.remote=' + $dc.remote.level + ' dc.stock=' + $dc.virtual.stock + '+' + $dc.physical.stock
+           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+          end
          end
-         $pass.moved = $pass.moved + 1
-         if $debug.on
-          $txt.log = $ctx + ' moved=' + $required.at.dock
-          $txt.log = $txt.log + ' dc.remote=' + $dc.remote.level + ' dc.stock=' + $dc.virtual.stock + '+' + $dc.physical.stock
-          = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+         if not $leg.ok == [TRUE]
+          $pass.skipped = $pass.skipped + 1
+          if $debug.on
+           $txt.log = $ctx + ' skip: EC deferred, ' + $required.at.dock + ' not supplied'
+           = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+          end
          end
          * -----------------------------------------------------------------------------------
         end

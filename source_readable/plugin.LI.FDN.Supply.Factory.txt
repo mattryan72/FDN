@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Supply.Factory  (v3, engine 50)
+* Script: plugin.LI.FDN.Supply.Factory  (v4, engine 50)
 * Desc: FDNv9 - Supply Factory logic; called routine of Supply.Factory.Check (no START from the caller)
 * Arg 0: factory (Value) 'factory'
 * Arg 1: flag (Value) 'flag'
@@ -18,9 +18,9 @@
 * 
 * To Do - N/A
 * 
-* Version: 3.0
-* Date: 26/10/2026
-* Tested: TC 26/10/2026
+* Version: 4.0
+* Date: 29/10/2026
+* Tested: 2026-10-30 FL, cost off, one DC (cost-on paths not tested live)
 * -----------------------------------------------------------------------------------
 * v9.01 Phase 2 changes (P2-09b) - closes D1, D2 (one of nine), D3, B3, B11:
 *   D1  Header switched to lib.LI.FDN.Cfg.Get (the only allowed copy of the settings fetch).
@@ -48,6 +48,17 @@
 *   The 'has', 'Remove' and 'requires' lines are only written for amounts above 0.
 * -----------------------------------------------------------------------------------
 
+* v9.01 D6 (M-05e) - home DC, Energy Cell cost, shortage pull:
+ *   E1  $dc is resolved via lib.LI.FDN.Home : station=$factory instead of the AL plugin setting [2].
+ *   E2  Jump-count gate before any ware moves: jumps from the factory's FDN.Hub[1]; Home null or bad
+ *       jumps -> skip: out of range. A deferred leg pays no Energy Cells and moves nothing this pass.
+ *   E3  Add.Product.Sub pushes only when $push.go (DC valid) and after paying Energy Cells via
+ *       lib.LI.FDN.Leg.Pay : backbone=[FALSE]; the whole add/remove block sits inside the gate.
+ *   E4  Supply.Resource.Sub computes $dc.have (virtual record [0] + physical cargo); a shortage is
+ *       pulled over with one lib.LI.FDN.Pull per ware; Energy Cells are paid before Update.Ware
+ *       'remove' and the supply/buy block runs only when not deferred.
+* -----------------------------------------------------------------------------------
+
 * v9.01 D1: standard header - lib.LI.FDN.Cfg.Get is the only allowed copy of the settings fetch
 $script = = get script name
 $s.name = $script
@@ -58,16 +69,54 @@ end
 * Fetch values saved in the AL Plugin global variable:
 * - DC
 * array elements copied to locals before any condition (P1 lesson)
-$dc = $al.Settings[2]
+$dc = [THIS] -> call script lib.LI.FDN.Home : station=$factory
 $debug.on = $al.Settings[7]
 * -----------------------------------------------------------------------------------
 
 * v9.01 B3: one call covers exists + player ownership + Dock class; Supply.Start owns telling
 * the player when the DC goes bad, so there is no message here - this only stops unchecked
 * uses of $dc in case a DC dies mid-tick (a routine runs atomically between waits)
-$dc.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+* v9.01 D6 (M-05e): the DC must come from Home as a real station, and its jump count to home is read
+ * straight off the factory's FDN.Hub[1]; a null Home result or a bad jumps value stops the routine
+ * here before any ware is touched - the DC stays untouched instead of feeding an out-of-range plant.
+$dc.valid = [FALSE]
+if not is datatyp[ $dc ] == DATATYPE_NULL
+ if is datatyp[ $dc ] == DATATYPE_STATION
+  $dc.valid = [TRUE]
+ end
+end
+$s.size = size of array $al.Settings
+$hub.jumps = 0
+if not $s.size < 40
+ if $dc.valid
+  $hub = $factory -> get local variable: name='FDN.Hub'
+  if is datatyp[ $hub ] == DATATYPE_ARRAY
+   $hj = $hub[1]
+   if is datatyp[ $hj ] == DATATYPE_INT
+    if not $hj < 0
+     $hub.jumps = $hj
+    else
+     $dc.valid = [FALSE]
+    end
+   else
+    $dc.valid = [FALSE]
+   end
+  else
+   $dc.valid = [FALSE]
+  end
+ end
+end
 if not $dc.valid
- $dc.valid = [FALSE]
+ * debug
+ if $debug.on
+  if is datatyp[ $dc ] == DATATYPE_NULL
+   $txt.log = $factory + ' skip: out of range'
+  else
+   $txt.log = $factory + ' skip: DC invalid'
+  end
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+ return null
 end
 * -----------------------------------------------------------------------------------
 
@@ -107,17 +156,28 @@ if $debug.on
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
 end
-* v9.01 B3: only touch the product if the DC is still valid (exists / player owned / Dock)
+* v9.01 B3: only touch the product if the DC is still valid (exists / player owned / Dock) - a bad DC
+ * just stops this pass instead of returning out of the sub (that would end the whole call early)
+$push.go = [TRUE]
 if not $dc.valid
+ $push.go = [FALSE]
  * debug
  if $debug.on
   $txt.log = 'DC invalid - product kept at ' + $factory
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
- return null
 end
-* add to dc and take the amount Update.Ware says it accepted
-$added.to.dc = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$product.amount  station=$dc  action='add'
+* v9.01 D6 (M-05e): the DC may only accept a product it can pay for in Energy Cells; a deferred leg
+ * keeps the whole product at the factory this pass and the next tick retries once the DC has EC again
+$leg.ok = [FALSE]
+if $push.go
+ if $product.amount > 0
+  $leg.ok = [THIS] -> call script lib.LI.FDN.Leg.Pay : ware=$ware units=$product.amount payer=$dc served=$factory jumps=$hub.jumps backbone=[FALSE]
+ end
+end
+* add to dc and take the amount Update.Ware says it accepted (only when the leg is ok)
+if $leg.ok == [TRUE]
+ $added.to.dc = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$product.amount  station=$dc  action='add'
 * -----------------------------------------------------------------------------------
 
 * v9.01 B3: remove from the factory only what was added to the DC (0 included) - only a null
@@ -139,6 +199,7 @@ if $debug.on
   $txt.log = 'Remove ' + $removed + '  of ' + $ware + ' from ' + $factory
   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
  end
+end
 end
 endsub
 * -----------------------------------------------------------------------------------
@@ -189,13 +250,66 @@ if $required > 0
  * not return from inside the sub here, that would end the whole call and skip them
  $ware.settings = [THIS] -> call script lib.LI.FDN.Ware.Rec : station=$dc ware=$ware create=[FALSE]
 
- * remove the required from the DC and return what the DC was able to supply
+ * v9.01 D6 (M-05e): how much of this ware is already on the DC - virtual record [0] plus physical
+ * cargo; a missing record or a non-int element counts as 0 so nothing below ever sees null
+ $dc.virt = 0
+ if is datatyp[ $ware.settings ] == DATATYPE_ARRAY
+  $dc.v = $ware.settings[0]
+  if is datatyp[ $dc.v ] == DATATYPE_INT
+   $dc.virt = $dc.v
+  end
+ end
+ $dc.phys = $dc  ->  get amount of ware $ware in cargo bay
+ if not is datatyp[ $dc.phys ] == DATATYPE_INT
+  $dc.phys = 0
+ end
+ $dc.have = $dc.virt + $dc.phys
+ * v9.01 D6 (M-05e): pull the shortage over from elsewhere in the network before supplying - one Pull
+ * per ware per pass (this sub runs once per ware). A missing record or a non-int pulled amount simply
+ * leaves $dc.have as it was.
+ if is datatyp[ $ware.settings ] == DATATYPE_ARRAY
+  if $dc.have < $required
+   $pull.need = $required - $dc.have
+   $pulled = [THIS] -> call script lib.LI.FDN.Pull : home=$dc ware=$ware need=$pull.need
+   if not is datatyp[ $pulled ] == DATATYPE_INT
+    $pulled = 0
+   end
+   $dc.have = $dc.have + $pulled
+  end
+ end
+ * v9.01 D6 (M-05e): plan to supply, capped to what is on hand; pay Energy Cells before anything moves;
+ * a deferred leg means nothing is taken from the DC this pass and nothing is bought either (the DC holds
+ * the stock so buying it from an NPC would waste credits)
+ $plan = $required
+ if $dc.have < $plan
+  $plan = $dc.have
+ end
+ $from.dc = 0
+ $leg.deferred = [FALSE]
  if not $skip.ware
-  $from.dc = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$required  station=$dc  action='remove'
+  if $plan > 0
+   $leg.ok = [THIS] -> call script lib.LI.FDN.Leg.Pay : ware=$ware units=$plan payer=$dc served=$factory jumps=$hub.jumps backbone=[FALSE]
+  else
+   $leg.ok = [TRUE]
+  end
+  if $leg.ok == [TRUE]
+   $from.dc = null -> call script plugin.LI.FDN.Update.Ware : ware=$ware  amount=$plan  station=$dc  action='remove'
+   if not is datatyp[ $from.dc ] == DATATYPE_INT
+    $from.dc = 0
+   end
+  else
+   $leg.deferred = [TRUE]
+   * debug
+   if $debug.on
+    $txt.log = $factory + ' ' + $ware + ' skip: EC deferred, ' + $plan + ' not supplied'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+  end
   * -----------------------------------------------------------------------------------
   
   
 
+ if not $leg.deferred
   * check if the DC was able to supply the full amount if not call the buy script
   if $from.dc == $required
    = $factory  ->  add $required units of $ware
@@ -246,6 +360,7 @@ if $required > 0
    end
    
   end
+end
  end
 end
 endsub
