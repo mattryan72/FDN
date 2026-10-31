@@ -29,9 +29,9 @@
 
 * To Do - N/A
 
-* Version: 1.7
+* Version: 1.8
 * Date: 31/10/2026
-* Tested: not tested (M-07e, M-07g, M-07e Esc)
+* Tested: not tested (M-07e, M-07g, M-07e Esc, M-08k)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06M): new 'close' command returns null so Close menu exits all menus from any view
  * v9.01 D6 (M-06D1): open.dc takes the DC from the row value (secondary DCs), new open.dclist -> view 3
@@ -40,6 +40,9 @@
  * v9.01 D6 (M-07g): ['open.dccost', dc] -> view 8 (DC running cost); a value that is not a station opens the primary DC
  * v9.01 D6 (M-07e): Escape returns null from the menu -> handled as 'back' (one page back, closes on the first page)
  * v9.01 D6 (M-08i): dc.add result 'range' (not in range of the primary, Dc.Reach) -> FDN log only, no text id
+ * v9.01 D6 (M-08k): open.* cuts the stack back to the same page [view, obj, ware] when it is already there (no stacking);
+ *   open.dock on a DC in [30] opens the DC view (1); dc.add / dc.remove / dc.primary keep the stack, a remove drops
+ *   the removed DC's DC view (1), ware pages (6) and running cost page (8)
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -131,6 +134,13 @@ if $command == 'open.factory'
 end
 if $command == 'open.dock'
  $view = 5
+ * v9.01 D6 (M-08k): a DC opens the DC view (list copied to a local first)
+ $dc.copy = $al.Settings[30]
+ if is datatyp[ $dc.copy ] == DATATYPE_ARRAY
+  if find $value in array: $dc.copy
+   $view = 1
+  end
+ end
 end
 if $command == 'open.ware'
  $view = 6
@@ -149,6 +159,33 @@ if $command == 'open.dccost'
  end
 end
 if $view > 0
+ * v9.01 D6 (M-08k): the same page already in the stack -> cut back to it instead of adding it again
+ $found = -1
+ $i = 0
+ while $i < $s
+  $old = $stack[$i]
+  $o.view = $old[0]
+  $o.obj = $old[1]
+  $o.ware = $old[2]
+  if $o.view == $view
+   if $o.obj == $obj
+    if $o.ware == $ware
+     $found = $i
+    end
+   end
+  end
+  inc $i =
+ end
+ if $found >= 0
+  $n = $found + 1
+  $new.stack = array alloc: size=$n
+  $i = 0
+  while $i < $n
+   $new.stack[$i] = $stack[$i]
+   inc $i =
+  end
+  return $new.stack
+ end
  $entry = array alloc: size=3
  $entry[0] = $view
  $entry[1] = $obj
@@ -812,10 +849,37 @@ if $res == 'ok'
  end
  $log.txt = 'FDN Menu: ' + $command + ' done'
   = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
- $entry = array alloc: size=3
- $entry[0] = 3
- $new.stack = array alloc: size=1
- $new.stack[0] = $entry
+ * v9.01 D6 (M-08k): keep the stack (was [[3]]); a remove drops the removed DC's pages 1, 6 and 8
+ $new.stack = $stack
+ if $command == 'dc.remove'
+  $new.stack = array alloc: size=0
+  $i = 0
+  while $i < $s
+   $old = $stack[$i]
+   $o.view = $old[0]
+   $o.obj = $old[1]
+   $keep = [TRUE]
+   if $o.obj == $dock
+    if $o.view == 1
+     $keep = [FALSE]
+    else if $o.view == 6
+     $keep = [FALSE]
+    else if $o.view == 8
+     $keep = [FALSE]
+    end
+   end
+   if $keep == [TRUE]
+    append $old to array $new.stack
+   end
+   inc $i =
+  end
+  $n = size of array $new.stack
+  if $n < 1
+   $entry = array alloc: size=3
+   $entry[0] = 3
+   append $entry to array $new.stack
+  end
+ end
 else if $res == 'busy'
  $txt = = read text: page=$PageID id=352
  write to player logbook $txt
