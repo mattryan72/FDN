@@ -1,150 +1,149 @@
-* Script: plugin.LI.FDN.Reset  (v2, engine 50)
+* Script: plugin.LI.FDN.Reset  (v3.1, engine 50)
 * Desc: FDNv9 - Reset clears all locally stored FDN values
 
-001  * Author: Logain Abler
-002  * -----------------------------------------------------------------------------------
-003  * this script resets all FDN locally stored values
-004  * v9.01 B9:  clears FDN.* local variables on every station FDN manages or has managed, using the
-*            station registry [29] plus the current DC and both arrays as fallback (no duplicates);
-*            stations that no longer exist are skipped; the anchored regex '^FDN\.' is used to match
-*            only FDN locals (NOTES_semantics test T8: 1 vs 2, so foreign FDN* names are NOT touched)
-* v9.01 B9:  pauses FDN first ([0] = FALSE, one tick wait), empties [3]/[4]/[29], clears [2] and the
-*            working slots [12]-[20]; [7] (debug) is left alone so this run can be logged; [14] (schema
-*            stamp) and [28] (B5 surplus default) are NOT touched, so Upgrade does not re-stamp on load
-* v9.01 B9:  no player logbook line by design (approved scope); debug lines only
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* this script resets all FDN locally stored values
+* v9.01 B9:  clears FDN.* local variables with the anchored regex '^FDN\.' (foreign FDN* names survive)
+* v9.01 B9:  pauses FDN first ([0] = FALSE, short wait); no player logbook line by design
+* v9.01 D6 (M-08b): v3 rewrite
+*            - station list: every player station (get station array, class Station) plus the
+*              registry [29], DC [2], factories [3], docks [4] and every DC in [30], no duplicates
+*            - null test is DATATYPE_STATION (v2 tested DATATYPE_OBJECT, which a station is not,
+*              so v2 cleared nothing); '-> exists' result is copied before the condition
+*            - clears [2], empties [3]/[4]/[29]/[30]/[35], clears [12]-[20] except [14], [36] = 0, [37] = 0
+*            - keeps [7] debug, [14] schema stamp, [28] surplus default and [31]-[34]
+*              (range / cost settings); FDN is left paused ([0] = FALSE)
+*            - per-DC records (FDN.Cost.DC, FDN.DC.Cfg, FDN.Cost.Home, ware records) are FDN.*
+*              locals, so the sweep clears them on every DC, removed DCs included
+*            - one summary log line through lib.LI.FDN.Log
+* v9.01 D6 (M-08f): v3.1 - the [12]-[20] clear loop skips [14] (schema stamp 901); v2 and v3 cleared it,
+*            so the next Upgrade re-ran the v8.04 path (log 31/10/2026: 'FDN upgraded 8.04 to 9.01')
 *
-005  * Expected values:
-006  * - n/a
-007  
-008  * Return values:
-009  * - n/a
-010  
-011  * Version: 1.0
-012  * Date: 17/05/2012
-013  * Tested: 17/05/2012
-014  * -----------------------------------------------------------------------------------
-015  
-016  * Fetch values saved in the AL Plugin global variable:
-017  * DC
-018  * factory array
-019  * dock array
-020  $al.Settings = get global variable: name='al.LI.FDN.event'
+* Expected values:
+* - n/a
+
+* Return values:
+* - n/a
+
+* Version: 3.1
+* Date: 31/10/2026
+* Tested: FL 31/10/2026 (v3.0: 14/15, [14] cleared); not tested (M-08f)
+* -----------------------------------------------------------------------------------
+
+$al.Settings = get global variable: name='al.LI.FDN.event'
 skip if is datatyp[ $al.Settings ] == DATATYPE_ARRAY
  return null
 $script = = get script name
 $PageID = $al.Settings[1]
 $DebugID = 0 + $PageID
-* v9.01 B9:  [7] is the debug toggle - copied once so conditions stay single-check (no array elements, no compounds)
 $debug = $al.Settings[7]
-* v9.01 B9:  (1) pause FDN before clearing anything - a running supply task stops at its next
-*            tick check; one short wait lets it reach the check this cycle
+$n.cleared = 0
+$n.skipped = 0
+* (1) pause FDN before clearing anything; a running supply task stops at its next tick check
 $al.Settings[0] = [FALSE]
 set global variable: name='al.LI.FDN.event' value=$al.Settings
 = wait 500 ms
-* v9.01 B9:  (2) build the station list - registry first, then DC and arrays as fallback;
-*            Add.Station.Sub skips anything already in the list, so there are no duplicates
+* (2) build the station list; Add.Station.Sub skips nulls and duplicates
 $stations = = array alloc: size=0
-$registry = $al.Settings[29]
-if is datatyp[ $registry ] == DATATYPE_ARRAY
- $rs = size of array $registry
- while $rs > 0
-  dec $rs =
-  $station = $registry[$rs]
-  gosub Add.Station.Sub:
- end
-end
+$list = = get station array: of race Player class/type=Station 2016
+gosub Add.List.Sub:
+$list = $al.Settings[29]
+gosub Add.List.Sub:
+$list = $al.Settings[30]
+gosub Add.List.Sub:
+$list = $al.Settings[3]
+gosub Add.List.Sub:
+$list = $al.Settings[4]
+gosub Add.List.Sub:
 $station = $al.Settings[2]
 gosub Add.Station.Sub:
-$factory.array = $al.Settings[3]
-if is datatyp[ $factory.array ] == DATATYPE_ARRAY
- $sf = size of array $factory.array
- while $sf > 0
-  dec $sf =
-  $station = $factory.array[$sf]
-  gosub Add.Station.Sub:
- end
-end
-$dock.array = $al.Settings[4]
-if is datatyp[ $dock.array ] == DATATYPE_ARRAY
- $sd = size of array $dock.array
- while $sd > 0
-  dec $sd =
-  $station = $dock.array[$sd]
-  gosub Add.Station.Sub:
- end
-end
-* v9.01 B9:  (3) clear the FDN locals on every station that still exists; stale entries are skipped
+* (3) clear the FDN locals on every station that still exists
 $sc = size of array $stations
 while $sc > 0
  dec $sc =
  $station = $stations[$sc]
- if is datatyp[ $station ] == DATATYPE_OBJECT
-  if $station -> exists
-   gosub Clear.Local.Sub:
-  else
-   if $debug
-    $txt.debug = ' B9: skipping destroyed station'
-    gosub Debug.Sub:
-   end
-  end
+ $st.exists = $station -> exists
+ if $st.exists
+  gosub Clear.Local.Sub:
+ else
+  inc $n.skipped =
  end
 end
-050  
-051  * set AL Plugin global variable values
-* v9.01 B9:  (4) empty the arrays, clear [2] and the working slots [12]-[20];
-*            [7] debug, [14] schema stamp and [28] surplus default are left alone on purpose
+* (4) settings: clear the FDN state, keep [7], [14], [28] and [31]-[34]; [0] stays FALSE
+* v9.01 D6 (M-08f): [12]-[20] cleared except [14]
 $al.Settings[2] = null
-$factory.array = = array alloc: size=0
-$al.Settings[3] = $factory.array
-$dock.array = = array alloc: size=0
-$al.Settings[4] = $dock.array
-$registry = = array alloc: size=0
-$al.Settings[29] = $registry
+$empty = = array alloc: size=0
+$al.Settings[3] = $empty
+$empty = = array alloc: size=0
+$al.Settings[4] = $empty
+$empty = = array alloc: size=0
+$al.Settings[29] = $empty
+$empty = = array alloc: size=0
+$al.Settings[30] = $empty
+$empty = = array alloc: size=0
+$al.Settings[35] = $empty
+$al.Settings[36] = 0
+$al.Settings[37] = 0
 $i = 12
 while $i <= 20
- $al.Settings[$i] = null
+ if not $i == 14
+  $al.Settings[$i] = null
+ end
  inc $i =
 end
 set global variable: name='al.LI.FDN.event' value=$al.Settings
-058  * -----------------------------------------------------------------------------------
-059  return null
-060  * -----------------------------------------------------------------------------------
-061  
-* v9.01 B9:  sub - add a station to the list if it is not null and not already in it
+$txt.log = 'Reset: FDN paused, locals cleared on ' + $n.cleared + ' stations, skipped ' + $n.skipped
+ = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$script
+* -----------------------------------------------------------------------------------
+return null
+* -----------------------------------------------------------------------------------
+
+* sub - add every station of $list (when it is an array)
+Add.List.Sub:
+if is datatyp[ $list ] == DATATYPE_ARRAY
+ $ls = size of array $list
+ while $ls > 0
+  dec $ls =
+  $station = $list[$ls]
+  gosub Add.Station.Sub:
+ end
+end
+endsub
+
+* sub - add $station to the list if it is a station and not already in it
 Add.Station.Sub:
-if is datatyp[ $station ] == DATATYPE_OBJECT
+if is datatyp[ $station ] == DATATYPE_STATION
  if not find $station in array: $stations
   append $station to array $stations
  end
 end
 endsub
-062  * this sub clears the locall stored values
+
+* sub - clear the FDN.* locals on $station
 Clear.Local.Sub:
-* v9.01 B9:  anchored regex - only FDN.* locals are cleared, foreign names (even 'FDNother') survive
 $cleared = [FALSE]
-$array = $station  ->  get local variables: regular expression='^FDN\.'
+$array = $station -> get local variables: regular expression='^FDN\.'
 $s = size of array $array
 while $s > 0
  dec $s =
  $var = $array[$s]
- $station  ->  set local variable: name=$var value=null
+ $station -> set local variable: name=$var value=null
  $cleared = [TRUE]
 end
-if $debug
- if $cleared
-  $txt.debug = ' B9: cleared FDN locals on station'
+if $cleared
+ inc $n.cleared =
+ if $debug
+  $txt.debug = ' M-08b: cleared FDN locals on station'
   gosub Debug.Sub:
  end
 end
-071  endsub
-072  * -----------------------------------------------------------------------------------
-* Debug Massage handling
+endsub
+
+* sub - debug line to log file $DebugID
 Debug.Sub:
 $d.time = = playing time
 $d.time = = format time: $d.time
 $txt = $d.time + ';' + $script + ';' + $txt.debug
 write to log file $DebugID  append=[TRUE]  value=$txt
 endsub
-073  return null
-074  
-075  

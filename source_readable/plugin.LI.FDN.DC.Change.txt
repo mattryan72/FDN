@@ -28,10 +28,12 @@
 
 * To Do - text for a player message after the change (not added, the DC view shows the new DC); see notes/P3-04b.md
 
-* Version: 1.0
-* Date: 27/10/2026
-* Tested: TC 27/10/2026
+* Version: 1.1
+* Date: 30/10/2026
+* Tested: TC 27/10/2026 (v1.0); not tested (M-08c)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08c): first DC (no valid old DC) -> lib.LI.FDN.Dc.Edit 'refresh' after the lock is released, so routes and home DCs exist before the first supply tick
+ * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
 $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
@@ -149,6 +151,16 @@ end
 
 * step 8: release
 = [THIS] -> call script lib.LI.FDN.Lock : obj=null key=12 action='release' timeout=null
+
+* v9.01 D6 (M-08c): step 9, first DC only: rebuild routes and home DCs now (Dc.Edit takes
+* the same lock [12], so this runs after the release; 'busy' leaves it to the next Scan)
+if $result == 'ok'
+ if not $old.ok == [TRUE]
+  $ref.res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='refresh' dc=null
+  $txt.log = 'DC change: first DC, refresh ' + $ref.res
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
 return $result
 
 

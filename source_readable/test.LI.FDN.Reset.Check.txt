@@ -1,0 +1,178 @@
+* Script: test.LI.FDN.Reset.Check  (v1, engine 50)
+* Desc: FDNv9 - M-08d read-only check after Reset v3
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08d): new - read-only check of the state Reset v3 (M-08b) leaves
+* -----------------------------------------------------------------------------------
+* Read-only: run it right after plugin.LI.FDN.Reset on a THROWAWAY save. It changes nothing.
+* Writes every TEST line to log 9910 and log 9911 (9911 restarted at start).
+* R1 [0] FDN paused (not TRUE); R2 [2] null; R3-R7 [3], [4], [29], [30], [35] empty arrays;
+* R8 [36] = 0; R9 [37] = 0; R10 [14] = 901 kept; R11 [31]-[34] are INTs (kept);
+* R12 no player station holds an FDN.* local (the station count is logged).
+* Expected after a Reset: 15 checks, 15 PASS.
+* Version: 1.0
+* Date: 30/10/2026
+* Tested: not tested (M-08d)
+* -----------------------------------------------------------------------------------
+
+$pass = 0
+$total = 0
+$tag = 'TEST ResetChk: '
+$txt = 'TEST ResetChk: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$g = get global variable: name='al.LI.FDN.event'
+if not is datatyp[ $g ] == DATATYPE_ARRAY
+ $txt = 'TEST ResetChk: FAIL no settings array, test stopped'
+ gosub Log.Sub:
+ return null
+end
+
+$v = $g[0]
+$ok = [TRUE]
+if $v == [TRUE]
+ $ok = [FALSE]
+end
+$id = 'R1 [0] paused'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+$v = $g[2]
+$ok = [FALSE]
+if is datatyp[ $v ] == DATATYPE_NULL
+ $ok = [TRUE]
+end
+$id = 'R2 [2] null'
+$det = ''
+gosub Result.Sub:
+$v = $g[3]
+$id = 'R3 [3] empty'
+gosub Empty.Sub:
+$v = $g[4]
+$id = 'R4 [4] empty'
+gosub Empty.Sub:
+$v = $g[29]
+$id = 'R5 [29] empty'
+gosub Empty.Sub:
+$v = $g[30]
+$id = 'R6 [30] empty'
+gosub Empty.Sub:
+$v = $g[35]
+$id = 'R7 [35] empty'
+gosub Empty.Sub:
+$v = $g[36]
+$id = 'R8 [36] = 0'
+gosub Zero.Sub:
+$v = $g[37]
+$id = 'R9 [37] = 0'
+gosub Zero.Sub:
+$v = $g[14]
+$ok = [FALSE]
+if $v == 901
+ $ok = [TRUE]
+end
+$id = 'R10 [14] = 901 kept'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+$v = $g[31]
+$id = 'R11a [31] INT kept'
+gosub Int.Sub:
+$v = $g[32]
+$id = 'R11b [32] INT kept'
+gosub Int.Sub:
+$v = $g[33]
+$id = 'R11c [33] INT kept'
+gosub Int.Sub:
+$v = $g[34]
+$id = 'R11d [34] INT kept'
+gosub Int.Sub:
+
+* R12 no FDN.* locals on any player station
+$list = = get station array: of race Player class/type=Station 2016
+$n.st = size of array $list
+$n.left = 0
+$ls = $n.st
+while $ls > 0
+ dec $ls =
+ $st = $list[$ls]
+ $vars = $st -> get local variables: regular expression='^FDN\.'
+ $n.vars = size of array $vars
+ if $n.vars > 0
+  inc $n.left =
+ end
+end
+$ok = [FALSE]
+if $n.left == 0
+ $ok = [TRUE]
+end
+$id = 'R12 no FDN.* locals on player stations'
+$det = '(' + $n.left + ' of ' + $n.st + ' stations still have some)'
+gosub Result.Sub:
+
+$txt = 'TEST ResetChk: done ' + $pass + '/' + $total + ' PASS'
+gosub Log.Sub:
+return null
+
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub
+
+Result.Sub:
+inc $total =
+$rs = 'FAIL'
+if $ok
+ inc $pass =
+ $rs = 'PASS'
+end
+$txt = $tag + $id + ': ' + $rs + ' ' + $det
+gosub Log.Sub:
+endsub
+
+* sub - $ok = $v is an INT; $det shows the value
+Int.Sub:
+$ok = [FALSE]
+if is datatyp[ $v ] == DATATYPE_INT
+ $ok = [TRUE]
+end
+$det = '(' + $v + ')'
+gosub Result.Sub:
+endsub
+
+* sub - $ok = $v is an array; $det shows its size
+Arr.Sub:
+$ok = [FALSE]
+$det = '(not an array)'
+if is datatyp[ $v ] == DATATYPE_ARRAY
+ $ok = [TRUE]
+ $v.n = size of array $v
+ $det = '(size ' + $v.n + ')'
+end
+gosub Result.Sub:
+endsub
+
+* sub - $ok = $v is an empty array
+Empty.Sub:
+$ok = [FALSE]
+$det = '(not an array)'
+if is datatyp[ $v ] == DATATYPE_ARRAY
+ $v.n = size of array $v
+ $det = '(size ' + $v.n + ')'
+ if $v.n == 0
+  $ok = [TRUE]
+ end
+end
+gosub Result.Sub:
+endsub
+
+* sub - $ok = $v is the INT 0
+Zero.Sub:
+$ok = [FALSE]
+if is datatyp[ $v ] == DATATYPE_INT
+ if $v == 0
+  $ok = [TRUE]
+ end
+end
+$det = '(' + $v + ')'
+gosub Result.Sub:
+endsub

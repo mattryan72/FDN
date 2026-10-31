@@ -17,13 +17,15 @@
 
 * To Do - N/A
 
-* Version: 1.2
-* Date: 30/10/2026
-* Tested: not tested (M-07d)
+* Version: 1.4
+* Date: 31/10/2026
+* Tested: FL 31/10/2026 (v1.3); not tested (M-08g)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-08c): rows on Menu.Row / Menu.Toggle / Menu.ObjLine; add.dc and change.dc merged into set.dc; B5 surplus.default row
  * v9.01 D6 (M-06E3): with a DC the change-DC list (heading 124) is replaced by one row 353 -> ['open.dclist']
  * v9.01 D6 (M-07d): network block 370 (range limit 371, base range 372, cost 373, global floor 374) after Global Options
+ * v9.01 D6 (M-08e): DC candidate rows read 'Name [ID] - Sector' (as the DC list group titles); the sector object in the value column did not show
+ * v9.01 D6 (M-08g): while FDN is paused ([0] not TRUE) one info row 'FDN Enabled:' (136) | red ' OFF ' (149) at the top; no new texts
 * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $menu ] == DATATYPE_ARRAY
@@ -38,6 +40,21 @@ $dc = $al.Settings[2]
 $is.dynamic = $al.Settings[6]
 if not is datatyp[ $is.dynamic ] == DATATYPE_ARRAY
  $is.dynamic = = array alloc: size=3
+end
+
+* v9.01 D6 (M-08g): paused indicator - [0] is set TRUE only by the Artificial Life 'start' event;
+* FALSE or null (after Reset or a fresh install) shows one non-clickable info row (Menu.Row, retval null)
+$fdn.on = $al.Settings[0]
+$show.off = [TRUE]
+if is datatyp[ $fdn.on ] == DATATYPE_INT
+ if $fdn.on
+  $show.off = [FALSE]
+ end
+end
+if $show.off
+ $txt = = read text: page=$PageID id=136
+ $off.txt = = read text: page=$PageID id=149
+  = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$off.txt retval=null
 end
 
 * valid DC flag: a DC that is unset or no longer a valid dock shows the add list
@@ -93,10 +110,13 @@ while $s > 0
     $name.txt = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$dock
     if is datatyp[ $name.txt ] == DATATYPE_STRING
      $sector = $dock -> get sector
+     * v9.01 D6 (M-08e): 'Name [ID] - Sector' in the label, no value column (only punctuation is literal)
+     $row.txt = $name.txt + ' - '
+     $row.txt = $row.txt + $sector
      $ret.array = = array alloc: size=2
      $ret.array[0] = 'set.dc'
      $ret.array[1] = $dock
-      = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$name.txt value=$sector retval=$ret.array
+      = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$row.txt value=null retval=$ret.array
     end
    end
   end

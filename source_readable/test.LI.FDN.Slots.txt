@@ -1,0 +1,225 @@
+* Script: test.LI.FDN.Slots  (v1, engine 50)
+* Desc: FDNv9 - M-08d test of the settings slots and Upgrade v3.1
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08d): new - settings slot types [30]-[37], Upgrade [30]/[37] repair, Upgrade idempotency
+ * v9.01 D6 (M-08f): expected count corrected to 15 (14 with no DC); no code change
+* -----------------------------------------------------------------------------------
+* In-game test of plugin.LI.FDN.Upgrade v3.1 (M-08a). Writes every TEST line to log 9910 and
+* log 9911 (9911 restarted at start). Wait-free: nothing else runs while it changes slots.
+* S1 settings size >= 40; S2 [14] = 901; S3-S10 types: [30] array, [31]-[34] INT, [35] array,
+*   [36] INT, [37] INT.
+* U1-U3 repair: [30] and [37] set to null, Upgrade called: [30] is an array again (U1), it holds
+*   the primary DC [2] when [2] is a valid DC (U2, logged INFO when no DC), [37] = 0 (U3);
+*   then the saved [30] and [37] are put back.
+* I1-I2 idempotency: Upgrade called again; [31]-[34], [36], [37] unchanged (I1) and the
+*   sizes of [30] and [35] unchanged (I2).
+* Expected with a valid DC: 15 checks, 15 PASS (14/14 with no valid DC in [2]: U2 logs INFO).
+* S2 needs Reset v3.1 or later when the save was Reset (v3.0 cleared [14]).
+* Prerequisite: FDN set up on a fresh v9.01 save.
+* Version: 1.0
+* Date: 31/10/2026
+* Tested: FL 31/10/2026 (14/15, S2 failed after Reset v3.0 cleared [14])
+* -----------------------------------------------------------------------------------
+
+$pass = 0
+$total = 0
+$tag = 'TEST Slots: '
+$txt = 'TEST Slots: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $g
+ $txt = 'TEST Slots: FAIL no settings array, test stopped'
+ gosub Log.Sub:
+ return null
+end
+
+* S1-S10 slot types
+$s.size = size of array $g
+$ok = [FALSE]
+if $s.size >= 40
+ $ok = [TRUE]
+end
+$id = 'S1 size >= 40'
+$det = '(' + $s.size + ')'
+gosub Result.Sub:
+if not $ok
+ $txt = 'TEST Slots: settings smaller than 40, test stopped'
+ gosub Log.Sub:
+ return null
+end
+$v = $g[14]
+$ok = [FALSE]
+if $v == 901
+ $ok = [TRUE]
+end
+$id = 'S2 [14] = 901'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+$v = $g[30]
+$id = 'S3 [30] array'
+gosub Arr.Sub:
+$v = $g[31]
+$id = 'S4 [31] INT'
+gosub Int.Sub:
+$v = $g[32]
+$id = 'S5 [32] INT'
+gosub Int.Sub:
+$v = $g[33]
+$id = 'S6 [33] INT'
+gosub Int.Sub:
+$v = $g[34]
+$id = 'S7 [34] INT'
+gosub Int.Sub:
+$v = $g[35]
+$id = 'S8 [35] array'
+gosub Arr.Sub:
+$v = $g[36]
+$id = 'S9 [36] INT'
+gosub Int.Sub:
+$v = $g[37]
+$id = 'S10 [37] INT'
+gosub Int.Sub:
+
+* U1-U3 repair of [30] and [37]
+$o30 = $g[30]
+$o37 = $g[37]
+$g[30] = null
+$g[37] = null
+set global variable: name='al.LI.FDN.event' value=$g
+ = [THIS] -> call script plugin.LI.FDN.Upgrade :
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$v = $g[30]
+$id = 'U1 [30] repaired to an array'
+gosub Arr.Sub:
+$dc = $g[2]
+$dc.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dc need.dock=[TRUE]
+if $dc.ok
+ $ok = [FALSE]
+ if is datatyp[ $v ] == DATATYPE_ARRAY
+  if find $dc in array: $v
+   $ok = [TRUE]
+  end
+ end
+ $id = 'U2 repaired [30] holds [2]'
+ $det = ''
+ gosub Result.Sub:
+else
+ $txt = 'TEST Slots: U2 INFO no valid DC in [2], not checked'
+ gosub Log.Sub:
+end
+$v = $g[37]
+$ok = [FALSE]
+if $v == 0
+ if is datatyp[ $v ] == DATATYPE_INT
+  $ok = [TRUE]
+ end
+end
+$id = 'U3 [37] repaired to 0'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+$g[30] = $o30
+$g[37] = $o37
+set global variable: name='al.LI.FDN.event' value=$g
+$txt = 'TEST Slots: [30] and [37] restored'
+gosub Log.Sub:
+
+* I1-I2 idempotency
+$a31 = $g[31]
+$a32 = $g[32]
+$a33 = $g[33]
+$a34 = $g[34]
+$a36 = $g[36]
+$a37 = $g[37]
+$v = $g[30]
+$a30.n = size of array $v
+$v = $g[35]
+$a35.n = size of array $v
+ = [THIS] -> call script plugin.LI.FDN.Upgrade :
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$ok = [TRUE]
+$v = $g[31]
+if not $v == $a31
+ $ok = [FALSE]
+end
+$v = $g[32]
+if not $v == $a32
+ $ok = [FALSE]
+end
+$v = $g[33]
+if not $v == $a33
+ $ok = [FALSE]
+end
+$v = $g[34]
+if not $v == $a34
+ $ok = [FALSE]
+end
+$v = $g[36]
+if not $v == $a36
+ $ok = [FALSE]
+end
+$v = $g[37]
+if not $v == $a37
+ $ok = [FALSE]
+end
+$id = 'I1 second Upgrade keeps [31]-[34], [36], [37]'
+$det = ''
+gosub Result.Sub:
+$ok = [TRUE]
+$v = $g[30]
+$b.n = size of array $v
+if not $b.n == $a30.n
+ $ok = [FALSE]
+end
+$v = $g[35]
+$b.n = size of array $v
+if not $b.n == $a35.n
+ $ok = [FALSE]
+end
+$id = 'I2 second Upgrade keeps [30], [35] sizes'
+$det = '(' + $a30.n + ', ' + $a35.n + ')'
+gosub Result.Sub:
+
+$txt = 'TEST Slots: done ' + $pass + '/' + $total + ' PASS'
+gosub Log.Sub:
+return null
+
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub
+
+Result.Sub:
+inc $total =
+$rs = 'FAIL'
+if $ok
+ inc $pass =
+ $rs = 'PASS'
+end
+$txt = $tag + $id + ': ' + $rs + ' ' + $det
+gosub Log.Sub:
+endsub
+
+* sub - $ok = $v is an INT; $det shows the value
+Int.Sub:
+$ok = [FALSE]
+if is datatyp[ $v ] == DATATYPE_INT
+ $ok = [TRUE]
+end
+$det = '(' + $v + ')'
+gosub Result.Sub:
+endsub
+
+* sub - $ok = $v is an array; $det shows its size
+Arr.Sub:
+$ok = [FALSE]
+$det = '(not an array)'
+if is datatyp[ $v ] == DATATYPE_ARRAY
+ $ok = [TRUE]
+ $v.n = size of array $v
+ $det = '(size ' + $v.n + ')'
+end
+gosub Result.Sub:
+endsub
