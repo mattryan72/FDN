@@ -29,8 +29,8 @@
 
 * To Do - N/A
 
-* Version: 1.6
-* Date: 30/10/2026
+* Version: 1.7
+* Date: 31/10/2026
 * Tested: not tested (M-07e, M-07g, M-07e Esc)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06M): new 'close' command returns null so Close menu exits all menus from any view
@@ -39,6 +39,7 @@
  * v9.01 D6 (M-07e): range.on / cost.on (387) / range.base / floor.global ([31]-[34]), dc.range / dc.floor (Dc.Cfg), dc.cost.reset (391); 193 bad value, Dc.Edit refresh after range changes, 352 busy
  * v9.01 D6 (M-07g): ['open.dccost', dc] -> view 8 (DC running cost); a value that is not a station opens the primary DC
  * v9.01 D6 (M-07e): Escape returns null from the menu -> handled as 'back' (one page back, closes on the first page)
+ * v9.01 D6 (M-08i): dc.add result 'range' (not in range of the primary, Dc.Reach) -> FDN log only, no text id
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -828,6 +829,11 @@ else if $res == 'max'
  $max.txt = '16'
  $txt = = sprintf: pageid=$PageID textid=367, $max.txt, null, null, null, null
  write to player logbook $txt
+else if $res == 'range'
+ * v9.01 D6 (M-08i): the Add list hides such docks; this only happens when the primary or
+ * a range changed while the menu was open. No 9910 text exists for it: FDN log only.
+ $log.txt = 'FDN Menu: dc.add refused, not in range of the primary DC'
+  = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
 end
 endsub
 

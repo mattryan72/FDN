@@ -183,7 +183,7 @@
   <t id="343">FDN: Move cancelled - %s cannot pay %s Energy Cells</t>
   <t id="351">Change Distribution Centre to %s ?</t>
   <t id="352">Supply pass running, try again in a few seconds</t>
-  <t id="353">Distribution Centres</t>
+  <t id="353">Distribution Centre Network</t>
   <t id="354">\033GAdd\033X Distribution Centre</t>
   <t id="355">\033RRemove\033X Distribution Centre</t>
   <t id="356">Make primary Distribution Centre</t>
@@ -223,6 +223,11 @@
   <t id="390">No stations served by this Distribution Centre</t>
   <t id="391">\033RReset\033X running cost</t>
   <t id="392">\033YStation list is being refreshed - go Back or reopen in a few seconds\033X</t>
+  <t id="393">\033RNot linked to primary\033X</t>
+  <t id="394">%s isolated | %s stations served</t>
+  <t id="395">%s jumps to primary</t>
+  <t id="396">Linked to: %s</t>
+  <t id="397">Backbone links</t>
 
   <t id="9000">\033G%s\033X</t>
   <t id="9001">\033R%s\033X</t>

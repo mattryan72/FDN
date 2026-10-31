@@ -1,4 +1,4 @@
-* Script: lib.LI.FDN.Dc.Edit  (v1, engine 50)
+* Script: lib.LI.FDN.Dc.Edit  (v1.1, engine 50)
 * Desc: FDNv9 - Add, remove or refresh one Distribution Centre in the DC list [30]
 * Arg 0: action (Value) 'action'
 * Arg 1: dc (Value) 'dc'
@@ -8,7 +8,8 @@
 * lib.LI.FDN.Dc.List (which cleans it). It never writes [2]: making a DC the primary is
 * plugin.LI.FDN.DC.Change. Takes the global run lock [12] like DC.Change, so no supply
 * pass runs while the list changes. After a successful change it cleans the list,
-* rebuilds the route table [35], re-assigns the home DC of every factory [3] and dock
+* rebuilds the route table [35], logs every DC with no backbone link to the primary
+* ('DC X not linked to primary', M-08i; such DCs are never removed), re-assigns the home DC of every factory [3] and dock
 * [4], and clears the scan time [16] so the next Supply.Start runs a full Scan.
 *
 * Arguments:
@@ -20,16 +21,19 @@
 * - 'busy' when the run lock is held (nothing changed)
 * - 'invalid' for a bad action or dc, an FL-managed dock, or settings missing / under 40
 * - 'dup' (add: already a DC), 'max' (add: already 16 DCs)
+* - add only (M-08i): 'invalid' when [2] is not a valid DC, 'range' when dc is not within
+*   the backbone range of the primary [2] (lib.LI.FDN.Dc.Reach -1); [31] is not read
 * - 'last' (remove: only one DC), 'primary' (remove: dc is [2], run DC.Change first),
 *   'missing' (remove: not in the list)
 
 * To Do - N/A
 
-* Version: 1.0
-* Date: 30/10/2026
+* Version: 1.1
+* Date: 31/10/2026
 * Tested: not tested
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06A): add / remove / refresh one DC in [30], rebuild routes and hubs, rescan
+ * v9.01 D6 (M-08i): add only in range of the primary (Dc.Reach, 'range' / 'invalid'), log DCs not linked to primary
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -93,6 +97,7 @@ end
 if $result == 'ok'
   = [THIS] -> call script lib.LI.FDN.Dc.List :
   = [THIS] -> call script lib.LI.FDN.Route.Build :
+ gosub Isolated.Log.Sub:
  $hub.array = $al.Settings[3]
  gosub Rehub.Sub:
  $hub.array = $al.Settings[4]
@@ -126,6 +131,24 @@ if find $dc in array: $list
 end
 if $n >= 16
  $result = 'max'
+ endsub
+end
+* v9.01 D6 (M-08i): only in range of the primary [2] (backbone rule, always, [31] not read)
+$primary.add = $al.Settings[2]
+if not is datatyp[ $primary.add ] == DATATYPE_STATION
+ $result = 'invalid'
+ endsub
+end
+$p.valid = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$primary.add need.dock=[TRUE]
+if not $p.valid == [TRUE]
+ $result = 'invalid'
+ endsub
+end
+$reach = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$dc primary=$primary.add
+if $reach < 0
+ $result = 'range'
+ $log.txt = 'Dc.Edit add refused: ' + $dc + ' not in range of primary ' + $primary.add
+  = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
  endsub
 end
 append $dc to array $list
@@ -175,5 +198,28 @@ while $h.i < $h.n
    = [THIS] -> call script lib.LI.FDN.Hub.Assign : station=$st
  end
  inc $h.i =
+end
+endsub
+
+
+Isolated.Log.Sub:
+* v9.01 D6 (M-08i): log every DC with no backbone link to the primary [2] (never removed)
+$iso.list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $iso.list ] == DATATYPE_ARRAY
+ endsub
+end
+$iso.primary = $al.Settings[2]
+$iso.n = size of array $iso.list
+$iso.i = 0
+while $iso.i < $iso.n
+ $iso.dc = $iso.list[$iso.i]
+ inc $iso.i =
+ if not $iso.dc == $iso.primary
+  $iso.reach = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$iso.dc primary=$iso.primary
+  if $iso.reach < 0
+   $log.txt = 'DC ' + $iso.dc + ' not linked to primary'
+    = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller=$s.name
+  end
+ end
 end
 endsub

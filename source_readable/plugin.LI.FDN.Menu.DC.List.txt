@@ -1,5 +1,5 @@
 * Script: plugin.LI.FDN.Menu.DC.List  (v1, engine 50)
-* Desc: FDN v9.01 - Build the DC list view of the menu (view 3)
+* Desc: FDN v9.01 - Build the Distribution Centre Network view of the menu (view 3)
 * Arg 0: menu (Value) 'menu'
 
 * Author: Logain Abler
@@ -19,6 +19,10 @@
 * with the 'FDN Main Menu' link (102, 'open.dc' = the primary DC view), so the link is
 * its own box even when every group is collapsed. Player-visible words all come from
 * the text file; only punctuation (' / ', ' - ', ':', '- ') and numbers are literals.
+* Isolated mark (M-08i): a DC other than the primary [2] with no backbone link to it
+* (lib.LI.FDN.Dc.Reach -1) gets a red 'Not linked to primary: ' prefix (text 393) in its group
+* title. The Add list shows only docks in range of the primary (the same Dc.Reach test as
+* the Dc.Edit add check).
 * Rows use the 8-column indented style of the Stations page. Every command row returns [command, dock], handled by
 * plugin.LI.FDN.Menu.Command (open.dc, dc.primary, dc.remove, dc.add).
 * Wait-free: no wait, no START, never scans.
@@ -29,12 +33,24 @@
 * Returns values:
 * - the menu array (the same array that was passed in)
 
-* To Do - Energy Cells per hour comes with M-07
+* Network view (M-08j): title 353 'Distribution Centre Network'; a summary row under the
+* heading (394: isolated DCs | stations served); in every DC group three selectable rows
+* before the commands: status 362 (type | range | stations | EC charged), jumps to the
+* primary 395 (red 393 when isolated, no row on the primary) and 'Linked to:' 396 with up
+* to 3 backbone partners 'Name (jumps)' from [35] plus ' +n' for the rest; after the DC
+* groups a 'Backbone links' group (397) with one row per [35] link 'DC A - DC B' | jumps
+* that opens DC A; Menu Options also hold 'FDN Config Menu' (103, 'open.config').
+* All new rows are 8-column selectable rows (['open.dc', dc]), never info lines (AP and FL
+* move info lines to the top box).
 
-* Version: 1.4
-* Date: 30/10/2026
+* To Do - N/A
+
+* Version: 1.6
+* Date: 31/10/2026
 * Tested: not tested
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08j): network view - summary 394, per DC status 362 / jumps 395 or 393 / links 396, Backbone links group 397, Config link 103
+ * v9.01 D6 (M-08i): red 'Not linked to primary:' (393) on DCs not linked to the primary, Add list only in range of the primary (Dc.Reach)
  * v9.01 D6 (M-06B): DC list page - per DC info and Open / Make primary / Remove, Add list (max 16)
  * v9.01 D6 (M-06L): status line 362 moved to the DC view top box (Menu.Station); groups hold only Open / Make primary / Remove
  * v9.01 D6 (M-06J): group title 'Primary: Name [ID] - Sector' (sector row dropped), FDN Main Menu link in its own box under a 'Menu Options:' heading after a section
@@ -55,6 +71,7 @@ if $s.size < 40
 end
 $PageID = $al.Settings[1]
 $is.AP = [THIS] -> call script lib.BW.isAP :
+$primary.dc = $al.Settings[2]
 
 $list = [THIS] -> call script lib.LI.FDN.Dc.List :
 if not is datatyp[ $list ] == DATATYPE_ARRAY
@@ -80,6 +97,16 @@ if $is.AP == [TRUE]
  $txt = = read text: page=$PageID id=199
  add custom menu item to array $menu: text=$txt returnvalue=$hide.all
 end
+* v9.01 D6 (M-08j): summary row 394 (isolated DCs | stations served), opens the primary
+gosub Stats.Sub:
+$iso.txt = = convert number $iso.count to string
+$srv.txt = = convert number $served to string
+$r.label = = sprintf: pageid=$PageID textid=394, $iso.txt, $srv.txt, null, null, null
+$r.right = ' '
+$r.ret = = array alloc: size=2
+$r.ret[0] = 'open.dc'
+$r.ret[1] = $primary.dc
+gosub Row.Sub:
 add section to custom menu: $menu
 
 $i = 0
@@ -92,6 +119,9 @@ while $i < $n
  end
 end
 
+* v9.01 D6 (M-08j): backbone link table [35] as its own group
+gosub Backbone.Sub:
+
 if $n < 16
  gosub Add.List.Sub:
 end
@@ -103,6 +133,9 @@ $txt = = read text: page=$PageID id=110
 add custom menu heading to array $menu: title=$txt
 $txt = = read text: page=$PageID id=102
 add custom menu item to array $menu: text=$txt returnvalue='open.dc'
+* v9.01 D6 (M-08j): Config menu link (view 7)
+$txt = = read text: page=$PageID id=103
+add custom menu item to array $menu: text=$txt returnvalue='open.config'
 
 return $menu
 * -----------------------------------------------------------------------------------
@@ -124,10 +157,60 @@ if $idx == 0
  $mark.txt = = sprintf: pageid=$PageID textid=9000, $txt, null, null, null, null
  $g.txt = $mark.txt + $g.txt
 end
+* v9.01 D6 (M-08i): no backbone link to the primary [2] -> red 'Not linked to primary: ' prefix (393)
+if not $dc == $primary.dc
+ * v9.01 D6 (M-08j): Dc.Reach result from Stats.Sub (same call, made once per DC)
+ $iso.reach = $reach.arr[$idx]
+ if $iso.reach < 0
+  $iso.mark = = read text: page=$PageID id=393
+  $iso.mark = $iso.mark + ': '
+  $g.txt = $iso.mark + $g.txt
+ end
+end
 gosub Group.Open.Sub:
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+
+* v9.01 D6 (M-08j): network rows, selectable 8-column rows that open the DC
+gosub Type.Sub:
+$rng = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+if not is datatyp[ $rng ] == DATATYPE_INT
+ $rng = 0
+end
+$ec = 0
+$cost = $dc  ->  get local variable: name='FDN.Cost'
+if is datatyp[ $cost ] == DATATYPE_ARRAY
+ $ec = $cost[0]
+ if not is datatyp[ $ec ] == DATATYPE_INT
+  $ec = 0
+ end
+end
+$cnt = $cnt.arr[$idx]
+$rng.txt = = convert number $rng to string
+$cnt.txt = = convert number $cnt to string
+$ec.txt = = convert number $ec to string
+$txt = = sprintf: pageid=$PageID textid=362, $type.txt, $rng.txt, $cnt.txt, $ec.txt, null
+$r.label = $pre + $txt
+$r.right = ' '
+$r.ret = = array alloc: size=2
+$r.ret[0] = 'open.dc'
+$r.ret[1] = $dc
+gosub Row.Sub:
+if not $dc == $primary.dc
+ if $iso.reach < 0
+  $txt = = read text: page=$PageID id=393
+ else
+  $j.txt = = convert number $iso.reach to string
+  $txt = = sprintf: pageid=$PageID textid=395, $j.txt, null, null, null, null
+ end
+ $r.label = $pre + $txt
+ gosub Row.Sub:
+end
+gosub Links.Sub:
+$txt = = sprintf: pageid=$PageID textid=396, $links.txt, null, null, null, null
+$r.label = $pre + $txt
+gosub Row.Sub:
 
 * commands
-$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
 $txt = = read text: page=$PageID id=369
 $r.label = $pre + $txt
 $r.right = ' '
@@ -202,7 +285,7 @@ endsub
 * -----------------------------------------------------------------------------------
 
 * 'Add Distribution Centre' group: every other valid player Dock, not FL-managed and not
-* already a DC. Candidates are collected first; nothing is shown when there are none.
+* already a DC, in range of the primary (lib.LI.FDN.Dc.Reach, M-08i). Candidates are collected first; nothing is shown when there are none.
 Add.List.Sub:
 $cand = = array alloc: size=0
 $dock.array = = get station array: of race Player class/type=Dock 2007
@@ -216,7 +299,10 @@ while $s > 0
    if not find $dock in array: $list
     $fl = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$dock
     if not $fl == [TRUE]
-     append $dock to array $cand
+     $c.reach = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$dock primary=$primary.dc
+     if not $c.reach < 0
+      append $dock to array $cand
+     end
     end
    end
   end
@@ -245,3 +331,167 @@ while $ci < $nc
 end
 gosub Group.Close.Sub:
 endsub
+* -----------------------------------------------------------------------------------
+
+* v9.01 D6 (M-08j): one pass for the summary and the DC rows - $reach.arr[i] = Dc.Reach of
+* DC i to the primary (0 for the primary), $cnt.arr[i] = stations whose FDN.Hub home is DC i
+* (the DC itself does not count, as Menu.Station Count.Sub), $iso.count, $served
+Stats.Sub:
+$iso.count = 0
+$served = 0
+$cnt.arr = = array alloc: size=$n
+$reach.arr = = array alloc: size=$n
+$k = 0
+while $k < $n
+ $cnt.arr[$k] = 0
+ $k.dc = $list[$k]
+ $k.r = 0
+ if not $k.dc == $primary.dc
+  $k.r = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$k.dc primary=$primary.dc
+  if $k.r < 0
+   inc $iso.count =
+  end
+ end
+ $reach.arr[$k] = $k.r
+ inc $k =
+end
+$c.array = $al.Settings[3]
+gosub Count.Array.Sub:
+$c.array = $al.Settings[4]
+gosub Count.Array.Sub:
+endsub
+* -----------------------------------------------------------------------------------
+
+Count.Array.Sub:
+if not is datatyp[ $c.array ] == DATATYPE_ARRAY
+ endsub
+end
+$c.n = size of array $c.array
+$c.i = 0
+while $c.i < $c.n
+ $st = $c.array[$c.i]
+ inc $c.i =
+ if is datatyp[ $st ] == DATATYPE_STATION
+  $hub = $st  ->  get local variable: name='FDN.Hub'
+  if is datatyp[ $hub ] == DATATYPE_ARRAY
+   $home = $hub[0]
+   if not $home == $st
+    $h.j = 0
+    while $h.j < $n
+     $h.dc = $list[$h.j]
+     if $h.dc == $home
+      $h.c = $cnt.arr[$h.j]
+      inc $h.c =
+      $cnt.arr[$h.j] = $h.c
+      inc $served =
+     end
+     inc $h.j =
+    end
+   end
+  end
+ end
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* subtype -> type text (as Menu.Station Type.Sub): Player HQ 62 -> 358, Equipment Dock 6 -> 359, other -> 361
+Type.Sub:
+$sub.type = $dc  ->  get subtype
+$type.id = 361
+if $sub.type == 62
+ $type.id = 358
+else if $sub.type == 6
+ $type.id = 359
+end
+$type.txt = = read text: page=$PageID id=$type.id
+endsub
+* -----------------------------------------------------------------------------------
+
+* v9.01 D6 (M-08j): $links.txt = up to 3 backbone partners of $dc from [35] as
+* 'Name [ID] (jumps)' joined by ', ', then ' +n' for the rest; '-' when there is none
+Links.Sub:
+$links.txt = '-'
+$l.tab = $al.Settings[35]
+if not is datatyp[ $l.tab ] == DATATYPE_ARRAY
+ endsub
+end
+$l.n = size of array $l.tab
+$l.i = 0
+$l.shown = 0
+$l.more = 0
+while $l.i < $l.n
+ $l.e = $l.tab[$l.i]
+ inc $l.i =
+ if is datatyp[ $l.e ] == DATATYPE_ARRAY
+  $l.a = $l.e[0]
+  $l.b = $l.e[1]
+  $l.j = $l.e[2]
+  $l.other = null
+  if $l.a == $dc
+   $l.other = $l.b
+  else if $l.b == $dc
+   $l.other = $l.a
+  end
+  if is datatyp[ $l.other ] == DATATYPE_STATION
+   if $l.shown < 3
+    $l.name = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$l.other
+    $l.item = $l.name + ' (' + $l.j + ')'
+    if $l.shown == 0
+     $links.txt = $l.item
+    else
+     $links.txt = $links.txt + ', ' + $l.item
+    end
+    inc $l.shown =
+   else
+    inc $l.more =
+   end
+  end
+ end
+end
+if $l.more > 0
+ $links.txt = $links.txt + ' +' + $l.more
+end
+endsub
+* -----------------------------------------------------------------------------------
+
+* v9.01 D6 (M-08j): 'Backbone links' group (397): one row per [35] link 'DC A - DC B' | jumps,
+* opens DC A; nothing is shown when the table is empty
+Backbone.Sub:
+$b.tab = $al.Settings[35]
+if not is datatyp[ $b.tab ] == DATATYPE_ARRAY
+ endsub
+end
+$b.n = size of array $b.tab
+if $b.n < 1
+ endsub
+end
+$g.txt = = read text: page=$PageID id=397
+$b.n.txt = = convert number $b.n to string
+$g.txt = $g.txt + ' (' + $b.n.txt + ')'
+gosub Group.Open.Sub:
+$pre = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+$b.i = 0
+while $b.i < $b.n
+ $b.e = $b.tab[$b.i]
+ inc $b.i =
+ if is datatyp[ $b.e ] == DATATYPE_ARRAY
+  $b.a = $b.e[0]
+  $b.b = $b.e[1]
+  $b.j = $b.e[2]
+  if is datatyp[ $b.a ] == DATATYPE_STATION
+   if is datatyp[ $b.b ] == DATATYPE_STATION
+    $b.an = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$b.a
+    $b.bn = [THIS] -> call script plugin.LI.FDN.Format.Name : object=$b.b
+    $r.label = $pre + $b.an + ' - ' + $b.bn
+    $r.right = = convert number $b.j to string
+    $r.ret = = array alloc: size=2
+    $r.ret[0] = 'open.dc'
+    $r.ret[1] = $b.a
+    gosub Row.Sub:
+   end
+  end
+ end
+end
+gosub Group.Close.Sub:
+endsub
+

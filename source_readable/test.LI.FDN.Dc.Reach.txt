@@ -1,0 +1,204 @@
+* Script: test.LI.FDN.Dc.Reach  (v1, engine 50)
+* Desc: FDNv9 - M-08i test of lib.LI.FDN.Dc.Reach and the Dc.Edit add range check
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08i): new - Dc.Reach bad input, primary, agreement with Route.Build [35], Dc.Edit add 'range'
+* -----------------------------------------------------------------------------------
+* In-game test of lib.LI.FDN.Dc.Reach and lib.LI.FDN.Dc.Edit v1.1 (M-08i). Writes every TEST
+* line to log 9910 and log 9911 (9911 restarted at start). Needs a valid primary DC [2].
+* R1 Reach(primary, primary) = 0; R2 Reach(primary, null) = -1; R3 Reach(null, primary) = -1.
+* R4 one check per other DC: Reach >= 0 exactly when Route.Build [35] holds a link between
+*   that DC and the primary (Route.Build is run first). INFO lines name the isolated DCs.
+* R5 Dc.Edit add of the primary returns 'dup' (unchanged order: dup before range).
+* R6 Dc.Edit add of a player Dock that is not a DC and not in range returns 'range' and the
+*   DC list size is unchanged (only when such a dock exists; else an INFO line, no check).
+* INFO: number of Add list candidates (valid docks, not DCs, in range of the primary).
+* Nothing is added: no check adds a DC. 'busy' (a supply pass) fails R5/R6 - run it again.
+* Expected: 3 + (DCs - 1) + 1 checks, plus 1 when an out-of-range dock exists; all PASS.
+* Version: 1.0
+* Date: 31/10/2026
+* Tested: not tested (M-08i)
+* -----------------------------------------------------------------------------------
+
+$pass = 0
+$total = 0
+$tag = 'TEST Dc.Reach: '
+$txt = 'TEST Dc.Reach: start'
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[FALSE]  value=$txt
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not is datatyp[ $g ] == DATATYPE_ARRAY
+ $txt = 'TEST Dc.Reach: FAIL no settings array, test stopped'
+ gosub Log.Sub:
+ return null
+end
+$primary = $g[2]
+$p.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$primary need.dock=[TRUE]
+if not $p.ok == [TRUE]
+ $txt = 'TEST Dc.Reach: FAIL no valid primary DC [2], test stopped'
+ gosub Log.Sub:
+ return null
+end
+
+* R1-R3 primary and bad input
+$v = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$primary primary=$primary
+$ok = [FALSE]
+if $v == 0
+ $ok = [TRUE]
+end
+$id = 'R1 primary to itself = 0'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+$v = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$primary primary=null
+$ok = [FALSE]
+if $v == -1
+ $ok = [TRUE]
+end
+$id = 'R2 null primary = -1'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+$v = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=null primary=$primary
+$ok = [FALSE]
+if $v == -1
+ $ok = [TRUE]
+end
+$id = 'R3 null dc = -1'
+$det = '(' + $v + ')'
+gosub Result.Sub:
+
+* R4 agreement with the Route.Build link table [35]
+ = [THIS] -> call script lib.LI.FDN.Route.Build :
+$g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+$links = $g[35]
+if not is datatyp[ $links ] == DATATYPE_ARRAY
+ $links = = array alloc: size=0
+end
+$n.links = size of array $links
+$list = [THIS] -> call script lib.LI.FDN.Dc.List :
+if not is datatyp[ $list ] == DATATYPE_ARRAY
+ $list = = array alloc: size=0
+end
+$n.dc = size of array $list
+$i = 0
+while $i < $n.dc
+ $dc = $list[$i]
+ inc $i =
+ if not $dc == $primary
+  $v = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$dc primary=$primary
+  gosub Link.Sub:
+  $reach.ok = [FALSE]
+  if $v >= 0
+   $reach.ok = [TRUE]
+  end
+  $ok = [FALSE]
+  if $reach.ok == $linked
+   $ok = [TRUE]
+  end
+  $id = 'R4 Reach agrees with [35] for ' + $dc
+  $det = '(reach ' + $v + ', link ' + $linked + ')'
+  gosub Result.Sub:
+  if $v < 0
+   $txt = 'TEST Dc.Reach: INFO isolated DC ' + $dc + ' (not linked to primary)'
+   gosub Log.Sub:
+  end
+ end
+end
+
+* R5 add of the primary is still 'dup'
+$n.before = size of array $list
+$res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='add' dc=$primary
+$ok = [FALSE]
+if $res == 'dup'
+ $ok = [TRUE]
+end
+$id = 'R5 add primary = dup'
+$det = '(' + $res + ')'
+gosub Result.Sub:
+
+* R6 add of an out-of-range dock is 'range'; INFO count of Add list candidates
+$far = null
+$n.cand = 0
+$dock.array = = get station array: of race Player class/type=Dock 2007
+$s = size of array $dock.array
+while $s > 0
+ dec $s =
+ $dock = $dock.array[$s]
+ $d.ok = [THIS] -> call script lib.LI.FDN.Is.Valid : obj=$dock need.dock=[TRUE]
+ if $d.ok == [TRUE]
+  if not find $dock in array: $list
+   $fl = [THIS] -> call script lib.LI.FDN.Is.FL.Managed : station=$dock
+   if not $fl == [TRUE]
+    $v = [THIS] -> call script lib.LI.FDN.Dc.Reach : dc=$dock primary=$primary
+    if $v < 0
+     $far = $dock
+    else
+     inc $n.cand =
+    end
+   end
+  end
+ end
+end
+$txt = 'TEST Dc.Reach: INFO Add list candidates in range of the primary: ' + $n.cand
+gosub Log.Sub:
+if is datatyp[ $far ] == DATATYPE_STATION
+ $res = [THIS] -> call script lib.LI.FDN.Dc.Edit : action='add' dc=$far
+ $list = [THIS] -> call script lib.LI.FDN.Dc.List :
+ $n.after = size of array $list
+ $ok = [FALSE]
+ if $res == 'range'
+  if $n.after == $n.before
+   $ok = [TRUE]
+  end
+ end
+ $id = 'R6 add out-of-range dock = range'
+ $det = '(' + $far + ': ' + $res + ', DCs ' + $n.before + ' -> ' + $n.after + ')'
+ gosub Result.Sub:
+else
+ $txt = 'TEST Dc.Reach: INFO R6 skipped - no player Dock out of range of the primary'
+ gosub Log.Sub:
+end
+
+$txt = 'TEST Dc.Reach: done ' + $pass + ' / ' + $total + ' PASS'
+gosub Log.Sub:
+return null
+
+* sub - $linked = [TRUE] when [35] holds [primary, dc] or [dc, primary]
+Link.Sub:
+$linked = [FALSE]
+$k = 0
+while $k < $n.links
+ $link = $links[$k]
+ inc $k =
+ if is datatyp[ $link ] == DATATYPE_ARRAY
+  $l.a = $link[0]
+  $l.b = $link[1]
+  if $l.a == $primary
+   if $l.b == $dc
+    $linked = [TRUE]
+   end
+  end
+  if $l.b == $primary
+   if $l.a == $dc
+    $linked = [TRUE]
+   end
+  end
+ end
+end
+endsub
+
+Log.Sub:
+write to log file 9910  append=[TRUE]  value=$txt
+write to log file 9911  append=[TRUE]  value=$txt
+endsub
+
+Result.Sub:
+inc $total =
+$rs = 'FAIL'
+if $ok
+ inc $pass =
+ $rs = 'PASS'
+end
+$txt = $tag + $id + ': ' + $rs + ' ' + $det
+gosub Log.Sub:
+endsub

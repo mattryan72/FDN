@@ -1,0 +1,73 @@
+* Script: lib.LI.FDN.Dc.Reach  (v1, engine 50)
+* Desc: FDNv9 - Jumps from the primary DC to one dock when they share a backbone link, else -1
+* Arg 0: dc (Value) 'dc'
+* Arg 1: primary (Value) 'primary'
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (M-08i). The one test of 'in range of the primary DC', used
+* by lib.LI.FDN.Dc.Edit (add check, isolated log) and plugin.LI.FDN.Menu.DC.List (Add list
+* filter, isolated mark), so the menu and the add check cannot disagree. Same rule as a
+* backbone link in lib.LI.FDN.Route.Build: the jumps between the two sectors are an INT
+* >= 0 and at most 2 x the SMALLER of the two lib.LI.FDN.Dc.Range values. It does not read
+* [31]: the rule always applies, range limit on or off (Route.Build ignores [31] as well).
+* dc does not have to be a DC yet (Dc.Range only needs a valid player Dock).
+*
+* Arguments:
+* - dc (Value): the dock to test (candidate or DC)
+* - primary (Value): the primary DC (normally settings [2])
+
+* Returns values:
+* - INT jumps (0 when dc is the primary) when dc is linked to the primary
+* - -1 when not linked, unreachable, or bad input (either station invalid, no range)
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 31/10/2026
+* Tested: not tested (M-08i)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08i): new - in range of the primary DC (backbone rule) for add check and isolated mark
+ * -----------------------------------------------------------------------------------
+
+if not is datatyp[ $dc ] == DATATYPE_STATION
+ return -1
+end
+if not is datatyp[ $primary ] == DATATYPE_STATION
+ return -1
+end
+if $dc == $primary
+ return 0
+end
+$p.sec = $primary  ->  get sector
+if not $p.sec
+ return -1
+end
+$d.sec = $dc  ->  get sector
+if not $d.sec
+ return -1
+end
+$p.range = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$primary
+if not is datatyp[ $p.range ] == DATATYPE_INT
+ return -1
+end
+$d.range = [THIS] -> call script lib.LI.FDN.Dc.Range : dc=$dc
+if not is datatyp[ $d.range ] == DATATYPE_INT
+ return -1
+end
+$jumps = = get jumps from sector $p.sec to sector $d.sec
+if not is datatyp[ $jumps ] == DATATYPE_INT
+ return -1
+end
+if $jumps < 0
+ return -1
+end
+* R_bb uses the smaller of the two ranges: min x 2 (Route.Build rule)
+$r.min = $p.range
+if $d.range < $r.min
+ $r.min = $d.range
+end
+$r.bb = $r.min * 2
+if $jumps > $r.bb
+ return -1
+end
+return $jumps
