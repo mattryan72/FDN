@@ -10,13 +10,13 @@
 * Menu.Dock.Details. Called by plugin.LI.FDN.Main.Menu for view 1 (the DC) and view 5
 * (a dock). The view only changes the header (the DC gets the 'Current DC' line), the
 * ware columns (12 for the DC, 10 for a dock, built by lib.LI.FDN.Menu.WareRow) and the
-* Configuration link, which only the DC shows.
+* network rows, which only the DC shows. Page links are in the Main.Menu footer (M-08o).
 
 * Layout: info lines, credits heading, Show All / Hide All (AP and FL only), then one
 * group per main type from plugin.LI.FDN.Sort.Wares. On AP and FL a group is a native
 * collapsible grouping. On TC (no native groups) it is a plain heading, so the v8 show
 * and hide toggle rows (show.type.dc / show.type.dock) no longer exist. Last come the
-* Add Ware and Configuration items.
+* Add Ware item.
 
 * Live values: every ware row array and the credits array is also stored in a global
 * named by text 5000 (id, ware) and text 5001 (id), the same names the v8 updaters
@@ -39,10 +39,11 @@
 
 * To Do - N/A
 
-* Version: 1.4
-* Date: 30/10/2026
-* Tested: not tested (M-07f, M-07g)
+* Version: 1.5
+* Date: 31/10/2026
+* Tested: not tested (M-07f, M-07g, M-08o)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08o): 'Switch to:' (114) links and the 'Configuration Options:' (164 / 165) link removed - the Main.Menu footer 'Menu Options:' holds all page links
  * v9.01 D6 (P3-06): one builder for the DC and dock views, on lib.LI.FDN.Menu.WareRow / Menu.ObjLine
  * v9.01 D6 (M-06E1): DC view links to the DC list (text 353 -> 'open.dclist')
  * v9.01 D6 (M-06L): DC view top box: Name [ID] | Sector, then the status line 362 (type | range | stations | EC, moved from Menu.DC.List)
@@ -84,15 +85,8 @@ else
   = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$obj
 end
 
-* navigation: the DC view links to the Stations list (factories and docks by sector); the old header 'Switch to' row is gone
+* v9.01 D6 (M-08o): page links (Stations, DC list, Config) are in the Main.Menu footer
 if $is.dc == [TRUE]
- $txt = = read text: page=$PageID id=114
- add custom menu heading to array $menu: title=$txt
- $txt = = read text: page=$PageID id=303
- add custom menu item to array $menu: text=$txt returnvalue='open.stations'
- * v9.01 D6 (M-06E1): link to the DC list (view 3)
- $txt = = read text: page=$PageID id=353
- add custom menu item to array $menu: text=$txt returnvalue='open.dclist'
  * v9.01 D6 (M-07f): per-DC network settings (370 block), settings with the M-03 slots only
  gosub DC.Cfg.Rows.Sub:
 end
@@ -164,13 +158,6 @@ $return.array[1] = $obj
 $txt = = read text: page=$PageID id=196
 add custom menu item to array $menu: text=$txt returnvalue=$return.array
 
-* configuration link, DC view only
-if $is.dc == [TRUE]
- $txt = = read text: page=$PageID id=164
- add custom menu heading to array $menu: title=$txt
- $txt = = read text: page=$PageID id=165
- add custom menu item to array $menu: text=$txt returnvalue='open.config'
-end
 
 $log.txt = 'Menu.Station view=' + $view + ', ware rows ' + $rows
  = [THIS] -> call script lib.LI.FDN.Log : text=$log.txt caller='plugin.LI.FDN.Menu.Station'

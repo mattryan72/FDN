@@ -15,9 +15,8 @@
 * primary) and Remove. The status line 362 (type | range | stations | EC) moved to the
 * top info box of the DC view (plugin.LI.FDN.Menu.Station, M-06L). Then, only while there are fewer
 * than 16 DCs AND at least one candidate, an 'Add Distribution Centre' group (name |
-* sector). Last, outside every group, a section and a 'Menu Options:' heading bar (110)
-* with the 'FDN Main Menu' link (102, 'open.dc' = the primary DC view), so the link is
-* its own box even when every group is collapsed. Player-visible words all come from
+* sector). Page links ('Menu Options:' 110 with 102 / 303 / 103) are added by the
+* Main.Menu footer after its section (M-08o), so they are their own box. Player-visible words all come from
 * the text file; only punctuation (' / ', ' - ', ':', '- ') and numbers are literals.
 * Isolated mark (M-08i): a DC other than the primary [2] with no backbone link to it
 * (lib.LI.FDN.Dc.Reach -1) gets a red 'Not linked to primary: ' prefix (text 393) in its group
@@ -39,16 +38,17 @@
 * primary 395 (red 393 when isolated, no row on the primary) and 'Linked to:' 396 with up
 * to 3 backbone partners 'Name (jumps)' from [35] plus ' +n' for the rest; after the DC
 * groups a 'Backbone links' group (397) with one row per [35] link 'DC A - DC B' | jumps
-* that opens DC A; Menu Options also hold 'FDN Config Menu' (103, 'open.config').
+* that opens DC A.
 * All new rows are 8-column selectable rows (['open.dc', dc]), never info lines (AP and FL
 * move info lines to the top box).
 
 * To Do - N/A
 
-* Version: 1.6
+* Version: 1.7
 * Date: 31/10/2026
-* Tested: not tested
+* Tested: not tested (M-08o)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08o): own 'Menu Options:' block (110 / 102 / 103) removed - the Main.Menu footer holds all page links
  * v9.01 D6 (M-08j): network view - summary 394, per DC status 362 / jumps 395 or 393 / links 396, Backbone links group 397, Config link 103
  * v9.01 D6 (M-08i): red 'Not linked to primary:' (393) on DCs not linked to the primary, Add list only in range of the primary (Dc.Reach)
  * v9.01 D6 (M-06B): DC list page - per DC info and Open / Make primary / Remove, Add list (max 16)
@@ -126,16 +126,7 @@ if $n < 16
  gosub Add.List.Sub:
 end
 
-* link back to the main (primary DC) view: a section and a heading bar outside every group,
-* so it is its own box even when all groups are collapsed; Main.Menu adds the section after it
-add section to custom menu: $menu
-$txt = = read text: page=$PageID id=110
-add custom menu heading to array $menu: title=$txt
-$txt = = read text: page=$PageID id=102
-add custom menu item to array $menu: text=$txt returnvalue='open.dc'
-* v9.01 D6 (M-08j): Config menu link (view 7)
-$txt = = read text: page=$PageID id=103
-add custom menu item to array $menu: text=$txt returnvalue='open.config'
+* v9.01 D6 (M-08o): page links come from the Main.Menu footer (after its section, outside every group)
 
 return $menu
 * -----------------------------------------------------------------------------------

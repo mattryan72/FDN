@@ -17,15 +17,16 @@
 
 * To Do - N/A
 
-* Version: 1.5
+* Version: 1.6
 * Date: 31/10/2026
-* Tested: FL 31/10/2026 (v1.3); not tested (M-08g, M-08l)
+* Tested: FL 31/10/2026 (v1.3); not tested (M-08g, M-08l, M-08o)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-08c): rows on Menu.Row / Menu.Toggle / Menu.ObjLine; add.dc and change.dc merged into set.dc; B5 surplus.default row
  * v9.01 D6 (M-06E3): with a DC the change-DC list (heading 124) is replaced by one row 353 -> ['open.dclist']
  * v9.01 D6 (M-07d): network block 370 (range limit 371, base range 372, cost 373, global floor 374) after Global Options
  * v9.01 D6 (M-08e): DC candidate rows read 'Name [ID] - Sector' (as the DC list group titles); the sector object in the value column did not show
  * v9.01 D6 (M-08l): network block row 'Backbone range multiplier' (398) [38] -> ['range.bb'], 'Default (2)' (324) when unset, not 1-5 or 2
+ * v9.01 D6 (M-08o): DC candidate rows get the green '- ' list prefix (9000); row 353 -> ['open.dclist'] removed (the Main.Menu footer links to the network page)
  * v9.01 D6 (M-08g): while FDN is paused ([0] not TRUE) one info row 'FDN Enabled:' (136) | red ' OFF ' (149) at the top; no new texts
 * -----------------------------------------------------------------------------------
 
@@ -75,15 +76,11 @@ if $has.dc == 0
  $cmd.label = = read text: page=$PageID id=123
  gosub Dock.List.Sub:
 else
- * valid DC in place: header with ObjLine, then one row to the DC list page
+ * valid DC in place: header with ObjLine (the DC list page link is in the Main.Menu footer, M-08o)
  $txt = = read text: page=$PageID id=129
  add custom menu info line to array $menu: text=$txt
   = [THIS] -> call script lib.LI.FDN.Menu.ObjLine : menu=$menu object=$dc
  * v9.01 D6 (M-06E3): Add / Remove / Make primary live on the DC list (view 3)
- $txt = = read text: page=$PageID id=353
- $ret.array = = array alloc: size=1
- $ret.array[0] = 'open.dclist'
-  = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=null retval=$ret.array
 end
 
 gosub Dynamic.Rows.Sub:
@@ -112,7 +109,10 @@ while $s > 0
     if is datatyp[ $name.txt ] == DATATYPE_STRING
      $sector = $dock -> get sector
      * v9.01 D6 (M-08e): 'Name [ID] - Sector' in the label, no value column (only punctuation is literal)
-     $row.txt = $name.txt + ' - '
+     * v9.01 D6 (M-08o): green '- ' list prefix (9000) as on every other list page
+     $row.txt = = sprintf: pageid=$PageID textid=9000, '- ', null, null, null, null
+     $row.txt = $row.txt + $name.txt
+     $row.txt = $row.txt + ' - '
      $row.txt = $row.txt + $sector
      $ret.array = = array alloc: size=2
      $ret.array[0] = 'set.dc'

@@ -26,16 +26,24 @@
 * Existing builders keep their arguments:
 *   Menu.Factory.Details (menu, value), Menu.Ware.Details (menu, value, ware), Config.Menu (menu)
 * Needs texts 306 (Back) and 307 (Close menu) in the text file, plus 302-305 for the titles.
+* M-08o: the footer owns all page links. With a DC set it starts with the 'Menu Options:'
+* heading (110) and the links 'Primary DC' (400, open.dc; M-08p, was 102), 'Stations' (303, open.stations),
+* 'Distribution Centre Network' (353, open.dclist) and 'FDN Config Menu' (103, open.config),
+* leaving out the page that is showing (400 not on view 1 of the primary DC); then Back and Close.
+* M-08p: text 102 is the FDN entry in the game's own menus (CPC plugin name, FL script options,
+* hotkey label) and this menu's heading, so the footer link reads its own text 400 'Primary DC'.
 * Menu is called from plugin manager.
 
 * Returns null
 
 * To Do - install together with plugin.LI.FDN.Menu.Refresh (P3-09); the texts 302-307 are in the text file
 
-* Version: 2.4
-* Date: 30/10/2026
-* Tested: not tested (M-06C, M-06G, M-07g)
+* Version: 2.6
+* Date: 31/10/2026
+* Tested: not tested (M-06C, M-06G, M-07g, M-08o, M-08p)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08p): footer link to the primary DC view reads the new text 400 'Primary DC' instead of 102 (102 stays the game-menu entry, now a green 'FDN')
+ * v9.01 D6 (M-08o): footer 'Menu Options:' (110) with the page links 102 / 303 / 353 / 103 (own page left out, none while no DC is set) before Back and Close
  * v9.01 D6 (M-06M): footer always ends with 'Close menu' (307, ['close']) that exits all menus; Back (306) only when there is a view to go back to
  * v9.01 D6 (M-06G): view 3 (DC list) opens in the wide info window like views 1, 2 and 5
  * v9.01 D6 (M-06C): view 3 DC list (opens there with 2+ DCs), title 353; scan on menu open ([16] older than 60 s -> null, Supply.Start rescans next tick, never a Scan START here); text 392 note on views 2/3 while a rescan is pending
@@ -241,6 +249,33 @@ endsub
 
 
 Footer.Sub:
+* v9.01 D6 (M-08o): page links under 'Menu Options:' (110), only with a DC set (view 7 is the only view without one)
+if $dc
+ $txt = = read text: page=$PageID id=110
+ add custom menu heading to array $menu: title=$txt
+ $nav.main = [TRUE]
+ if $view == 1
+  if $obj == $dc
+   $nav.main = [FALSE]
+  end
+ end
+ if $nav.main == [TRUE]
+  $txt = = read text: page=$PageID id=400
+  add custom menu item to array $menu: text=$txt returnvalue='open.dc'
+ end
+ if not $view == 2
+  $txt = = read text: page=$PageID id=303
+  add custom menu item to array $menu: text=$txt returnvalue='open.stations'
+ end
+ if not $view == 3
+  $txt = = read text: page=$PageID id=353
+  add custom menu item to array $menu: text=$txt returnvalue='open.dclist'
+ end
+ if not $view == 7
+  $txt = = read text: page=$PageID id=103
+  add custom menu item to array $menu: text=$txt returnvalue='open.config'
+ end
+end
 * Back row (306, ['back']) when there is a view to go back to, then always Close menu
 * (307, ['close']), which Menu.Command answers with null, so the whole menu closes
 $size = size of array $stack
