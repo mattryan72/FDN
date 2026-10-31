@@ -208,6 +208,7 @@ Approved by Matt on 2026-10-17:
 - Tested on X3: Farnham's Legacy 1.3, with or without Unofficial Patch 1.3.20. X3: Albion Prelude 3.3 and X3: Terran Conflict: untested.
 
 ### Docs
+- [M-09d] Uninstall note (README, User Guide v6): X Plugin Manager (.spk) uninstall removes lib.BW.isAP.xml because the package ships it (confirmed on a clean FL save; the game still works); a manual (zip/copy) uninstall should leave it in place. If another mod needs it, reinstall it from DrBullwinkle's own download.
 - Slimmed the local-AI prompt pack for the local model's context limits: new `docs/CORE_PROMPT.md` (short always-paste rules, about 1.2k tokens), `docs/MSCI_PRIMER.md` (moved out of the master prompt, pasted only when writing code), one task card per job in `docs/tasks/` (Phase 0 to 5), `tools/build_prompt.py` to build a paste-ready prompt with the instruction last, and `docs/CHECKING_ANSWERS.md`.
 - The master prompt is now a reference for Matt, not something to paste. PHASE0 updated for the `phase0-setup` branch and `source_readable/`; phase plans point at their cards.
 - Added Cline safety rules to `docs/CORE_PROMPT.md` (edit only the card's files, never touch XML/binary game files, one small find/replace per step, never push, commit only when asked, honest reports, keep `.gitattributes` line endings) and a "Using Cline" section to the README and `docs/CHECKING_ANSWERS.md` (commit or stash before each session).

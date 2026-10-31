@@ -36,7 +36,7 @@ FDN moves wares between your own stations. You choose one or more docks as Distr
 FDN registers a hotkey labelled "FDN" only while FDN is switched on. Bind a key under Controls > Interface (Extensions). Auto Manage Factories is On by default.
 
 ## Uninstall
-Switch FDN off in Gameplay > Artificial Life Settings (AL Plugins) (removes its Config entry and hotkey), save, then remove the package or the FDN files. Leave lib.BW.isAP.xml in place (DrBullwinkle's script; other mods may use it). Virtual stock is lost.
+Switch FDN off in Gameplay > Artificial Life Settings (AL Plugins) (removes its Config entry and hotkey), save, then remove the package or the FDN files. Manual (zip/copy) uninstall: leave lib.BW.isAP.xml in place (DrBullwinkle's script; other mods may use it). X Plugin Manager (.spk) uninstall removes lib.BW.isAP.xml too, as the package ships it; if another mod needs it, reinstall it from DrBullwinkle's own download. Virtual stock is lost.
 
 ## Known issues
 - Tested on FL only; v8.04 saves not supported; German texts machine-translated, pending native review.
