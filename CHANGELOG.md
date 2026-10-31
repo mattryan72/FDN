@@ -2,6 +2,23 @@
 
 ## [9.01] - Unreleased
 
+### Release summary
+Player-facing summary of v9.01 (the same bullets are in the User Guide and the forum post):
+- Up to 16 Distribution Centres (DCs) linked as a DC Network, with a primary DC and a Distribution Centre Network page.
+- Range rules: a dock can join only when it is linked to the primary DC; DCs that are not linked are marked.
+- Network settings: range limit, base station range, DC Network range multiplier, reserve floor, and per-DC range and reserve floor overrides.
+- Optional Energy Cell cost for transfers, with help between DCs, deferral warnings and a running cost page per DC.
+- Trading Stations and Equipment Docks get the same range as DCs.
+- Reworked menus: Menu Options footer on every page, Back / Esc navigation, consistent colours.
+- Configurable Surplus to Distribution Centre default; Master Reset clears FDN data on every station.
+- Farnham's Legacy: stations run by Station Manager are removed from the network; FDN entry in the Gameplay menu; hotkey fallback.
+- Language files: English; German (machine translated, pending native review); English copies for French, Italian, Russian, Spanish, Polish and Czech.
+- Many fixes and shared libraries; see CHANGELOG.md for the full list.
+- Fresh saves only. FDN starts paused until you switch it on. Albion Prelude and Terran Conflict are untested.
+- Text page 9910: new text ids 300-307, 310, 320-325, 330-333, 340, 341, 342, 343, 351, 352 and 353-400 (DC Network, network settings, running cost, messages); existing ids 100-202 reworded (M-08n/p/q).
+- Release notes: fresh saves only (v8.04 and earlier test saves are not supported); FDN starts paused after install or Master Reset until it is switched on in Gameplay > Artificial Life Settings; tested on X3: Farnham's Legacy 1.3 (with or without Unofficial Patch 1.3.20); X3: Albion Prelude 3.3 and X3: Terran Conflict untested.
+- Community Plugin Configuration: required for the .spk install (via X Plugin Manager); not needed for the manual zip install.
+
 ### Baseline
 - Imported FDN v8.04 (`src/`) as the starting point.
 
@@ -172,6 +189,10 @@
 - [D6] Fixed `test.LI.FDN.Menu.Cfg` (v1.2, M-08s), Trading Station check by subtype 0-5 as `lib.LI.FDN.Dc.Range` v1.2; check D1 expected the charged total as the literal '1234', but the cost page formats it with convert number ('1,234'); the test now formats it the same way (Matt's M-08r run: 31/32, D1 only). Test only, no game script or text change.
 - [D6] Version bump (P5-02): the 76 shipping FDN scripts now carry script version 901 and a description starting 'FDN v9.01 - ' (XML `<version>`/`<description>` and the codearray copies; readable source header lines too, except 5 files with old check_source flags); lib.BW.isAP unchanged; test scripts and T6.KillHandler not shipped. Wares.Summary description typo fixed. No code or text change.
 
+- [D6] Text page 9910 (P5-07): `t/9910-L049.xml` (German) now holds every id of 9910-L044 with German text - machine translated, pending review by a native speaker.
+- [D6] Text page 9910 (P5-08): new English copies `t/9910-L007.xml` (Russian), `9910-L033.xml` (French), `9910-L034.xml` (Spanish), `9910-L039.xml` (Italian), `9910-L042.xml` (Czech) and `9910-L048.xml` (Polish) - the English texts with the language id changed, so those games show English instead of ReadText.
+- [D6] CHANGELOG (P5-05): release summary added at the top of [9.01]; Compatibility line corrected.
+
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:
 - [B5] **Approved.** "Pass surplus to DC" becomes configurable: new global default in settings [28] (on / off / v8 compatible) for wares with no explicit choice; per-ware [7] is an override (1 on, 0 off, -1/null use the default). New Config menu row (texts 320-325). The v8 upgrade sets the default to "on" and turns v8's null ("switched off") into 0, so existing players see no change (migration approved by Matt on 2026-10-17). Fresh installs also default to "on", matching v8 (decided 2026-10-17).
@@ -182,7 +203,7 @@ Approved by Matt on 2026-10-17:
 - None yet.
 
 ### Compatibility
-- Targets X3 Albion Prelude 3.3 and Farnham's Legacy 1.3, with or without Unofficial Patch 1.3.20; TC out of scope.
+- Tested on X3: Farnham's Legacy 1.3, with or without Unofficial Patch 1.3.20. X3: Albion Prelude 3.3 and X3: Terran Conflict: untested.
 
 ### Docs
 - Slimmed the local-AI prompt pack for the local model's context limits: new `docs/CORE_PROMPT.md` (short always-paste rules, about 1.2k tokens), `docs/MSCI_PRIMER.md` (moved out of the master prompt, pasted only when writing code), one task card per job in `docs/tasks/` (Phase 0 to 5), `tools/build_prompt.py` to build a paste-ready prompt with the instruction last, and `docs/CHECKING_ANSWERS.md`.
