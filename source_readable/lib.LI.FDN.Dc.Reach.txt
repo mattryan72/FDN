@@ -8,7 +8,8 @@
 * by lib.LI.FDN.Dc.Edit (add check, isolated log) and plugin.LI.FDN.Menu.DC.List (Add list
 * filter, isolated mark), so the menu and the add check cannot disagree. Same rule as a
 * backbone link in lib.LI.FDN.Route.Build: the jumps between the two sectors are an INT
-* >= 0 and at most 2 x the SMALLER of the two lib.LI.FDN.Dc.Range values. It does not read
+* >= 0 and at most multiplier x the SMALLER of the two lib.LI.FDN.Dc.Range values (multiplier =
+* lib.LI.FDN.Dc.Mult, settings [38] 1-5, default 2, the same reader as Route.Build). It does not read
 * [31]: the rule always applies, range limit on or off (Route.Build ignores [31] as well).
 * dc does not have to be a DC yet (Dc.Range only needs a valid player Dock).
 *
@@ -22,11 +23,12 @@
 
 * To Do - N/A
 
-* Version: 1.0
+* Version: 1.1
 * Date: 31/10/2026
-* Tested: not tested (M-08i)
+* Tested: not tested (M-08i, M-08l)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-08i): new - in range of the primary DC (backbone rule) for add check and isolated mark
+ * v9.01 D6 (M-08l): the fixed 2 x is now lib.LI.FDN.Dc.Mult (settings [38], 1-5, default 2)
  * -----------------------------------------------------------------------------------
 
 if not is datatyp[ $dc ] == DATATYPE_STATION
@@ -61,12 +63,13 @@ end
 if $jumps < 0
  return -1
 end
-* R_bb uses the smaller of the two ranges: min x 2 (Route.Build rule)
+* R_bb uses the smaller of the two ranges: min x multiplier (Route.Build rule, M-08l)
+$bb.mult = [THIS] -> call script lib.LI.FDN.Dc.Mult :
 $r.min = $p.range
 if $d.range < $r.min
  $r.min = $d.range
 end
-$r.bb = $r.min * 2
+$r.bb = $r.min * $bb.mult
 if $jumps > $r.bb
  return -1
 end

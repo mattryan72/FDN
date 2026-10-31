@@ -1,0 +1,47 @@
+* Script: lib.LI.FDN.Dc.Mult  (v1, engine 50)
+* Desc: FDNv9 - Backbone range multiplier: settings [38] when it is a whole number 1-5, else 2
+
+* Author: Logain Abler
+* -----------------------------------------------------------------------------------
+* Synchronous wait-free helper (M-08l). The one reader of the backbone range multiplier,
+* used by lib.LI.FDN.Route.Build (link table [35]) and lib.LI.FDN.Dc.Reach (add check and
+* isolated mark), so the two cannot disagree. A backbone link exists when the jumps between
+* two DC sectors are at most multiplier x the SMALLER of the two lib.LI.FDN.Dc.Range values.
+* [38] is set in the Config menu ('Backbone range multiplier', 398 / 399, 1-5) and filled
+* with 2 by plugin.LI.FDN.Upgrade when it is not a number; Reset keeps it.
+*
+* Arguments:
+* - none
+
+* Returns values:
+* - INT 1-5: settings [38] when it is a whole number 1-5, else 2 (also when the settings
+*   are missing or smaller than 40) - the v9.01 M-02 rule was a fixed 2
+
+* To Do - N/A
+
+* Version: 1.0
+* Date: 31/10/2026
+* Tested: not tested (M-08l)
+* -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08l): new - backbone range multiplier reader ([38], default 2)
+ * -----------------------------------------------------------------------------------
+
+$al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
+if not $al.Settings
+ return 2
+end
+$s.size = size of array $al.Settings
+if $s.size < 40
+ return 2
+end
+$mult = $al.Settings[38]
+if not is datatyp[ $mult ] == DATATYPE_INT
+ return 2
+end
+if $mult < 1
+ return 2
+end
+if $mult > 5
+ return 2
+end
+return $mult

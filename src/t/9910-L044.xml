@@ -228,6 +228,8 @@
   <t id="395">%s jumps to primary</t>
   <t id="396">Linked to: %s</t>
   <t id="397">Backbone links</t>
+  <t id="398">Backbone range multiplier</t>
+  <t id="399">Input backbone range multiplier (1-5)</t>
 
   <t id="9000">\033G%s\033X</t>
   <t id="9001">\033R%s\033X</t>

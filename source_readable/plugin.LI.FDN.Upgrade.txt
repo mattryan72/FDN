@@ -36,15 +36,16 @@
 *
 * To Do - the P4-04b card makes Supply.Dock read [28]; until then [28] is stored only
 *
-* Version: 3.1
-* Date: 30/10/2026
-* Tested: not tested (M-08a)
+* Version: 3.2
+* Date: 31/10/2026
+* Tested: not tested (M-08a, M-08l)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P4-04): full v8.04 to v9.01 migration, Phase 1 stub replaced
  * v9.01 D6 (M-03): grow to 40, fill [30]-[36], [31]/[33] rule
  * v9.01 D6 (M-03b): [31]/[33] null -> 0 on saves already at 901
  * v9.01 D6 (M-08a): [37] (deferred transfers this tick) filled with 0 when not a number; one log line for the slot check
-* Slots 30-37 (filled only when missing or of the wrong type, never overwritten):
+ * v9.01 D6 (M-08l): [38] (backbone range multiplier) filled with 2 when not a number
+* Slots 30-38 (filled only when missing or of the wrong type, never overwritten):
 *   [30] DC list           array: [2] when [2] is a valid DC, else empty
 *   [31] range on/off      fresh install 1, upgraded network or 901 save 0
 *   [32] base range        3
@@ -53,6 +54,7 @@
 *   [35] route table       empty array
 *   [36] last EC check     0
 *   [37] deferred / tick   0 (Leg.Pay counts, Supply.Start resets each tick)
+*   [38] backbone mult     2 (1-5, read by lib.LI.FDN.Dc.Mult, M-08l)
  * -----------------------------------------------------------------------------------
 
 $script.name = = get script name
@@ -162,7 +164,11 @@ gosub Fill.Default.Sub:
 $idx = 37
 $val = 0
 gosub Fill.Default.Sub:
- = [THIS] -> call script lib.LI.FDN.Log : text='Upgrade: slots [30]-[37] checked' caller=$script.name
+* v9.01 D6 (M-08l): [38] backbone range multiplier default 2
+$idx = 38
+$val = 2
+gosub Fill.Default.Sub:
+ = [THIS] -> call script lib.LI.FDN.Log : text='Upgrade: slots [30]-[38] checked' caller=$script.name
 
 if $upgrade
  * v9.01 D6 (M-03): set [31] and [33] per the fresh-versus-upgraded rule, only when null

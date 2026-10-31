@@ -5,20 +5,21 @@
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-08d): new - settings slot types [30]-[37], Upgrade [30]/[37] repair, Upgrade idempotency
  * v9.01 D6 (M-08f): expected count corrected to 15 (14 with no DC); no code change
+ * v9.01 D6 (M-08l): S11 [38] INT 1-5, U4 [38] repaired to 2, I1 also keeps [38]; 17 checks (16 with no DC)
 * -----------------------------------------------------------------------------------
 * In-game test of plugin.LI.FDN.Upgrade v3.1 (M-08a). Writes every TEST line to log 9910 and
 * log 9911 (9911 restarted at start). Wait-free: nothing else runs while it changes slots.
 * S1 settings size >= 40; S2 [14] = 901; S3-S10 types: [30] array, [31]-[34] INT, [35] array,
-*   [36] INT, [37] INT.
+*   [36] INT, [37] INT; S11 [38] INT 1-5 (M-08l).
 * U1-U3 repair: [30] and [37] set to null, Upgrade called: [30] is an array again (U1), it holds
 *   the primary DC [2] when [2] is a valid DC (U2, logged INFO when no DC), [37] = 0 (U3);
-*   then the saved [30] and [37] are put back.
-* I1-I2 idempotency: Upgrade called again; [31]-[34], [36], [37] unchanged (I1) and the
+*   [38] set to null too, Upgrade fills 2 (U4, M-08l); then the saved [30], [37], [38] are put back.
+* I1-I2 idempotency: Upgrade called again; [31]-[34], [36], [37], [38] unchanged (I1) and the
 *   sizes of [30] and [35] unchanged (I2).
-* Expected with a valid DC: 15 checks, 15 PASS (14/14 with no valid DC in [2]: U2 logs INFO).
+* Expected with a valid DC: 17 checks, 17 PASS (16/16 with no valid DC in [2]: U2 logs INFO).
 * S2 needs Reset v3.1 or later when the save was Reset (v3.0 cleared [14]).
 * Prerequisite: FDN set up on a fresh v9.01 save.
-* Version: 1.0
+* Version: 1.1
 * Date: 31/10/2026
 * Tested: FL 31/10/2026 (14/15, S2 failed after Reset v3.0 cleared [14])
 * -----------------------------------------------------------------------------------
@@ -82,12 +83,27 @@ gosub Int.Sub:
 $v = $g[37]
 $id = 'S10 [37] INT'
 gosub Int.Sub:
+* v9.01 D6 (M-08l): S11 [38] backbone multiplier is a whole number 1-5
+$v = $g[38]
+$ok = [FALSE]
+if is datatyp[ $v ] == DATATYPE_INT
+ if $v >= 1
+  if $v <= 5
+   $ok = [TRUE]
+  end
+ end
+end
+$id = 'S11 [38] INT 1-5'
+$det = '(' + $v + ')'
+gosub Result.Sub:
 
 * U1-U3 repair of [30] and [37]
 $o30 = $g[30]
 $o37 = $g[37]
+$o38 = $g[38]
 $g[30] = null
 $g[37] = null
+$g[38] = null
 set global variable: name='al.LI.FDN.event' value=$g
  = [THIS] -> call script plugin.LI.FDN.Upgrade :
 $g = [THIS] -> call script lib.LI.FDN.Cfg.Get :
@@ -120,10 +136,21 @@ end
 $id = 'U3 [37] repaired to 0'
 $det = '(' + $v + ')'
 gosub Result.Sub:
+$v = $g[38]
+$ok = [FALSE]
+if $v == 2
+ if is datatyp[ $v ] == DATATYPE_INT
+  $ok = [TRUE]
+ end
+end
+$id = 'U4 [38] repaired to 2'
+$det = '(' + $v + ')'
+gosub Result.Sub:
 $g[30] = $o30
 $g[37] = $o37
+$g[38] = $o38
 set global variable: name='al.LI.FDN.event' value=$g
-$txt = 'TEST Slots: [30] and [37] restored'
+$txt = 'TEST Slots: [30], [37] and [38] restored'
 gosub Log.Sub:
 
 * I1-I2 idempotency
@@ -133,6 +160,7 @@ $a33 = $g[33]
 $a34 = $g[34]
 $a36 = $g[36]
 $a37 = $g[37]
+$a38 = $g[38]
 $v = $g[30]
 $a30.n = size of array $v
 $v = $g[35]
@@ -164,7 +192,11 @@ $v = $g[37]
 if not $v == $a37
  $ok = [FALSE]
 end
-$id = 'I1 second Upgrade keeps [31]-[34], [36], [37]'
+$v = $g[38]
+if not $v == $a38
+ $ok = [FALSE]
+end
+$id = 'I1 second Upgrade keeps [31]-[34], [36], [37], [38]'
 $det = ''
 gosub Result.Sub:
 $ok = [TRUE]

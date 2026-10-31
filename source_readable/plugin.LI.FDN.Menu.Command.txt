@@ -29,9 +29,9 @@
 
 * To Do - N/A
 
-* Version: 1.8
+* Version: 1.9
 * Date: 31/10/2026
-* Tested: not tested (M-07e, M-07g, M-07e Esc, M-08k)
+* Tested: not tested (M-07e, M-07g, M-07e Esc, M-08k, M-08l)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-06M): new 'close' command returns null so Close menu exits all menus from any view
  * v9.01 D6 (M-06D1): open.dc takes the DC from the row value (secondary DCs), new open.dclist -> view 3
@@ -43,6 +43,7 @@
  * v9.01 D6 (M-08k): open.* cuts the stack back to the same page [view, obj, ware] when it is already there (no stacking);
  *   open.dock on a DC in [30] opens the DC view (1); dc.add / dc.remove / dc.primary keep the stack, a remove drops
  *   the removed DC's DC view (1), ware pages (6) and running cost page (8)
+ * v9.01 D6 (M-08l): range.bb asks 399 (1-5) for the backbone range multiplier [38], then Dc.Edit refresh (as range.base)
  * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
@@ -382,6 +383,11 @@ if $command == 'range.base'
  return $stack
 end
 if $command == 'floor.global'
+ gosub Net.Setting.Sub:
+ return $stack
+end
+* v9.01 D6 (M-08l): backbone range multiplier [38]
+if $command == 'range.bb'
  gosub Net.Setting.Sub:
  return $stack
 end
@@ -939,6 +945,19 @@ else if $command == 'range.base'
  $hi = 20
  $tid = 375
  $lid = 372
+ gosub Ask.Number.Sub:
+ if $ask.ok == 0
+  endsub
+ end
+ $new.val = $amount
+ $net.refresh = 1
+else if $command == 'range.bb'
+ * v9.01 D6 (M-08l): [38] backbone range multiplier 1-5 (399), refresh like range.base
+ $net.idx = 38
+ $lo = 1
+ $hi = 5
+ $tid = 399
+ $lid = 398
  gosub Ask.Number.Sub:
  if $ask.ok == 0
   endsub

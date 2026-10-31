@@ -12,7 +12,7 @@
 *            - null test is DATATYPE_STATION (v2 tested DATATYPE_OBJECT, which a station is not,
 *              so v2 cleared nothing); '-> exists' result is copied before the condition
 *            - clears [2], empties [3]/[4]/[29]/[30]/[35], clears [12]-[20] except [14], [36] = 0, [37] = 0
-*            - keeps [7] debug, [14] schema stamp, [28] surplus default and [31]-[34]
+*            - keeps [7] debug, [14] schema stamp, [28] surplus default, [31]-[34] and [38]
 *              (range / cost settings); FDN is left paused ([0] = FALSE)
 *            - per-DC records (FDN.Cost.DC, FDN.DC.Cfg, FDN.Cost.Home, ware records) are FDN.*
 *              locals, so the sweep clears them on every DC, removed DCs included
@@ -70,7 +70,7 @@ while $sc > 0
   inc $n.skipped =
  end
 end
-* (4) settings: clear the FDN state, keep [7], [14], [28] and [31]-[34]; [0] stays FALSE
+* (4) settings: clear the FDN state, keep [7], [14], [28], [31]-[34] and [38] (M-08l: never written here); [0] stays FALSE
 * v9.01 D6 (M-08f): [12]-[20] cleared except [14]
 $al.Settings[2] = null
 $empty = = array alloc: size=0

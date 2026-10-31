@@ -17,14 +17,15 @@
 
 * To Do - N/A
 
-* Version: 1.4
+* Version: 1.5
 * Date: 31/10/2026
-* Tested: FL 31/10/2026 (v1.3); not tested (M-08g)
+* Tested: FL 31/10/2026 (v1.3); not tested (M-08g, M-08l)
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (P3-08c): rows on Menu.Row / Menu.Toggle / Menu.ObjLine; add.dc and change.dc merged into set.dc; B5 surplus.default row
  * v9.01 D6 (M-06E3): with a DC the change-DC list (heading 124) is replaced by one row 353 -> ['open.dclist']
  * v9.01 D6 (M-07d): network block 370 (range limit 371, base range 372, cost 373, global floor 374) after Global Options
  * v9.01 D6 (M-08e): DC candidate rows read 'Name [ID] - Sector' (as the DC list group titles); the sector object in the value column did not show
+ * v9.01 D6 (M-08l): network block row 'Backbone range multiplier' (398) [38] -> ['range.bb'], 'Default (2)' (324) when unset, not 1-5 or 2
  * v9.01 D6 (M-08g): while FDN is paused ([0] not TRUE) one info row 'FDN Enabled:' (136) | red ' OFF ' (149) at the top; no new texts
 * -----------------------------------------------------------------------------------
 
@@ -239,6 +240,24 @@ gosub Num.Text.Sub:
 $txt = = read text: page=$PageID id=374
 $ret.array = = array alloc: size=1
 $ret.array[0] = 'floor.global'
+ = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$num.txt retval=$ret.array
+
+* v9.01 D6 (M-08l): backbone range multiplier [38]; only 1, 3, 4, 5 show as a number, 2 / unset / other -> 'Default (2)'
+$num.val = $al.Settings[38]
+if is datatyp[ $num.val ] == DATATYPE_INT
+ if $num.val == 2
+  $num.val = null
+ else if $num.val < 1
+  $num.val = null
+ else if $num.val > 5
+  $num.val = null
+ end
+end
+$num.def = 2
+gosub Num.Text.Sub:
+$txt = = read text: page=$PageID id=398
+$ret.array = = array alloc: size=1
+$ret.array[0] = 'range.bb'
  = [THIS] -> call script lib.LI.FDN.Menu.Row : menu=$menu label=$txt value=$num.txt retval=$ret.array
 endsub
 

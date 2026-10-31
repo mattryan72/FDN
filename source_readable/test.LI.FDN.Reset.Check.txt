@@ -4,15 +4,16 @@
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
  * v9.01 D6 (M-08d): new - read-only check of the state Reset v3 (M-08b) leaves
+ * v9.01 D6 (M-08l): R11e [38] INT kept (backbone multiplier); 16 checks
 * -----------------------------------------------------------------------------------
 * Read-only: run it right after plugin.LI.FDN.Reset on a THROWAWAY save. It changes nothing.
 * Writes every TEST line to log 9910 and log 9911 (9911 restarted at start).
 * R1 [0] FDN paused (not TRUE); R2 [2] null; R3-R7 [3], [4], [29], [30], [35] empty arrays;
-* R8 [36] = 0; R9 [37] = 0; R10 [14] = 901 kept; R11 [31]-[34] are INTs (kept);
+* R8 [36] = 0; R9 [37] = 0; R10 [14] = 901 kept; R11 [31]-[34] and [38] are INTs (kept);
 * R12 no player station holds an FDN.* local (the station count is logged).
-* Expected after a Reset: 15 checks, 15 PASS.
-* Version: 1.0
-* Date: 30/10/2026
+* Expected after a Reset: 16 checks, 16 PASS (R11e needs Upgrade v3.2 to have filled [38] first).
+* Version: 1.1
+* Date: 31/10/2026
 * Tested: not tested (M-08d)
 * -----------------------------------------------------------------------------------
 
@@ -85,6 +86,9 @@ $id = 'R11c [33] INT kept'
 gosub Int.Sub:
 $v = $g[34]
 $id = 'R11d [34] INT kept'
+gosub Int.Sub:
+$v = $g[38]
+$id = 'R11e [38] INT kept'
 gosub Int.Sub:
 
 * R12 no FDN.* locals on any player station
