@@ -26,17 +26,30 @@
 * Returns values:
 * - units actually traded (int >= 0); 0 on any guard failure, price check or spawn failure
 *
+* M-09c (fix): a buy whose drone is docked, with partner stock, money and cargo room, that still
+* returns 0 means the seller refuses the player (in game the station shows 'your notoriety is
+* too low'); a partner where 'is docking allowed' fails for every drone type is refused the same
+* way. Trade then blocks that seller for this ware for 30 minutes game time (local variable
+* 'LI.FDN.block.<ware>' on the partner; the station is listed in global 'al.LI.FDN.block'),
+* logs it, and a buy from a blocked seller is skipped. Buy.Ware leaves blocked sellers out of
+* its find. X3 has no script command for a ware's notoriety requirement, so this is detection
+* after the first refused buy, not a pre-check. Diagnostic logging is the compact M-09a/b set.
+*
 * To Do - N/A
 *
-* Version: 1.0
-* Date: 23/10/2026
-* Tested: TC 23/10/2026
+* Version: 1.3
+* Date: 31/10/2026
+* Tested: not tested (M-09c; M-09b showed n=0 buys at Paranid sellers with stock, money and cargo room)
 * -----------------------------------------------------------------------------------
 
 $s.name = = get script name
 * always-defined so an early goto Exit: still returns a clean int 0 with no leftover drone
 $traded = 0
 $drone = null
+* M-09c: seller block state - always defined, the block itself is written at Exit:
+$blk.set = [FALSE]
+$blk.why = 'none'
+$blk.name = 'LI.FDN.block.' + $ware
 $al.Settings = [THIS] -> call script lib.LI.FDN.Cfg.Get :
 if not $al.Settings
  * v9.01 R-T1: FDN not initialised - fail soft, always return an int (never null)
@@ -81,6 +94,11 @@ if not $p.exists
  return 0
 end
 $p.owner = $partner  ->  get owner race
+* M-09c: null-safe copy of the owner race for the log lines
+$q.owner = $p.owner
+if is datatyp[ $q.owner ] == DATATYPE_NULL
+ $q.owner = 'null'
+end
 if $p.owner == Player
  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip own station' caller=$s.name
  return 0
@@ -129,6 +147,20 @@ $rel = $home  ->  get relation to object $partner
 if $rel == Foe
  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE skip foe' caller=$s.name
  return 0
+end
+* M-09c: a seller blocked after a recent refused buy (probable notoriety too low) is skipped for 30 min
+if $mode == 'buy'
+ $blk.time = $partner  ->  get local variable: name=$blk.name
+ if is datatyp[ $blk.time ] == DATATYPE_INT
+  $blk.now = playing time
+  $blk.age = $blk.now - $blk.time
+  if $blk.age < 1800
+   $txt.log = 'TRADE skip seller ' + $partner + ' blocked'
+   $txt.log = $txt.log + ' (probable notoriety too low) ' + $q.owner
+   = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   return 0
+  end
+ end
 end
 
 * -----------------------------------------------------------------------------------
@@ -348,6 +380,8 @@ end
 
 * try up to 4 spawn attempts; stop as soon as one type is accepted or the cap is reached.
 * No break/continue: a $done flag ends the loop, set when a type passes or the cap/candidates run out.
+* M-09c: set when any candidate type fails 'is docking allowed'
+$dock.fail = [FALSE]
 $drone = null
 $idx = 0
 $num.cand = size of array $candidates
@@ -382,6 +416,19 @@ while not $done
      $dock.ok = $drone  ->  is docking allowed at $partner
      $trans.ok = $drone  ->  can transport ware $ware
      $drone.max = $drone  ->  get max amount of ware $ware that can be stored in cargo bay
+     * M-09c: compact diagnostic - null-safe copies (a null shows as the text null)
+     $q.dock = $dock.ok
+     if is datatyp[ $q.dock ] == DATATYPE_NULL
+      $q.dock = 'null'
+     end
+     $q.trans = $trans.ok
+     if is datatyp[ $q.trans ] == DATATYPE_NULL
+      $q.trans = 'null'
+     end
+     $q.max = $drone.max
+     if is datatyp[ $q.max ] == DATATYPE_NULL
+      $q.max = 'null'
+     end
      $accept = [FALSE]
      if $dock.ok
       if $trans.ok
@@ -397,9 +444,15 @@ while not $done
       $al.Settings[26] = $t
       set global variable: name='al.LI.FDN.event' value=$al.Settings
       $done = [TRUE]
+      = [THIS] -> call script lib.LI.FDN.Log : text='TRADE spawn ok type=' + $t + ' max=' + $q.max caller=$s.name
      else
       $drone  ->  destruct: show no explosion=[TRUE]
-      = [THIS] -> call script lib.LI.FDN.Log : text='TRADE reject type ' + $t caller=$s.name
+      * M-09c: two lines per rejected type; a failed docking check is remembered for the seller block
+      = [THIS] -> call script lib.LI.FDN.Log : text='TRADE reject type ' + $t + ' dock=' + $q.dock caller=$s.name
+      = [THIS] -> call script lib.LI.FDN.Log : text='TRADE reject trans=' + $q.trans + ' max=' + $q.max caller=$s.name
+      if not $dock.ok
+       $dock.fail = [TRUE]
+      end
       $drone = null
      end
     end
@@ -417,6 +470,13 @@ if $drone
 end
 if not $have.drone
  = [THIS] -> call script lib.LI.FDN.Log : text='TRADE error no usable drone type' caller=$s.name
+ * M-09c: every type was refused docking - treat the seller as refusing the player (blocked at Exit:)
+ if $dock.fail
+  if $mode == 'buy'
+   $blk.set = [TRUE]
+   $blk.why = 'docking refused'
+  end
+ end
  goto label Exit:
 end
 * -----------------------------------------------------------------------------------
@@ -454,6 +514,44 @@ while $loads < $max.loads
     $remaining = $remaining - $n
     inc $loads =
    else
+    * M-09c: the buy returned null or 0 - compact null-safe log, then decide whether the seller refused us
+    $l.stock = $partner  ->  get amount of ware $ware in cargo bay
+    $l.money = $home  ->  get money
+    $l.docked = $drone  ->  is docked
+    $q.n = $n
+    if is datatyp[ $q.n ] == DATATYPE_NULL
+     $q.n = 'null'
+    end
+    $q.stock = $l.stock
+    if is datatyp[ $q.stock ] == DATATYPE_NULL
+     $q.stock = 'null'
+    end
+    $q.money = $l.money
+    if is datatyp[ $q.money ] == DATATYPE_NULL
+     $q.money = 'null'
+    end
+    $q.docked = $l.docked
+    if is datatyp[ $q.docked ] == DATATYPE_NULL
+     $q.docked = 'null'
+    end
+    = [THIS] -> call script lib.LI.FDN.Log : text='TRADE buy returned n=' + $q.n + ' chunk=' + $chunk caller=$s.name
+    = [THIS] -> call script lib.LI.FDN.Log : text='TRADE buy pstock=' + $q.stock + ' money=' + $q.money caller=$s.name
+    = [THIS] -> call script lib.LI.FDN.Log : text='TRADE buy docked=' + $q.docked + ' max=' + $q.max caller=$s.name
+    * refused = first load, drone docked, partner has stock and home can pay for one unit (cargo room: max > 0 at spawn)
+    if $traded == 0
+     if $l.docked
+      if is datatyp[ $l.stock ] == DATATYPE_INT
+       if $l.stock > 0
+        if is datatyp[ $l.money ] == DATATYPE_INT
+         if $l.money >= $price
+          $blk.set = [TRUE]
+          $blk.why = 'zero-buy'
+         end
+        end
+       end
+      end
+     end
+    end
     $loads = $max.loads
    end
   else
@@ -494,6 +592,33 @@ if $drone
  end
 end
 $drone = null
+* M-09c: block the seller for this ware for 30 min game time and list it for Buy.Ware
+if $blk.set
+ $blk.now = playing time
+ $partner  ->  set local variable: name=$blk.name value=$blk.now
+ $blk.list = get global variable: name='al.LI.FDN.block'
+ if not is datatyp[ $blk.list ] == DATATYPE_ARRAY
+  $blk.list = array alloc: size=0
+ end
+ $blk.in = find $partner in array: $blk.list
+ if not $blk.in
+  append $partner to array $blk.list
+ end
+ set global variable: name='al.LI.FDN.block' value=$blk.list
+ $noto.a = get notoriety: race=Player to race=$p.owner
+ $noto.b = get notoriety: race=$p.owner to race=Player
+ $q.na = $noto.a
+ if is datatyp[ $q.na ] == DATATYPE_NULL
+  $q.na = 'null'
+ end
+ $q.nb = $noto.b
+ if is datatyp[ $q.nb ] == DATATYPE_NULL
+  $q.nb = 'null'
+ end
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE block seller ' + $partner + ' for 30 min: ' + $blk.why caller=$s.name
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE block race=' + $q.owner + ' (probable notoriety too low)' caller=$s.name
+ = [THIS] -> call script lib.LI.FDN.Log : text='TRADE block noto=' + $q.na + ' rev=' + $q.nb caller=$s.name
+end
 * -----------------------------------------------------------------------------------
 
 * only after a confirmed trade: update the home record and stamp last-trade time (rec[8])

@@ -24,9 +24,9 @@
 *
 * To Do - N/A
 *
-* Version: 3.0
-* Date: 26/10/2026
-* Tested: not tested (M-05 staged 29/10/2026)
+* Version: 3.1
+* Date: 31/10/2026
+* Tested: not tested (M-09c)
  * v9.01 D6 (M-05i): buys on the account of the factory home DC (lib.LI.FDN.Home)
 * -----------------------------------------------------------------------------------
 * v9.01 P2-11a changes - closes D1, D2 (one of nine), B4, B12, B15; owns the trade guard:
@@ -48,6 +48,13 @@
 * v9.01 Phase 2 changes (P2-14) - debug logging only, no behaviour change:
 *   Added a 'Buy start' line, an 'amount is 0' skip line, a 'Seller found' line and a 'Trade bought 0'
 *   line. The 'No seller found' line now says how many cached sectors were searched.
+
+* v9.01 M-09c changes - sellers that refuse the player (probable notoriety too low):
+*   lib.LI.FDN.Trade blocks a seller for a ware for 30 min game time after a refused buy
+*   (local variable 'LI.FDN.block.<ware>' on the station, listed in global 'al.LI.FDN.block').
+*   The find now uses $excl = the exclude list [8] plus every seller still blocked for this
+*   ware, so it picks another seller; a seller blocked during this pass is added to $excl
+*   and the same sector is searched again (at most 5 times per run).
 * -----------------------------------------------------------------------------------
 $factory.valid = [FALSE]
 $s.name = = get script name
@@ -182,6 +189,47 @@ end
 
  * v9.01 P2-11a: cached trade sectors (mode 3 - factories + docks + advanced satellites);
 * the cache never scans, so a null or empty list only means nothing is cached yet.
+* M-09c: exclude list = settings [8] plus every seller still blocked for this ware (30 min game time)
+$excl = array alloc: size=0
+if is datatyp[ $exclude.array ] == DATATYPE_ARRAY
+ $e.i = size of array $exclude.array
+ while $e.i > 0
+  dec $e.i =
+  $e.st = $exclude.array[$e.i]
+  append $e.st to array $excl
+ end
+end
+$blk.name = 'LI.FDN.block.' + $ware
+$blk.now = playing time
+$blk.count = 0
+$blk.list = get global variable: name='al.LI.FDN.block'
+if is datatyp[ $blk.list ] == DATATYPE_ARRAY
+ $b.i = size of array $blk.list
+ while $b.i > 0
+  dec $b.i =
+  $b.st = $blk.list[$b.i]
+  if $b.st
+   $b.ex = $b.st  ->  exists
+   if $b.ex
+    $b.t = $b.st  ->  get local variable: name=$blk.name
+    if is datatyp[ $b.t ] == DATATYPE_INT
+     $b.age = $blk.now - $b.t
+     if $b.age < 1800
+      append $b.st to array $excl
+      inc $blk.count =
+     end
+    end
+   end
+  end
+ end
+end
+if $blk.count > 0
+ if $debug.on
+  $txt.log = $factory + ' Buy skips ' + $blk.count + ' blocked seller(s) of ' + $ware
+  = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+ end
+end
+$retry.left = 5
 $sector.array = [THIS] -> call script lib.LI.FDN.Sectors : mode=3
 if not $sector.array
  if $debug.on
@@ -197,7 +245,7 @@ while $s > 0
  dec $s =
  $sector = $sector.array[$s]
  * Find stations selling the required ware in this sector (v8 find, unchanged)
- $buy.Station = find station: product $ware with best price:  max.price=$buy.at, amount=$amount, max.jumps=0, startsector=$sector, trader=null, exclude array=$exclude.array
+ $buy.Station = find station: product $ware with best price:  max.price=$buy.at, amount=$amount, max.jumps=0, startsector=$sector, trader=null, exclude array=$excl
  if $buy.Station
   * v9.01 B15/R-T1: the whole drone dance is inside Trade - hardened spawn, foe/price
   * money/space clamps (T5 confirmed on FL), delivery straight to the factory; it returns
@@ -221,6 +269,23 @@ while $s > 0
    if $debug.on
     $txt.log = $factory + ' Trade bought 0 of ' + $ware + ' at ' + $buy.Station
     = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+   end
+   * M-09c: Trade blocked this seller just now - exclude it and search the same sector again
+   $b.t = $buy.Station  ->  get local variable: name=$blk.name
+   if is datatyp[ $b.t ] == DATATYPE_INT
+    $b.now = playing time
+    $b.age = $b.now - $b.t
+    if $b.age < 1800
+     if $retry.left > 0
+      dec $retry.left =
+      append $buy.Station to array $excl
+      inc $s =
+      if $debug.on
+       $txt.log = $factory + ' Seller ' + $buy.Station + ' blocked - searching again'
+       = [THIS] -> call script lib.LI.FDN.Log : text=$txt.log caller=$s.name
+      end
+     end
+    end
    end
   end
   if not $amount > 0

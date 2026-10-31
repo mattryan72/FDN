@@ -16,6 +16,7 @@ Player-facing summary of v9.01 (the same bullets are in the User Guide and the f
 - Many fixes and shared libraries; see CHANGELOG.md for the full list.
 - Fresh saves only. FDN starts paused until you switch it on. Albion Prelude and Terran Conflict are untested.
 - Text page 9910: new text ids 300-307, 310, 320-325, 330-333, 340, 341, 342, 343, 351, 352 and 353-400 (DC Network, network settings, running cost, messages); existing ids 100-202 reworded (M-08n/p/q).
+- Known limit: FDN buys only from stations that will trade with you; low notoriety with a race (e.g. Paranid, Teladi) means those sellers are skipped for 30 minutes game time (log: 'skip seller'); raising your notoriety fixes it.
 - Release notes: fresh saves only (v8.04 and earlier test saves are not supported); FDN starts paused after install or Master Reset until it is switched on in Gameplay > Artificial Life Settings; tested on X3: Farnham's Legacy 1.3 (with or without Unofficial Patch 1.3.20); X3: Albion Prelude 3.3 and X3: Terran Conflict untested.
 - Community Plugin Configuration: required for the .spk install (via X Plugin Manager); not needed for the manual zip install.
 
@@ -29,6 +30,7 @@ Player-facing summary of v9.01 (the same bullets are in the User Guide and the f
 
 ### Fixed
 - [B18] Main.Menu: safe ware edits (record get-or-create) - done in P1-05a.
+- [M-09c] Buying from sellers that refuse the player: a station whose race rates the player's notoriety too low for a ware sells nothing (the drone buy returns 0) and some stations refuse docking (`is docking allowed` null, seen at a Teladi Crystal Fab). FDN retried the same seller every cycle. `lib.LI.FDN.Trade` (v1.3) now blocks such a seller for that ware for 30 minutes game time after a refused buy (drone docked, partner stock, money and cargo room all fine) or when every drone type is refused docking, logs `TRADE block seller`, and skips a blocked seller (`TRADE skip seller`). `plugin.LI.FDN.Buy.Ware` (v3.1) leaves blocked sellers out of its find and searches the sector again when a seller is blocked during the pass (at most 5 times per run). X3 has no script command for a ware's notoriety requirement, so the block is set after the first refused buy. Diagnostic logging from M-09a/M-09b kept in a compact form (reject reason, buy-returned values). No text ids.
 - [B19] Main.Menu: Add Ware null-check when the player cancels the ware prompt - done in P1-05a.
 - [B26] Main.Menu Remove.Ware.Sub: re-check stock == 0 (physical + virtual) before deleting and confirm with the player first (text id=300), so a ware can no longer be wiped silently or after supply lands between the click and the delete. On FL, Remove Ware now also clears the dock's tradeable list (new `plugin.LI.FDN.FL.Remove.Tradeable`, called only when script engine version >= 60).
 - [B20] Move.Ware: null-check a cancelled destination prompt before any -> is of class / get free amount call; on cancel it exits silently with one debug line (`$debug` local copy, no array element in the condition) - done in P1-13a.

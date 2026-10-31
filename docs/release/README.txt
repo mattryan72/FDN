@@ -41,6 +41,7 @@ Switch FDN off in Gameplay > Artificial Life Settings (AL Plugins) (removes its 
 ## Known issues
 - Tested on FL only; v8.04 saves not supported; German texts machine-translated, pending native review.
 - Trading Stations still count as "other dock" for the Energy Cell cost factor.
+- FDN buys only from stations that will trade with you. If your notoriety with a station's race is too low for a ware (the station shows the ware in red with "your notoriety is too low"), FDN skips that seller for 30 minutes game time and tries another one; the log shows `TRADE block seller` and `TRADE skip seller`. Raising your notoriety with that race fixes it.
 
 ## Compatibility
 FL 1.3 (+ UP 1.3.20) tested; AP 3.3 / TC untested. XRM: unconfirmed, not tested. Litcube's Universe: not supported. Production Modules: not directly compatible; support is planned for a later release, date to be decided depending on interest. Text page and log id 9910.
