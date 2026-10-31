@@ -11,9 +11,9 @@
 *     [32] R_base (null or non-INT treated as 3)
 *     Player HQ subtype 62 -> +2
 *     Equipment Dock subtype 6 -> 0
+*     Trading Station subtype 0-5 (TDocks SS_DOCK_A/S/P/B/T/X_TRADE; player Free Argon
+*       Trading Station = 0) -> 0 (Matt 31/10/2026, M-08r/M-08s)
 *     any other dock subtype -> -1
-*   The Trading Station subtype has not been seen on FL yet: it falls into the
-*   'other dock' (-1) branch and becomes +1 once a probe logs its subtype (M-03).
 *
 * Arguments:
 * - dc (Value): Distribution Centre station
@@ -21,12 +21,14 @@
 * Returns values:
 * - INT range in jumps, or null for bad input
 
-* To Do - Trading Station subtype modifier +1 when the M-03 probe has seen it
+* To Do - N/A
 
-* Version: 1.0
-* Date: 28/10/2026
-* Tested: not tested
+* Version: 1.2
+* Date: 31/10/2026
+* Tested: not tested (M-08s; the v1.1 ware type check never matched on FL 31/10/2026)
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08s): Trading Station by subtype 0-5 (TDocks *_TRADE); the v1.1 ware type check (SS_DOCK_P_TRADE = Paranid) is removed
+ * v9.01 D6 (M-08r): player Trading Station modifier 0 (same as Equipment Dock), tested by ware type SS_DOCK_P_TRADE (its subtype is not known)
  * v9.01 D6 (M-03): new - DC station range for home-DC assignment and backbone links
  * -----------------------------------------------------------------------------------
 
@@ -66,8 +68,8 @@ if is datatyp[ $base ] == DATATYPE_INT
  end
 end
 
-* subtype modifier: Player HQ +2, Equipment Dock 0, other dock -1 (Trading Station
-* unknown yet, treated as other dock until the probe shows its subtype)
+* subtype modifier: Player HQ +2, Equipment Dock 0, Trading Station 0, other dock -1
+* (Trading Station = TDocks subtype 0-5, SS_DOCK_A/S/P/B/T/X_TRADE)
 $mod = -1
 $sub.type = $dc  ->  get subtype
 if is datatyp[ $sub.type ] == DATATYPE_INT
@@ -75,6 +77,12 @@ if is datatyp[ $sub.type ] == DATATYPE_INT
   $mod = 2
  else
   if $sub.type == 6
+   $mod = 0
+  end
+ end
+* v9.01 D6 (M-08s): Trading Station subtypes 0-5 -> 0
+ if $sub.type >= 0
+  if $sub.type <= 5
    $mod = 0
   end
  end

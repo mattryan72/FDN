@@ -3,6 +3,9 @@
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
+ * v9.01 D6 (M-08s): Trading Station by subtype 0-5 as lib.LI.FDN.Dc.Range v1.2 (the M-08r ware type check never matched)
+ * v9.01 D6 (M-08s): D1 expects the charged total formatted by convert number ('1,234'), as the page shows it
+ * v9.01 D6 (M-08r): type modifier 0 for a player Trading Station (superseded by M-08s: subtype 0-5)
  * v9.01 D6 (M-07h): new - Dc.Cfg set/clear/reject, [31]-[34], Menu.Command Esc/back/close/open.dccost, running cost page data, reset
 * -----------------------------------------------------------------------------------
 * In-game test of the M-07 menu and config logic. Writes every TEST line to log 9910 and
@@ -30,9 +33,9 @@
 * Expected with a valid DC and station, M-07e/f installed, R1 answered Yes: 32 checks, 32 PASS
 * (31/31 when R1 is answered No; 30/30 with no valid station in [3]).
 * Prerequisite: a valid DC in [2], settings grown to 40 slots.
-* Version: 1.0
-* Date: 30/10/2026
-* Tested: not tested (M-07h)
+* Version: 1.2
+* Date: 31/10/2026
+* Tested: M-08r 31/32 (D1 stale expectation, fixed M-08s)
 * -----------------------------------------------------------------------------------
 
 $pass = 0
@@ -61,13 +64,20 @@ if not $dc.ok
  return null
 end
 
-* type modifier of the DC (as lib.LI.FDN.Dc.Range): HQ 62 +2, Equipment Dock 6 0, other -1
+* type modifier of the DC (as lib.LI.FDN.Dc.Range): HQ 62 +2, Equipment Dock 6 0, Trading Station subtype 0-5 0, other -1
 $dsub = $dc -> get subtype
 $mod = -1
 if $dsub == 62
  $mod = 2
 else if $dsub == 6
  $mod = 0
+end
+if is datatyp[ $dsub ] == DATATYPE_INT
+ if $dsub >= 0
+  if $dsub <= 5
+   $mod = 0
+  end
+ end
 end
 
 * served station: first valid station in [3]
@@ -430,7 +440,8 @@ if $age2 > 3600
 end
 $rate.txt = = convert number $rate.exp to string
 
-$t382 = = sprintf: pageid=$pid textid=382, '1234', null, null, null, null
+$c382.txt = = convert number 1234 to string
+$t382 = = sprintf: pageid=$pid textid=382, $c382.txt, null, null, null, null
 $t383 = = sprintf: pageid=$pid textid=383, '7', null, null, null, null
 $t384 = = sprintf: pageid=$pid textid=384, $rate.txt, null, null, null, null
 $want = $t382 + ' | '
