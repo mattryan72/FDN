@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.Stations  (v1, engine 50)
+* Script: plugin.LI.FDN.Menu.Stations  (v901, engine 50)
 * Desc: FDN v9.01 - Build the Stations view of the menu (factories and docks by sector)
 * Arg 0: menu (Value) 'menu'
 * Arg 1: obj (Value) 'obj'

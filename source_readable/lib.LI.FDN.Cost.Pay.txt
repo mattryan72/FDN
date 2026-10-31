@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Cost.Pay  (v1, engine 50)
-* Desc: FDNv9 - Take the Energy Cell cost for one transfer leg from the paying DC
+* Script: lib.LI.FDN.Cost.Pay  (v901, engine 50)
+* Desc: FDN v9.01 - Take the Energy Cell cost for one transfer leg from the paying DC
 * Arg 0: payer (Value) 'payer'
 * Arg 1: served (Value) 'served'
 * Arg 2: cost (Number) 'cost'

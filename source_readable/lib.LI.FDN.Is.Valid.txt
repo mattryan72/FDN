@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Is.Valid  (v1, engine 50)
-* Desc: FDNv9 - TRUE if an object exists, is player owned and - when asked - is a Dock
+* Script: lib.LI.FDN.Is.Valid  (v901, engine 50)
+* Desc: FDN v9.01 - TRUE if an object exists, is player owned and - when asked - is a Dock
 * Arg 0: obj (Value) 'obj'
 * Arg 1: need.dock (Boolean) 'need.dock'
 * Author: Logain Abler

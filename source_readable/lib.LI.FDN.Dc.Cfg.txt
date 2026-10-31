@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Dc.Cfg  (v1, engine 50)
-* Desc: FDNv9 - Get or set the per-DC settings FDN.DC.Cfg (range and reserve floor override)
+* Script: lib.LI.FDN.Dc.Cfg  (v901, engine 50)
+* Desc: FDN v9.01 - Get or set the per-DC settings FDN.DC.Cfg (range and reserve floor override)
 * Arg 0: dc (Value) 'dc'
 * Arg 1: slot (Value) 'slot'
 * Arg 2: value (Value) 'value'

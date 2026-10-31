@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Fac.Cfg  (v1, engine 50)
-* Desc: FDNv9 - Get-or-create a station's FDN.Settings local and apply auto-manage on first sight
+* Script: lib.LI.FDN.Fac.Cfg  (v901, engine 50)
+* Desc: FDN v9.01 - Get-or-create a station's FDN.Settings local and apply auto-manage on first sight
 * Arg 0: factory (Value) 'factory'
 * Arg 1: auto.manage (Value) 'auto.manage'
 * Author: Logain Abler

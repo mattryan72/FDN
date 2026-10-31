@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Hub.Assign  (v1, engine 50)
-* Desc: FDNv9 - Assign the home DC to one station and write its FDN.Hub local
+* Script: lib.LI.FDN.Hub.Assign  (v901, engine 50)
+* Desc: FDN v9.01 - Assign the home DC to one station and write its FDN.Hub local
 * Arg 0: station (Value) 'station'
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

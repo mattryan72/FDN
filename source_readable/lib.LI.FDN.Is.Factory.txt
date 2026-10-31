@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Is.Factory  (v1, engine 50)
-* Desc: FDNv9 - TRUE if a station is a managed factory per the D10 rule
+* Script: lib.LI.FDN.Is.Factory  (v901, engine 50)
+* Desc: FDN v9.01 - TRUE if a station is a managed factory per the D10 rule
 * Arg 0: station (Value) 'station'
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

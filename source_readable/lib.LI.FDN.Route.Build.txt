@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Route.Build  (v1, engine 50)
-* Desc: FDNv9 - Backbone link table [35]: every DC pair within multiplier ([38], default 2) x the smaller range
+* Script: lib.LI.FDN.Route.Build  (v901, engine 50)
+* Desc: FDN v9.01 - Backbone link table [35]: every DC pair within multiplier ([38], default 2) x the smaller range
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
 * Synchronous wait-free helper (multi-DC part 1). Rebuilds the backbone LINK table in

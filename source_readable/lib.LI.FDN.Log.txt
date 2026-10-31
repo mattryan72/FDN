@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Log  (v1, engine 50)
-* Desc: FDNv9 - Write one timestamped debug line to the FDN log file when [7] is on
+* Script: lib.LI.FDN.Log  (v901, engine 50)
+* Desc: FDN v9.01 - Write one timestamped debug line to the FDN log file when [7] is on
 * Arg 0: text (String) 'text'
 * Arg 1: caller (String) 'caller'
 * Author: Logain Abler

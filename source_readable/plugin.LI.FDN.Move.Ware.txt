@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Move.Ware  (v3, engine 50)
-* Desc: FDN v9 - Handles the user inputs for moving wares
+* Script: plugin.LI.FDN.Move.Ware  (v901, engine 50)
+* Desc: FDN v9.01 - Handles the user inputs for moving wares
 * Arg 0: ware (Value) 'ware'
 * Arg 1: source (Value) 'source'
 

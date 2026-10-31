@@ -1,4 +1,4 @@
-* Script: lib.LI.FDN.Menu.WareRow (v1, engine 50)
+* Script: lib.LI.FDN.Menu.WareRow (v901, engine 50)
 * Desc: FDN v9.01 - Build one formatted ware row for the DC or dock station view
 * Arg 0: station (Value) 'station'
 * Arg 1: ware (Value) 'ware'

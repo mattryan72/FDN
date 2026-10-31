@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.AP.Factory.List  (v9.01, engine 50)
-* Desc: FDNv9 - STUB (P3-10): Factory List Menu for AP
+* Script: plugin.LI.FDN.Menu.AP.Factory.List  (v901, engine 50)
+* Desc: FDN v9.01 - STUB (P3-10): Factory List Menu for AP
 * Arg 0: menu (Value) 'menu'
 
  * Author: Logain Abler

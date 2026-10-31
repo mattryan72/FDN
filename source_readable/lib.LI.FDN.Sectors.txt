@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Sectors  (v1, engine 50)
-* Desc: FDNv9 - Read cached sector list from settings [15] (1=factories, 2=docks, 3/4=trade)
+* Script: lib.LI.FDN.Sectors  (v901, engine 50)
+* Desc: FDN v9.01 - Read cached sector list from settings [15] (1=factories, 2=docks, 3/4=trade)
 * Arg 0: mode (Value) 'mode'
 * Author: Logain Abler
 * Version: 1.0

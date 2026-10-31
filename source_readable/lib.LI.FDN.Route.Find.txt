@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Route.Find  (v1, engine 50)
-* Desc: FDNv9 - Fewest-jumps route between two DCs over the backbone links [35]
+* Script: lib.LI.FDN.Route.Find  (v901, engine 50)
+* Desc: FDN v9.01 - Fewest-jumps route between two DCs over the backbone links [35]
 * Arg 0: from (Value) 'from'
 * Arg 1: to (Value) 'to'
 * Author: Logain Abler

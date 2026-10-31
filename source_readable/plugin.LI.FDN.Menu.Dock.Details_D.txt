@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.Dock.Details_D  (v9.01, engine 50)
-* Desc: FDNv9 - STUB (P3-10): Dynamic updates for the Dock Details menu
+* Script: plugin.LI.FDN.Menu.Dock.Details_D  (v901, engine 50)
+* Desc: FDN v9.01 - STUB (P3-10): Dynamic updates for the Dock Details menu
 * Arg 0: value (Value) 'value'
 
  * Author: Logain Abler

@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Config.Menu  (v3, engine 50)
-* Desc: FDNv9 - Config menu (view 7)
+* Script: plugin.LI.FDN.Config.Menu  (v901, engine 50)
+* Desc: FDN v9.01 - Config menu (view 7)
 * Arg 0: menu (Value) 'menu'
 
 * Author: Logain Abler

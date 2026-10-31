@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Sell.Ware  (v3, engine 50)
-* Desc: FDNv9 - Sell ware from a dock to NPC stations in the trade sectors
+* Script: plugin.LI.FDN.Sell.Ware  (v901, engine 50)
+* Desc: FDN v9.01 - Sell ware from a dock to NPC stations in the trade sectors
 * Arg 0: dock (Value) 'dock'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: amount (Value) 'amount'

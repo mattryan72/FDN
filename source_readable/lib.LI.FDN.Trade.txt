@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Trade  (v1, engine 50)
-* Desc: FDNv9 - Wait-free docked drone buy/sell between $home and an NPC partner station
+* Script: lib.LI.FDN.Trade  (v901, engine 50)
+* Desc: FDN v9.01 - Wait-free docked drone buy/sell between $home and an NPC partner station
 * Arg 0: mode (String) 'mode'
 * Arg 1: partner (Value) 'partner'
 * Arg 2: ware (Value) 'ware'

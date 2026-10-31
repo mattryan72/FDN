@@ -1,4 +1,4 @@
-* Script: lib.LI.FDN.Game  (v1, engine 50)
+* Script: lib.LI.FDN.Game  (v901, engine 50)
 * Desc: FDN v9.01 - Which game is running: 1 = TC, 2 = AP, 3 = FL
 
 * Author: Logain Abler

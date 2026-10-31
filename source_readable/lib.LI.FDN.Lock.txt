@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Lock  (v1, engine 50)
-* Desc: FDNv9 - try/release a playing-time lock on an object local or a settings index
+* Script: lib.LI.FDN.Lock  (v901, engine 50)
+* Desc: FDN v9.01 - try/release a playing-time lock on an object local or a settings index
 * Arg 0: obj (Value) 'obj'            null = global lock on a settings index
 * Arg 1: key (String/Int) 'key'       object: FDN.Busy.<key>; global: settings index
 * Arg 2: action (String) 'action'     'try' or 'release'

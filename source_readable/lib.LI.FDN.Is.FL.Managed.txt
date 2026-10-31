@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Is.FL.Managed  (v2, engine 50)
-* Desc: FDNv9 - TRUE if a station is run by FL Station Manager and must be dropped from the network
+* Script: lib.LI.FDN.Is.FL.Managed  (v901, engine 50)
+* Desc: FDN v9.01 - TRUE if a station is run by FL Station Manager and must be dropped from the network
 * Arg 0: station (Value) 'station'
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

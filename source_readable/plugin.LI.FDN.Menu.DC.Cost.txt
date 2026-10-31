@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.DC.Cost  (v1, engine 50)
+* Script: plugin.LI.FDN.Menu.DC.Cost  (v901, engine 50)
 * Desc: FDN v9.01 - Build the running cost view of one DC (view 8)
 * Arg 0: menu (Value) 'menu'
 * Arg 1: obj (Value) 'obj'

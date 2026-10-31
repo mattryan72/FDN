@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.DC.Change  (v9.01, engine 50)
-* Desc: FDNv9 - change the Distribution Centre as one event
+* Script: plugin.LI.FDN.DC.Change  (v901, engine 50)
+* Desc: FDN v9.01 - change the Distribution Centre as one event
 * Arg 0: old (Value) 'old'
 * Arg 1: new (Value) 'new'
 * Author: Logain Abler

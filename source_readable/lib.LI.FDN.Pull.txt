@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Pull  (v1, engine 50)
-* Desc: FDNv9 - Shortage pull of a ware over the DC backbone to one home DC
+* Script: lib.LI.FDN.Pull  (v901, engine 50)
+* Desc: FDN v9.01 - Shortage pull of a ware over the DC backbone to one home DC
 * Arg 0: home (Value) 'home'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: need (Number) 'need'

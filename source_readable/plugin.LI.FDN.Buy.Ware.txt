@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Buy.Ware  (v3, engine 50)
-* Desc: FDNv9 - Buy ware for a factory from NPC stations in the trade sectors
+* Script: plugin.LI.FDN.Buy.Ware  (v901, engine 50)
+* Desc: FDN v9.01 - Buy ware for a factory from NPC stations in the trade sectors
 * Arg 0: factory (Value) 'factory'
 * Arg 1: ware (Value) 'ware'
 * Arg 2: amount (Value) 'amount'

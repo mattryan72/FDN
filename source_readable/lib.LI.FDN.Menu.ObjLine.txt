@@ -1,4 +1,4 @@
-* Script: lib.LI.FDN.Menu.ObjLine  (v1, engine 50)
+* Script: lib.LI.FDN.Menu.ObjLine  (v901, engine 50)
 * Desc: FDN v9.01 - Appends the 'Name [ID]' + sector header block to a custom menu array
 * Arg 0: menu (Value) 'menu'
 * Arg 1: object (Value) 'object'

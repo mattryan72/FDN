@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Leg.Pay  (v1, engine 50)
-* Desc: FDNv9 - Charge one transfer leg before it moves: pay the Energy Cell cost or defer
+* Script: lib.LI.FDN.Leg.Pay  (v901, engine 50)
+* Desc: FDN v9.01 - Charge one transfer leg before it moves: pay the Energy Cell cost or defer
 * Arg 0: ware (Value) 'ware'
 * Arg 1: units (Number) 'units'
 * Arg 2: payer (Value) 'payer'

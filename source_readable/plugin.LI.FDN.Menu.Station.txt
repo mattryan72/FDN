@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.Station  (v1, engine 50)
+* Script: plugin.LI.FDN.Menu.Station  (v901, engine 50)
 * Desc: FDN v9.01 - Build the DC or dock view of the menu (one script for both)
 * Arg 0: menu (Value) 'menu'
 * Arg 1: view (Value) 'view'

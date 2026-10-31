@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.Ware.Details  (v3.1, engine 50)
-* Desc: FDNv9 - Ware details menu (view 6)
+* Script: plugin.LI.FDN.Menu.Ware.Details  (v901, engine 50)
+* Desc: FDN v9.01 - Ware details menu (view 6)
 * Arg 0: menu (Value) 'menu'
 * Arg 1: value (Value) 'value'
 * Arg 2: ware (Value) 'ware'
