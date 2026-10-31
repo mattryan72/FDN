@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Setup.FL  (v1, engine 50)
+* Script: plugin.LI.FDN.Setup.FL  (v901, engine 50)
 * Desc: FDN v9.01 - Optional FL entries: script options entry; removes the old sidebar entry
 
 * Author: Logain Abler

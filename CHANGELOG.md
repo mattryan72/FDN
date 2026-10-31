@@ -170,6 +170,7 @@
 - [D6] Text page 9910 (M-08q, existing ids only): player-visible 'backbone' renamed 'DC Network' - 397 'DC Network Links', 398 'DC Network range multiplier', 399 'Input DC Network range multiplier (1-5)'. Script names, slot comments and log lines keep 'backbone'.
 - [D6] Changed `lib.LI.FDN.Dc.Range` (v1.1, M-08r): a player Trading Station (subtype 0-5, TDocks SS_DOCK_A/S/P/B/T/X_TRADE; Free Argon Trading Station = 0; v1.2 in M-08s) gets range modifier 0, as the Equipment Dock (was -1 as 'other dock'); `test.LI.FDN.Menu.Cfg` expects the same. No new texts.
 - [D6] Fixed `test.LI.FDN.Menu.Cfg` (v1.2, M-08s), Trading Station check by subtype 0-5 as `lib.LI.FDN.Dc.Range` v1.2; check D1 expected the charged total as the literal '1234', but the cost page formats it with convert number ('1,234'); the test now formats it the same way (Matt's M-08r run: 31/32, D1 only). Test only, no game script or text change.
+- [D6] Version bump (P5-02): the 76 shipping FDN scripts now carry script version 901 and a description starting 'FDN v9.01 - ' (XML `<version>`/`<description>` and the codearray copies; readable source header lines too, except 5 files with old check_source flags); lib.BW.isAP unchanged; test scripts and T6.KillHandler not shipped. Wares.Summary description typo fixed. No code or text change.
 
 ### Behaviour changes (need approval)
 Approved by Matt on 2026-10-17:

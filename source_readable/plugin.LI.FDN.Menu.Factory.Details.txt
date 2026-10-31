@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.Factory.Details  (v3, engine 50)
+* Script: plugin.LI.FDN.Menu.Factory.Details  (v901, engine 50)
 * Desc: FDN v9.01 - Factory details view of the menu
 * Arg 0: menu (Value) 'menu'
 * Arg 1: value (Value) 'value'

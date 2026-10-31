@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Supply.Factory  (v4, engine 50)
-* Desc: FDNv9 - Supply Factory logic; called routine of Supply.Factory.Check (no START from the caller)
+* Script: plugin.LI.FDN.Supply.Factory  (v901, engine 50)
+* Desc: FDN v9.01 - Supply Factory logic; called routine of Supply.Factory.Check (no START from the caller)
 * Arg 0: factory (Value) 'factory'
 * Arg 1: flag (Value) 'flag'
 

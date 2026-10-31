@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Reset  (v3.1, engine 50)
-* Desc: FDNv9 - Reset clears all locally stored FDN values
+* Script: plugin.LI.FDN.Reset  (v901, engine 50)
+* Desc: FDN v9.01 - Reset clears all locally stored FDN values
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

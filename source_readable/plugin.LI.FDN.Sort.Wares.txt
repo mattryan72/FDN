@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Sort.Wares  (v2, engine 50)
-* Desc: FDNv9 - Sort wares by main type
+* Script: plugin.LI.FDN.Sort.Wares  (v901, engine 50)
+* Desc: FDN v9.01 - Sort wares by main type
 * Arg 0: station (Value) 'station'
 
 001  * Author: Logain Abler

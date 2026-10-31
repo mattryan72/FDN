@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Upgrade  (v2, engine 50)
-* Desc: FDNv9 - Upgrade settings schema (v8.04 save to v9.01)
+* Script: plugin.LI.FDN.Upgrade  (v901, engine 50)
+* Desc: FDN v9.01 - Upgrade settings schema (v8.04 save to v9.01)
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

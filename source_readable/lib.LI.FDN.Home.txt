@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Home  (v1, engine 50)
-* Desc: FDNv9 - Home DC of one factory or dock, from its FDN.Hub local when it is still valid
+* Script: lib.LI.FDN.Home  (v901, engine 50)
+* Desc: FDN v9.01 - Home DC of one factory or dock, from its FDN.Hub local when it is still valid
 * Arg 0: station (Value) 'station'
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

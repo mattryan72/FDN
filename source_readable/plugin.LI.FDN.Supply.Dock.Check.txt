@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Supply.Dock.Check  (v3, engine 50)
-* Desc: FDNv9 - Checks dock to be supplied
+* Script: plugin.LI.FDN.Supply.Dock.Check  (v901, engine 50)
+* Desc: FDN v9.01 - Checks dock to be supplied
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
 * This script is called by LI.FDN.Menu.Supply.Start script if there is a valid

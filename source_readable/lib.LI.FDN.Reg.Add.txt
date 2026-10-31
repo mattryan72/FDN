@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Reg.Add  (v1, engine 50)
-* Desc: FDNv9 - Add a station to the B9 registry in settings [29]
+* Script: lib.LI.FDN.Reg.Add  (v901, engine 50)
+* Desc: FDN v9.01 - Add a station to the B9 registry in settings [29]
 * Arg 0: station (Value) 'station'
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

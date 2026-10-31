@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.Command (v1, engine 50)
+* Script: plugin.LI.FDN.Menu.Command (v901, engine 50)
 * Desc: FDN v9.01 - Menu command handler: runs one menu return value and returns the new view stack
 * Arg 0: stack (Value) 'stack'
 * Arg 1: return (Value) 'return'

@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Dc.Reach  (v1, engine 50)
-* Desc: FDNv9 - Jumps from the primary DC to one dock when they share a backbone link, else -1
+* Script: lib.LI.FDN.Dc.Reach  (v901, engine 50)
+* Desc: FDN v9.01 - Jumps from the primary DC to one dock when they share a backbone link, else -1
 * Arg 0: dc (Value) 'dc'
 * Arg 1: primary (Value) 'primary'
 * Author: Logain Abler

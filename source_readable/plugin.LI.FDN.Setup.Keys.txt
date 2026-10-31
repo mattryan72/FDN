@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Setup.Keys  (v1, engine 50)
+* Script: plugin.LI.FDN.Setup.Keys  (v901, engine 50)
 * Desc: FDN v9.01 - Hotkey fallback, game flag [23] and FL patch flag [24]
 
 * Author: Logain Abler

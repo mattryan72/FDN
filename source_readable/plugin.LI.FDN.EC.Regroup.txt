@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.EC.Regroup  (v1, engine 50)
+* Script: plugin.LI.FDN.EC.Regroup  (v901, engine 50)
 * Desc: FDN v9.01 - Regroup Energy Cells between Distribution Centres
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

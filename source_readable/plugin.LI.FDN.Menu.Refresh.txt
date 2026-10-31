@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Menu.Refresh  (v1, engine 50)
-* Desc: FDNv9 - Live refresh of the DC and dock views
+* Script: plugin.LI.FDN.Menu.Refresh  (v901, engine 50)
+* Desc: FDN v9.01 - Live refresh of the DC and dock views
 * Arg 0: view (Value) 'view'
 * Arg 1: obj (Value) 'obj'
 * Arg 2: token (Value) 'token'

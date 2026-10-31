@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Main.Menu  (v9.01, engine 50)
-* Desc: FDNv9 - Main Menu controller
+* Script: plugin.LI.FDN.Main.Menu  (v901, engine 50)
+* Desc: FDN v9.01 - Main Menu controller
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
 * v9.01 P3-05. The controller only: it keeps a local view stack (array of [view, obj, ware],

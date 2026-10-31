@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Cfg.Get  (v1, engine 50)
-* Desc: FDNv9 - Return the live al.LI.FDN.event settings array
+* Script: lib.LI.FDN.Cfg.Get  (v901, engine 50)
+* Desc: FDN v9.01 - Return the live al.LI.FDN.event settings array
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
 * Synchronous wait-free helper (Phase 2). Single owner of the D1 header copied in 26 of 31 scripts:

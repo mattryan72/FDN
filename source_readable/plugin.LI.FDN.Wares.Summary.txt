@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Wares.Summary  (v9.01, engine 50)
-* Desc: FDNv9 - STUB (P3-10): Returnd ware summary for menu
+* Script: plugin.LI.FDN.Wares.Summary  (v901, engine 50)
+* Desc: FDN v9.01 - STUB (P3-10): Returned ware summary for menu
 * Arg 0: station (Value) 'station'
 * Arg 1: ware (Value) 'ware'
 

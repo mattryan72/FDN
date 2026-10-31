@@ -2,15 +2,15 @@
 <?xml-stylesheet href="x2script.xsl" type="text/xsl"?>
 <script>
 <name>plugin.LI.FDN.Wares.Summary</name>
-<version>1.0</version>
+<version>901</version>
 <engineversion>50</engineversion>
-<description>FDNv9 - STUB (P3-10): Returnd ware summary for menu</description>
+<description>FDN v9.01 - STUB (P3-10): Returned ware summary for menu</description>
 <arguments>
 <argument index="0" name="station" type="Value" desc="station" />
 <argument index="1" name="ware" type="Value" desc="ware" />
 </arguments>
 <sourcetext />
 <codearray>
-<sval type="array" size="10"><sval type="string" val="plugin.LI.FDN.Wares.Summary" /><sval type="int" val="50" /><sval type="string" val="FDNv9 - STUB (P3-10): Returnd ware summary for menu" /><sval type="int" val="1.0" /><sval type="int" val="0" /><sval type="array" size="2"><sval type="string" val="station" /><sval type="string" val="ware" /></sval><sval type="array" size="1"><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="0" /><sval type="int" val="0" /></sval></sval><sval type="array" size="2"><sval type="array" size="2"><sval type="int" val="9" /><sval type="string" val="station" /></sval><sval type="array" size="2"><sval type="int" val="9" /><sval type="string" val="ware" /></sval></sval><sval type="array" size="1"><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Compiled by XScript Compiler v0.8 BETA - https://www.xpluginmanager.co.uk/xscript/" /></sval></sval><sval type="int" val="0" /></sval>
+<sval type="array" size="10"><sval type="string" val="plugin.LI.FDN.Wares.Summary" /><sval type="int" val="50" /><sval type="string" val="FDN v9.01 - STUB (P3-10): Returned ware summary for menu" /><sval type="int" val="901" /><sval type="int" val="0" /><sval type="array" size="2"><sval type="string" val="station" /><sval type="string" val="ware" /></sval><sval type="array" size="1"><sval type="array" size="3"><sval type="int" val="103" /><sval type="int" val="0" /><sval type="int" val="0" /></sval></sval><sval type="array" size="2"><sval type="array" size="2"><sval type="int" val="9" /><sval type="string" val="station" /></sval><sval type="array" size="2"><sval type="int" val="9" /><sval type="string" val="ware" /></sval></sval><sval type="array" size="1"><sval type="array" size="3"><sval type="int" val="0" /><sval type="int" val="1" /><sval type="string" val="Compiled by XScript Compiler v0.8 BETA - https://www.xpluginmanager.co.uk/xscript/" /></sval></sval><sval type="int" val="0" /></sval>
 </codearray>
 </script>

@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.DC.List  (v1, engine 50)
+* Script: plugin.LI.FDN.Menu.DC.List  (v901, engine 50)
 * Desc: FDN v9.01 - Build the Distribution Centre Network view of the menu (view 3)
 * Arg 0: menu (Value) 'menu'
 

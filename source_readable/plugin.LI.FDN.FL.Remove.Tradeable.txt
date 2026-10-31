@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.FL.Remove.Tradeable  (v1, engine 50)
-* Desc: FDNv9 - FL only: remove a ware from a dock's tradeable list
+* Script: plugin.LI.FDN.FL.Remove.Tradeable  (v901, engine 50)
+* Desc: FDN v9.01 - FL only: remove a ware from a dock's tradeable list
 * Arg 0: station (Value) 'station'
 * Arg 1: ware (Value) 'ware'
 

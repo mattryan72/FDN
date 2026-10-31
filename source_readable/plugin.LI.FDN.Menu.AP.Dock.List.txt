@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Menu.AP.Dock.List  (v1.0, engine 50)
+* Script: plugin.LI.FDN.Menu.AP.Dock.List  (v901, engine 50)
 * Desc: FDN v9.01 - Dock List Menu
 * Arg 0: menu (Value) 'menu'
 

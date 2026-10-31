@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Format.Name  (v3, engine 50)
+* Script: plugin.LI.FDN.Format.Name  (v901, engine 50)
 * Desc: FDN v9.01 - Returns the menu text 'name [ID]' for an object (text 134)
 * Arg 0: object (Value) 'object'
 * Author: Logain Abler

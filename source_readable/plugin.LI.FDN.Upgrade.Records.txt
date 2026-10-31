@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Upgrade.Records  (v1, engine 50)
-* Desc: FDNv9 - One-off migration of v8 ware records (surplus flag null becomes 0)
+* Script: plugin.LI.FDN.Upgrade.Records  (v901, engine 50)
+* Desc: FDN v9.01 - One-off migration of v8 ware records (surplus flag null becomes 0)
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

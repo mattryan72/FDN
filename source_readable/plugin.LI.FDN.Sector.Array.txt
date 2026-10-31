@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Sector.Array  (v3, engine 50)
+* Script: plugin.LI.FDN.Sector.Array  (v901, engine 50)
 * Desc: FDN v9.01 - Thin wrapper: returns the cached sector list from lib.LI.FDN.Sectors
 * Arg 0: search (Number) 'search'
 * Author: Logain Abler

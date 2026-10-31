@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Dc.Mult  (v1, engine 50)
-* Desc: FDNv9 - Backbone range multiplier: settings [38] when it is a whole number 1-5, else 2
+* Script: lib.LI.FDN.Dc.Mult  (v901, engine 50)
+* Desc: FDN v9.01 - Backbone range multiplier: settings [38] when it is a whole number 1-5, else 2
 
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

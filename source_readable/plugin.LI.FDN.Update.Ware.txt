@@ -1,5 +1,5 @@
-* Script: plugin.LI.FDN.Update.Ware  (v8, engine 50)
-* Desc: FDN v9 - Add or remove a ware from a station's stock and its virtual ref
+* Script: plugin.LI.FDN.Update.Ware  (v901, engine 50)
+* Desc: FDN v9.01 - Add or remove a ware from a station's stock and its virtual ref
 * Arg 0: ware (Value) 'ware'
 * Arg 1: amount (Number) 'amount'
 * Arg 2: station (Value) 'station'

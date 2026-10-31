@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Dc.Edit  (v1.1, engine 50)
-* Desc: FDNv9 - Add, remove or refresh one Distribution Centre in the DC list [30]
+* Script: lib.LI.FDN.Dc.Edit  (v901, engine 50)
+* Desc: FDN v9.01 - Add, remove or refresh one Distribution Centre in the DC list [30]
 * Arg 0: action (Value) 'action'
 * Arg 1: dc (Value) 'dc'
 * Author: Logain Abler

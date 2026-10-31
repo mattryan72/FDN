@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Dc.List  (v1, engine 50)
-* Desc: FDNv9 - Cleaned DC list [30]: valid DCs only, primary [2] first and unique
+* Script: lib.LI.FDN.Dc.List  (v901, engine 50)
+* Desc: FDN v9.01 - Cleaned DC list [30]: valid DCs only, primary [2] first and unique
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------
 * Synchronous wait-free helper (multi-DC part 1). Returns the DC list from settings

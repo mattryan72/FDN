@@ -1,5 +1,5 @@
-* Script: lib.LI.FDN.Dc.Range  (v1, engine 50)
-* Desc: FDNv9 - Station range R of one DC in jumps (override, else R_base + subtype modifier)
+* Script: lib.LI.FDN.Dc.Range  (v901, engine 50)
+* Desc: FDN v9.01 - Station range R of one DC in jumps (override, else R_base + subtype modifier)
 * Arg 0: dc (Value) 'dc'
 * Author: Logain Abler
 * -----------------------------------------------------------------------------------

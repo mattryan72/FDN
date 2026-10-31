@@ -1,5 +1,5 @@
-* Script: al.LI.FDN.event  (v3, engine 50)
-* Desc: FDNv9 - AL Event
+* Script: al.LI.FDN.event  (v901, engine 50)
+* Desc: FDN v9.01 - AL Event
 * Arg 0: al.PluginID (Var/String) 'Plugin ID'
 * Arg 1: al.Event (Var/String) 'AL Event'
 

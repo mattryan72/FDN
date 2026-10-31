@@ -1,4 +1,4 @@
-* Script: plugin.LI.FDN.Supply.Dock  (v6, engine 50)
+* Script: plugin.LI.FDN.Supply.Dock  (v901, engine 50)
 * Desc: FDN v9.01 - Supply Dock
 * Arg 0: dock (Value) 'dock'
 * Arg 1: flag (Value) 'flag'
